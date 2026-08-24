@@ -1,15 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { PublicFooter } from '../components/public/PublicFooter'
 import { PublicHeader } from '../components/public/PublicHeader'
-import { SignUpChoiceModal } from '../components/public/SignUpChoiceModal'
+import { useSignUpModal } from '../contexts/signUpModal'
 
 interface PublicLayoutProps {
   children: ReactNode
 }
 
 export function PublicLayout({ children }: PublicLayoutProps) {
-  const [signupOpen, setSignupOpen] = useState(false)
+  const openSignUpModal = useSignUpModal()
   const location = useLocation()
 
   useEffect(() => {
@@ -19,10 +19,9 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className="min-h-dvh bg-[var(--color-background)]">
-      <PublicHeader onSignUp={() => setSignupOpen(true)} />
+      <PublicHeader onSignUp={openSignUpModal} />
       <main className="page-enter">{children}</main>
       <PublicFooter />
-      <SignUpChoiceModal onClose={() => setSignupOpen(false)} open={signupOpen} />
     </div>
   )
 }

@@ -10,6 +10,7 @@ export interface AuthenticatedUser {
   email: string
   phone: string | null
   role: UserRole
+  profile_image_url: string | null
 }
 
 interface AuthenticationResponse {
@@ -58,11 +59,43 @@ export interface PatientRegistrationInput {
   phone: string
   password: string
   password_confirmation: string
+  profile_photo?: File | null
 }
 
 /** Creates a patient identity; the backend assigns the role and hashes the password. */
 export async function registerPatient(input: PatientRegistrationInput): Promise<AuthenticatedUser> {
   await apiClient.initializeCsrfProtection()
-  const response = await apiClient.post<AuthenticationResponse>('/api/v1/auth/register', input)
+  const form = registrationFormData(input)
+  const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register', form)
   return response.data.user
+}
+
+export interface DoctorRegistrationInput extends PatientRegistrationInput {
+  specialization: string
+  location?: string
+  proposed_city?: string
+  clinic_name: string
+  profile_photo: File
+}
+
+export interface RegistrationOption { code: string; name_en: string; name_ar: string }
+
+export async function getDoctorRegistrationOptions(signal?: AbortSignal) {
+  const response = await apiClient.get<{ data: { specializations: RegistrationOption[]; locations: RegistrationOption[] } }>('/api/v1/auth/doctor-registration-options', signal)
+  return response.data
+}
+
+export async function registerDoctor(input: DoctorRegistrationInput): Promise<AuthenticatedUser> {
+  await apiClient.initializeCsrfProtection()
+  const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register/doctor', registrationFormData(input))
+  return response.data.user
+}
+
+function registrationFormData(input: PatientRegistrationInput | DoctorRegistrationInput): FormData {
+  const form = new FormData()
+  Object.entries(input).forEach(([key, value]) => {
+    if (value instanceof File) form.append(key, value)
+    else if (value !== undefined && value !== null) form.append(key, String(value))
+  })
+  return form
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Services\ProfilePhotoService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -26,6 +27,7 @@ class RegisterPatientRequest extends FormRequest
             'email' => ['required', 'string', 'email:rfc', 'max:255', Rule::unique(User::class, 'email')],
             'phone' => ['required', 'string', 'regex:/^\+?[0-9]{7,15}$/', 'max:30', Rule::unique(User::class, 'phone')],
             'password' => ['required', 'string', 'confirmed', 'max:255', Password::min(8)->letters()->numbers()],
+            'profile_photo' => ['nullable', ...ProfilePhotoService::VALIDATION_RULES],
         ];
     }
 

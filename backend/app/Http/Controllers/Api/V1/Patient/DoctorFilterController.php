@@ -15,7 +15,7 @@ class DoctorFilterController extends Controller
 
         return response()->json(['data' => [
             'specializations' => Specialization::query()->where('is_active', true)->orderBy('id')->get($fields),
-            'locations' => Location::query()->where('is_active', true)->orderBy('id')->get($fields),
+            'locations' => Location::query()->where('is_active', true)->orderBy('name_en')->get($fields),
         ]]);
     }
 }

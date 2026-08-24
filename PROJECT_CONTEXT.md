@@ -1,5 +1,7 @@
 # MedAccess Sudan
 
+> **DEVELOPMENT/DEMO ONLY:** Healthcare providers who register with an existing approved city are currently auto-approved when `MEDACCESS_DEMO_AUTO_VERIFY_DOCTORS=true`, enabling end-to-end scheduling and booking tests. Providers proposing a new city remain pending. Production provider verification requires MedAccess administrator approval and identity/professional verification; set this flag to `false` before production deployment.
+
 ## Master Development Instructions for Codex
 
 This document is the authoritative development specification for the **MedAccess Sudan** graduation project.

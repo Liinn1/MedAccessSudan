@@ -7,8 +7,9 @@ import { InputField } from '../../components/forms/InputField'
 import { EyeIcon, LockIcon, MailIcon } from '../../components/icons/AuthIcons'
 import { ApiError } from '../../services/apiClient'
 import { getCurrentUser, login, type AuthenticatedUser } from '../../services/authService'
-import { getSafeRedirect } from '../../utils/navigation'
+import { ADMIN_DASHBOARD_ROUTE, DOCTOR_DASHBOARD_ROUTE, getSafeRedirect } from '../../utils/navigation'
 import { PublicLayout } from '../../layouts/PublicLayout'
+import { useSignUpModal } from '../../contexts/signUpModal'
 
 interface LoginFormErrors {
   identifier?: boolean
@@ -25,6 +26,7 @@ export function PatientLoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const destination = getSafeRedirect(location.search)
+  const openSignUpModal = useSignUpModal()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
@@ -40,11 +42,9 @@ export function PatientLoginPage() {
     getCurrentUser(requestController.signal)
       .then((user) => {
         setAuthenticatedUser(user)
-        if (user.role === 'patient') {
-          navigate(destination, { replace: true })
-        } else {
-          setStatusMessageKey('auth.login.errors.patientOnly')
-        }
+        if (user.role === 'patient') navigate(destination, { replace: true })
+        else if (user.role === 'doctor') navigate(DOCTOR_DASHBOARD_ROUTE, { replace: true })
+        else navigate(ADMIN_DASHBOARD_ROUTE, { replace: true })
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') return
@@ -80,11 +80,9 @@ export function PatientLoginPage() {
       const user = await login(identifier.trim(), password)
       setAuthenticatedUser(user)
       setPassword('')
-      if (user.role === 'patient') {
-        navigate(destination, { replace: true })
-      } else {
-        setStatusMessageKey('auth.login.errors.patientOnly')
-      }
+      if (user.role === 'patient') navigate(destination, { replace: true })
+      else if (user.role === 'doctor') navigate(DOCTOR_DASHBOARD_ROUTE, { replace: true })
+      else navigate(ADMIN_DASHBOARD_ROUTE, { replace: true })
     } catch (error: unknown) {
       setAuthenticatedUser(null)
 
@@ -186,12 +184,13 @@ export function PatientLoginPage() {
             </PrimaryButton>
             <p className="mt-3 text-center text-sm text-[var(--color-text-secondary)] [@media(min-height:760px)]:mt-4 [@media(min-height:760px)]:text-base">
               {t('auth.login.noAccount')}{' '}
-              <Link
+              <button
                 className="font-bold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-                to={{ pathname: '/register', search: location.search }}
+                onClick={openSignUpModal}
+                type="button"
               >
                 {t('auth.login.createAccount')}
-              </Link>
+              </button>
             </p>
           </div>
         </form>

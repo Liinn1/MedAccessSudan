@@ -3,6 +3,7 @@ import { PatientAppHeader } from '../components/navigation/PatientAppHeader'
 import { PublicFooter } from '../components/public/PublicFooter'
 
 interface PatientLayoutProps {
+  activeSection?: 'dashboard' | 'appointments' | 'profile'
   children: ReactNode
   isLoggingOut: boolean
   onAppointments: () => void

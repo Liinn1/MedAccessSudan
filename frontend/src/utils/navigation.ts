@@ -1,5 +1,7 @@
 export const PATIENT_DEFAULT_ROUTE = '/patient/home'
 export const APPOINTMENT_SEARCH_ROUTE = '/patient/doctors/search'
+export const DOCTOR_DASHBOARD_ROUTE = '/doctor/dashboard'
+export const ADMIN_DASHBOARD_ROUTE = '/admin/dashboard'
 
 export function buildLoginPath(destination: string): string {
   return `/login?redirect=${encodeURIComponent(destination)}`

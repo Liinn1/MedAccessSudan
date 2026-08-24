@@ -80,12 +80,12 @@ export function PatientHomePage() {
   const initials = `${user.first_name?.[0] ?? user.name[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase()
 
   return (
-    <PatientLayout isLoggingOut={isLoggingOut} onAppointments={() => announcePendingPage(t('patient.navigation.appointments'))} onDashboard={() => navigate('/patient/home')} onLogout={handleLogout} onProfile={() => announcePendingPage(t('patient.navigation.profile'))}>
+    <PatientLayout isLoggingOut={isLoggingOut} onAppointments={() => announcePendingPage(t('patient.navigation.appointments'))} onDashboard={() => navigate('/patient/home')} onLogout={handleLogout} onProfile={() => navigate('/patient/profile')}>
       <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-10">
 
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-teal-100 bg-gradient-to-r from-[var(--color-primary-surface)] to-white p-5 shadow-sm rtl:bg-gradient-to-l sm:p-7">
           <div className="flex min-w-0 items-center gap-4">
-            <div aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[var(--color-primary)] text-base font-bold text-white shadow-md shadow-teal-700/15 sm:size-16">{initials}</div>
+            {user.profile_image_url ? <img alt="" className="size-14 shrink-0 rounded-2xl object-cover shadow-md sm:size-16" src={user.profile_image_url} /> : <div aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[var(--color-primary)] text-base font-bold text-white shadow-md shadow-teal-700/15 sm:size-16">{initials}</div>}
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[var(--color-primary)] sm:text-base">{t('patient.home.welcomeBack')}</p>
               <h1 className="mt-1 truncate text-2xl font-extrabold text-[var(--color-text-primary)] sm:text-3xl">{t('patient.home.greeting', { name: user.first_name || user.name })}</h1>

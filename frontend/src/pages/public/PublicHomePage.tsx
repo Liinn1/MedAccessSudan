@@ -7,7 +7,7 @@ import { PublicHeroCarousel } from '../../components/public/PublicHeroCarousel'
 import { Reveal } from '../../components/public/Reveal'
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { APPOINTMENT_SEARCH_ROUTE, buildLoginPath } from '../../utils/navigation'
-import { SignUpChoiceModal } from '../../components/public/SignUpChoiceModal'
+import { useSignUpModal } from '../../contexts/signUpModal'
 
 const services = [
   { key: 'doctor', icon: StethoscopeIcon, accent: 'bg-teal-50 text-teal-600' },
@@ -24,7 +24,7 @@ const specialties = ['all', 'cardiology', 'dermatology', 'pediatrics', 'generalM
 
 export function PublicHomePage() {
   const { t } = useTranslation()
-  const [signupOpen, setSignupOpen] = useState(false)
+  const openSignUpModal = useSignUpModal()
   const [specialty, setSpecialty] = useState<(typeof specialties)[number]>('all')
   const [notice, setNotice] = useState('')
   const visibleDoctors = specialty === 'all' ? doctors : doctors.filter((doctor) => doctor.specialty === specialty)
@@ -57,8 +57,7 @@ export function PublicHomePage() {
 
       <section className="bg-slate-950 py-16 text-white"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><Reveal><h2 className="text-center text-3xl font-black sm:text-4xl">{t('publicHome.how.title')}</h2></Reveal><div className="mt-10 grid gap-4 md:grid-cols-4">{(['find', 'time', 'confirm', 'care'] as const).map((key, index) => <Reveal delay={index * 100} key={key}><article className="public-dark-card relative rounded-2xl border border-white/15 bg-white/5 p-5"><span className="text-3xl font-black text-teal-300">0{index + 1}</span><h3 className="mt-3 font-bold">{t(`publicHome.how.steps.${key}.title`)}</h3><p className="mt-2 text-sm text-slate-300">{t(`publicHome.how.steps.${key}.description`)}</p></article></Reveal>)}</div></div></section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:px-10"><Reveal><div className="public-provider-card rounded-3xl bg-[var(--color-primary)] p-8 text-white"><h2 className="text-3xl font-black">{t('publicHome.providers.title')}</h2><p className="mt-4 leading-relaxed text-teal-50">{t('publicHome.providers.description')}</p><button className="public-cta mt-6 rounded-full bg-white px-6 py-3 font-bold text-[var(--color-primary)]" onClick={() => setSignupOpen(true)} type="button">{t('publicHome.providers.cta')}</button></div></Reveal><Reveal delay={100}><div className="public-app-card flex h-full items-center gap-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-background)] p-6 shadow-sm sm:p-8"><div aria-hidden="true" className="hidden h-60 w-32 shrink-0 rounded-[2rem] border-8 border-slate-900 bg-[var(--color-primary-surface)] sm:block" /><div><h2 className="text-3xl font-black">{t('publicHome.app.title')}</h2><p className="mt-3 text-[var(--color-text-secondary)]">{t('publicHome.app.description')}</p><AppStoreBadges /></div></div></Reveal></section>
-      <SignUpChoiceModal onClose={() => setSignupOpen(false)} open={signupOpen} />
+      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:px-10"><Reveal><div className="public-provider-card rounded-3xl bg-[var(--color-primary)] p-8 text-white"><h2 className="text-3xl font-black">{t('publicHome.providers.title')}</h2><p className="mt-4 leading-relaxed text-teal-50">{t('publicHome.providers.description')}</p><button className="public-cta mt-6 rounded-full bg-white px-6 py-3 font-bold text-[var(--color-primary)]" onClick={openSignUpModal} type="button">{t('publicHome.providers.cta')}</button></div></Reveal><Reveal delay={100}><div className="public-app-card flex h-full items-center gap-6 rounded-3xl border border-[var(--color-border)] bg-[var(--color-background)] p-6 shadow-sm sm:p-8"><div aria-hidden="true" className="hidden h-60 w-32 shrink-0 rounded-[2rem] border-8 border-slate-900 bg-[var(--color-primary-surface)] sm:block" /><div><h2 className="text-3xl font-black">{t('publicHome.app.title')}</h2><p className="mt-3 text-[var(--color-text-secondary)]">{t('publicHome.app.description')}</p><AppStoreBadges /></div></div></Reveal></section>
       </div>
     </PublicLayout>
   )

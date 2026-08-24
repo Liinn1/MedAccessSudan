@@ -5,6 +5,7 @@ import { LanguageToggle } from '../LanguageToggle'
 import { BrandMark } from '../branding/BrandMark'
 
 interface PatientAppHeaderProps {
+  activeSection?: 'dashboard' | 'appointments' | 'profile'
   isLoggingOut: boolean
   onAppointments: () => void
   onDashboard: () => void
@@ -12,14 +13,14 @@ interface PatientAppHeaderProps {
   onProfile: () => void
 }
 
-export function PatientAppHeader({ isLoggingOut, onAppointments, onDashboard, onLogout, onProfile }: PatientAppHeaderProps) {
+export function PatientAppHeader({ activeSection = 'dashboard', isLoggingOut, onAppointments, onDashboard, onLogout, onProfile }: PatientAppHeaderProps) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navigationItems = [
-    { key: 'dashboard', active: true, onSelect: onDashboard },
-    { key: 'appointments', active: false, onSelect: onAppointments },
-    { key: 'profile', active: false, onSelect: onProfile },
+    { key: 'dashboard', active: activeSection === 'dashboard', onSelect: onDashboard },
+    { key: 'appointments', active: activeSection === 'appointments', onSelect: onAppointments },
+    { key: 'profile', active: activeSection === 'profile', onSelect: onProfile },
   ] as const
 
   return (

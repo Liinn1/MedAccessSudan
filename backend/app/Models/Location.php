@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Location extends Model
 {
@@ -11,5 +12,15 @@ class Location extends Model
     protected function casts(): array
     {
         return ['is_active' => 'boolean'];
+    }
+
+    public function doctorProfiles(): HasMany
+    {
+        return $this->hasMany(DoctorProfile::class);
+    }
+
+    public function resolvedCityProposals(): HasMany
+    {
+        return $this->hasMany(CityProposal::class, 'resolved_location_id');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\ProfilePhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,7 @@ class AuthenticatedUserResource extends JsonResource
             'last_name' => $this->last_name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'profile_image_url' => ProfilePhotoService::publicUrl($this->profile_image_path),
             'role' => $this->role->value,
         ];
     }

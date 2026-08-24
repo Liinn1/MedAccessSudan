@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { BrandMark } from '../../components/branding/BrandMark'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
+import { ProfilePhotoField } from '../../components/forms/ProfilePhotoField'
 import { EyeIcon, LockIcon, MailIcon, PhoneIcon, UserIcon } from '../../components/icons/AuthIcons'
 import { ApiError } from '../../services/apiClient'
 import { registerPatient } from '../../services/authService'
@@ -39,6 +40,8 @@ export function PatientRegistrationPage() {
   const [confirmationVisible, setConfirmationVisible] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
+  const [profilePhotoError, setProfilePhotoError] = useState('')
 
   function updateField(field: RegistrationField, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -96,9 +99,11 @@ export function PatientRegistrationPage() {
         phone: form.phone.trim(),
         password: form.password,
         password_confirmation: form.passwordConfirmation,
+        profile_photo: profilePhoto,
       })
       setForm((current) => ({ ...current, password: '', passwordConfirmation: '' }))
       setStatusMessage('auth.registration.success')
+      setProfilePhoto(null)
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 422 && typeof error.details === 'object' && error.details !== null && 'errors' in error.details) {
         const serverErrors = error.details.errors
@@ -111,6 +116,7 @@ export function PatientRegistrationPage() {
             password: 'password' in serverErrors ? 'server' : undefined,
             passwordConfirmation: 'password' in serverErrors ? 'server' : undefined,
           })
+          setProfilePhotoError('profile_photo' in serverErrors ? t('profilePhoto.invalid') : '')
           setStatusMessage('auth.registration.errors.correctFields')
         }
       } else if (error instanceof ApiError && error.status === 419) {
@@ -227,6 +233,7 @@ export function PatientRegistrationPage() {
               value={form.passwordConfirmation}
             />
           </div>
+          <div className="mt-5"><ProfilePhotoField error={profilePhotoError} file={profilePhoto} onChange={(file) => { setProfilePhoto(file); setProfilePhotoError('') }} /></div>
 
           <div className="mt-3 min-h-10" aria-live="polite">
             {statusMessage && (
