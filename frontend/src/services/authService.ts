@@ -39,6 +39,18 @@ export async function getCurrentUser(signal?: AbortSignal): Promise<Authenticate
   return response.data.user
 }
 
+/** Loads the patient-only home resource, enforcing the role at the API boundary. */
+export async function getPatientHome(signal?: AbortSignal): Promise<AuthenticatedUser> {
+  const response = await apiClient.get<AuthenticationResponse>('/api/v1/patient/home', signal)
+  return response.data.user
+}
+
+/** Ends the server session; no authentication material is retained by React. */
+export async function logout(): Promise<void> {
+  await apiClient.initializeCsrfProtection()
+  await apiClient.post('/api/v1/auth/logout')
+}
+
 export interface PatientRegistrationInput {
   first_name: string
   last_name: string

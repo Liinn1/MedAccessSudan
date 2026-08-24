@@ -1,13 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BrandMark } from '../../components/branding/BrandMark'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
 import { EyeIcon, LockIcon, MailIcon } from '../../components/icons/AuthIcons'
-import { LanguageToggle } from '../../components/LanguageToggle'
 import { ApiError } from '../../services/apiClient'
 import { getCurrentUser, login, type AuthenticatedUser } from '../../services/authService'
+import { getSafeRedirect } from '../../utils/navigation'
+import { PublicLayout } from '../../layouts/PublicLayout'
 
 interface LoginFormErrors {
   identifier?: boolean
@@ -21,6 +22,9 @@ function getApiErrorCode(error: ApiError): string | undefined {
 
 export function PatientLoginPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const destination = getSafeRedirect(location.search)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
@@ -36,7 +40,11 @@ export function PatientLoginPage() {
     getCurrentUser(requestController.signal)
       .then((user) => {
         setAuthenticatedUser(user)
-        setStatusMessageKey('auth.login.sessionRestored')
+        if (user.role === 'patient') {
+          navigate(destination, { replace: true })
+        } else {
+          setStatusMessageKey('auth.login.errors.patientOnly')
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') return
@@ -47,7 +55,7 @@ export function PatientLoginPage() {
       .finally(() => setIsCheckingSession(false))
 
     return () => requestController.abort()
-  }, [])
+  }, [destination, navigate])
 
   function validateForm(): LoginFormErrors {
     const nextErrors: LoginFormErrors = {}
@@ -72,7 +80,11 @@ export function PatientLoginPage() {
       const user = await login(identifier.trim(), password)
       setAuthenticatedUser(user)
       setPassword('')
-      setStatusMessageKey('auth.login.success')
+      if (user.role === 'patient') {
+        navigate(destination, { replace: true })
+      } else {
+        setStatusMessageKey('auth.login.errors.patientOnly')
+      }
     } catch (error: unknown) {
       setAuthenticatedUser(null)
 
@@ -96,21 +108,16 @@ export function PatientLoginPage() {
   }
 
   return (
-    // Dynamic viewport units keep the action area above mobile browser chrome.
-    // Compact defaults also protect short laptops; taller screens receive extra air.
-    <main className="flex min-h-dvh items-center bg-white px-5 py-3 sm:bg-[var(--color-background)] sm:px-8 sm:py-4">
-      <section className="mx-auto flex h-[calc(100dvh-1.5rem)] max-h-[54rem] min-h-0 w-full max-w-2xl flex-col overflow-y-auto rounded-3xl bg-white sm:h-[calc(100dvh-2rem)] sm:border sm:border-[var(--color-border)] sm:px-10 sm:py-6 sm:shadow-sm lg:px-16">
-        <div className="flex justify-end rtl:justify-start">
-          <LanguageToggle />
-        </div>
-
-        <header className="mt-3 text-center [@media(min-height:760px)]:mt-6">
-          <BrandMark />
+    <PublicLayout>
+      <div className="bg-gradient-to-b from-[var(--color-primary-surface)]/70 to-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
+      <section className="mx-auto flex w-full max-w-2xl flex-col rounded-3xl border border-[var(--color-border)] bg-white px-5 py-7 shadow-[0_18px_45px_rgb(15_118_110/0.08)] sm:px-10 sm:py-9 lg:px-16">
+        <header className="text-center">
+          <Link aria-label={t('publicHome.header.logoLabel')} className="inline-block rounded-xl focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" to="/"><BrandMark /></Link>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-primary)] [@media(min-height:760px)]:mt-4 [@media(min-height:760px)]:text-4xl">{t('auth.login.brandName')}</h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)] [@media(min-height:760px)]:mt-2 [@media(min-height:760px)]:text-base">{t('auth.login.tagline')}</p>
         </header>
 
-        <form className="mt-5 flex min-h-0 flex-1 flex-col [@media(min-height:760px)]:mt-8" noValidate onSubmit={handleSubmit}>
+        <form className="mt-6 flex flex-col sm:mt-8" noValidate onSubmit={handleSubmit}>
           <div className="space-y-4 [@media(min-height:760px)]:space-y-5">
             <InputField
               autoComplete="username"
@@ -173,7 +180,7 @@ export function PatientLoginPage() {
             )}
           </div>
 
-          <div className="mt-auto pt-3 [@media(min-height:760px)]:pt-6">
+          <div className="pt-3 [@media(min-height:760px)]:pt-6">
             <PrimaryButton disabled={isSubmitting || isCheckingSession} type="submit">
               {t(isSubmitting ? 'auth.login.submitting' : isCheckingSession ? 'auth.login.checkingSession' : 'auth.login.submit')}
             </PrimaryButton>
@@ -181,14 +188,16 @@ export function PatientLoginPage() {
               {t('auth.login.noAccount')}{' '}
               <Link
                 className="font-bold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-                to="/register"
+                to={{ pathname: '/register', search: location.search }}
               >
                 {t('auth.login.createAccount')}
               </Link>
             </p>
           </div>
         </form>
+        <Link className="mt-3 text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
       </section>
-    </main>
+      </div>
+    </PublicLayout>
   )
 }

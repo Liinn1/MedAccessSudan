@@ -12,6 +12,11 @@
       "Segoe UI", sans-serif;
   }
 
+  html[lang="ar"] body {
+    font-family: "Cairo", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.65;
+  }
+
   button,
   input,
   select,
@@ -23,4 +28,171 @@
 @utility direction-ltr {
   direction: ltr;
   text-align: start;
+}
+
+@keyframes service-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.service-card-enter {
+  animation: service-card-enter 360ms ease-out both;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-enter 240ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-card-enter,
+  .page-enter {
+    animation: none;
+  }
+}
+
+.public-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 420ms ease-out, transform 420ms ease-out;
+}
+
+.public-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes public-modal-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.public-modal-enter {
+  animation: public-modal-enter 180ms ease-out both;
+}
+
+.public-services-section {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+}
+
+.public-why-section {
+  background: linear-gradient(135deg, #f0fdfa 0%, #f9fafb 55%, #ecfdf5 100%);
+  border-block: 1px solid #dff7f3;
+}
+
+.public-card,
+.public-dark-card,
+.public-provider-card,
+.public-app-card,
+.store-badge,
+.public-cta,
+.public-filter,
+footer a,
+header a,
+header button {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease,
+    background-color 180ms ease, color 180ms ease, opacity 180ms ease;
+}
+
+.public-card:hover,
+.public-card:focus-within {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  box-shadow: 0 14px 30px rgb(15 118 110 / 0.1);
+}
+
+.why-card {
+  box-shadow: 0 8px 22px rgb(13 148 136 / 0.07);
+}
+
+.public-dark-card:hover,
+.public-provider-card:hover,
+.public-app-card:hover {
+  transform: translateY(-3px);
+}
+
+.public-dark-card:hover {
+  background-color: rgb(255 255 255 / 0.09);
+  border-color: rgb(94 234 212 / 0.4);
+}
+
+.public-cta:hover,
+.public-cta:focus-visible,
+.store-badge:hover {
+  transform: translateY(-2px) scale(1.015);
+}
+
+.public-filter:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+}
+
+.store-badge {
+  box-shadow: 0 8px 20px rgb(15 23 42 / 0.14);
+}
+
+footer a:hover {
+  transform: translateX(2px);
+}
+
+[dir="rtl"] footer a:hover {
+  transform: translateX(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-reveal,
+  .public-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .public-modal-enter {
+    animation: none;
+  }
+
+  #home article {
+    transition: none;
+  }
+
+  .public-card,
+  .public-dark-card,
+  .public-provider-card,
+  .public-app-card,
+  .store-badge,
+  .public-cta,
+  .public-filter,
+  footer a,
+  header a,
+  header button {
+    transition: none;
+  }
+
+  .public-card:hover,
+  .public-card:focus-within,
+  .public-dark-card:hover,
+  .public-provider-card:hover,
+  .public-app-card:hover,
+  .public-cta:hover,
+  .public-cta:focus-visible,
+  .store-badge:hover,
+  .public-filter:hover,
+  footer a:hover,
+  [dir="rtl"] footer a:hover {
+    transform: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }

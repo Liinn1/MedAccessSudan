@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { BrandMark } from '../../components/branding/BrandMark'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
 import { EyeIcon, LockIcon, MailIcon, PhoneIcon, UserIcon } from '../../components/icons/AuthIcons'
-import { LanguageToggle } from '../../components/LanguageToggle'
 import { ApiError } from '../../services/apiClient'
 import { registerPatient } from '../../services/authService'
+import { PublicLayout } from '../../layouts/PublicLayout'
 
 interface RegistrationForm {
   firstName: string
@@ -32,6 +32,7 @@ const initialForm: RegistrationForm = {
 
 export function PatientRegistrationPage() {
   const { t } = useTranslation()
+  const location = useLocation()
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState<RegistrationErrors>({})
   const [passwordVisible, setPasswordVisible] = useState(false)
@@ -138,16 +139,13 @@ export function PatientRegistrationPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-white px-5 py-4 sm:bg-[var(--color-background)] sm:px-8">
+    <PublicLayout>
+      <div className="bg-gradient-to-b from-[var(--color-primary-surface)]/70 to-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
       {/* Registration intentionally scrolls on compact phones so six required
           fields retain readable labels and accessible touch targets. */}
-      <section className="mx-auto w-full max-w-4xl rounded-3xl bg-white sm:border sm:border-[var(--color-border)] sm:px-10 sm:py-5 sm:shadow-sm lg:px-14">
-        <div className="flex justify-end rtl:justify-start">
-          <LanguageToggle />
-        </div>
-
-        <header className="mt-3 text-center">
-          <BrandMark compact />
+      <section className="mx-auto w-full max-w-4xl rounded-3xl border border-[var(--color-border)] bg-white px-5 py-7 shadow-[0_18px_45px_rgb(15_118_110/0.08)] sm:px-10 sm:py-9 lg:px-14">
+        <header className="text-center">
+          <Link aria-label={t('publicHome.header.logoLabel')} className="inline-block rounded-xl focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" to="/"><BrandMark compact /></Link>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-primary)] sm:text-4xl">
             {t('auth.registration.title')}
           </h1>
@@ -246,14 +244,16 @@ export function PatientRegistrationPage() {
               {t('auth.registration.haveAccount')}{' '}
               <Link
                 className="font-bold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-                to="/login"
+                to={{ pathname: '/login', search: location.search }}
               >
                 {t('auth.registration.signIn')}
               </Link>
             </p>
           </div>
         </form>
+        <Link className="mt-3 block text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
       </section>
-    </main>
+      </div>
+    </PublicLayout>
   )
 }

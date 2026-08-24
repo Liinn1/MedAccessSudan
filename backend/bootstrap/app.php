@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserHasRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum's stateful middleware lets the first-party React SPA use
         // secure session cookies while preserving token support for mobile.
         $middleware->statefulApi();
+        $middleware->alias([
+            'role' => EnsureUserHasRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

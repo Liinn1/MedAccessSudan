@@ -58,6 +58,13 @@ Authentication resources:
 - `POST /api/v1/auth/login` accepts `identifier` (email or phone) and `password`.
 - `GET /api/v1/auth/me` restores the current protected identity.
 - `POST /api/v1/auth/logout` invalidates the session and rotates its CSRF token.
+- `GET /api/v1/patient/home` returns the authenticated patient identity used by
+  the Patient Home page. The API rejects unauthenticated users and non-patient
+  roles.
+- `GET /api/v1/patient/doctor-filters` returns active bilingual specialization
+  and location reference data.
+- `GET /api/v1/patient/doctors` searches verified doctors by specialization,
+  location, and genuine available slots for `today` or the current `week`.
 
 The web client must first request `/sanctum/csrf-cookie`. Do not store the
 session identifier in JavaScript or browser storage.

@@ -39,3 +39,15 @@ export function HomeIcon(props: IconProps) {
 export function ProfileIcon(props: IconProps) {
   return <svg {...defaults} {...props}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
 }
+
+export function SearchIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+}
+
+export function LocationIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+}
+
+export function ChevronIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><path d="m15 18-6-6 6-6" /></svg>
+}
