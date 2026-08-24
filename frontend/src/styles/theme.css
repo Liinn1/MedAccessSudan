@@ -1,0 +1,24 @@
+:root {
+    --color-primary: #0D9488;
+    --color-success: #10B981;
+    --color-primary-surface: #F0FDFA;
+    --color-success-surface: #ECFDF5;
+
+    --color-text-primary: #111827;
+    --color-text-secondary: #4B5563;
+    --color-text-muted: #9CA3AF;
+
+    --color-border: #E5E7EB;
+    --color-disabled: #F3F4F6;
+    --color-background: #F9FAFB;
+    --color-white: #FFFFFF;
+
+    --color-home-visit-bg: #FEF3C7;
+    --color-home-visit: #D97706;
+
+    --color-lab-bg: #E0F2FE;
+    --color-lab: #0284C7;
+
+    --color-appointments-bg: #F3E8FF;
+    --color-appointments: #7C3AED;
+}

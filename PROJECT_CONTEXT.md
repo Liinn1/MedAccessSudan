@@ -461,6 +461,28 @@ Use component variants for different states where appropriate.
 
 ---
 
+# 10A. Bilingual Interface and Internationalization
+
+All patient, doctor, and administrator interfaces must support English and
+Arabic from the time each page or shared component is created.
+
+Use structured English and Arabic translation resources through i18next and
+react-i18next. Do not hardcode user-facing interface strings throughout React
+components. Persist the selected language while users navigate without forcing
+a full application reload.
+
+English uses `lang="en"` and `dir="ltr"`. Arabic uses `lang="ar"` and
+`dir="rtl"`. Update these attributes on the document root when the language
+changes. Prefer logical start/end positioning so layouts, forms, navigation,
+tables, cards, modals, and directional controls work naturally in both modes.
+
+Store stable untranslated identifiers for backend statuses and categories.
+Translate those values only when they are displayed. Every completed page must
+be reviewed in English, Arabic, LTR, RTL, and responsive layouts before it can
+be approved.
+
+---
+
 # 11. Application Roles
 
 The system must support:
