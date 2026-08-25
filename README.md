@@ -5,8 +5,12 @@ and a Laravel REST API backed by MySQL. The API is the authoritative boundary
 for validation, authorization, business rules, and persistence so a future
 mobile client can reuse the same backend.
 
-The patient login and registration pages are implemented. Doctor,
-administrator, and remaining patient workflow pages are not yet implemented.
+The current web milestone includes public discovery, patient and doctor
+registration/login, doctor search and profiles, availability management,
+appointment booking and confirmation, patient appointment management, doctor
+appointment views, profile management, and the administrator verification
+workflow. Home visits, laboratory reservations, notifications, and medical
+history remain planned work.
 
 The React interface supports English and Arabic through shared i18next
 resources. Language selection persists in browser storage, and the document
@@ -65,6 +69,25 @@ Authentication resources:
   and location reference data.
 - `GET /api/v1/patient/doctors` searches verified doctors by specialization,
   location, and genuine available slots for `today` or the current `week`.
+- `GET /api/v1/patient/doctors/{doctor}` returns a patient-safe provider profile
+  and resolved availability.
+- `POST /api/v1/patient/appointments` revalidates and books an available slot.
+- `GET /api/v1/patient/appointments` and its detail endpoint return only the
+  authenticated patient's appointments.
+- `PATCH /api/v1/patient/appointments/{appointment}/cancel` cancels an owned,
+  future confirmed appointment.
+- Doctor routes under `/api/v1/doctor` provide the protected dashboard,
+  professional profile, weekly schedule, resolved availability, and assigned
+  appointments.
+- Administrator routes under `/api/v1/admin` manage provider verification,
+  city proposals, and approved locations.
+
+### Demo provider verification
+
+`MEDACCESS_DEMO_AUTO_VERIFY_DOCTORS=true` allows providers registering with an
+existing approved city to participate in the end-to-end demo immediately.
+Providers proposing a new city remain pending. Keep this setting `false` in
+production; real provider verification remains an administrator decision.
 
 The web client must first request `/sanctum/csrf-cookie`. Do not store the
 session identifier in JavaScript or browser storage.

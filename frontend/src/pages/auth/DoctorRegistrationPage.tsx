@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
 import { SelectField } from '../../components/forms/SelectField'
@@ -15,6 +15,7 @@ const emptyForm = { firstName: '', lastName: '', email: '', phone: '', password:
 
 export function DoctorRegistrationPage() {
   const { i18n, t } = useTranslation()
+  const navigate = useNavigate()
   const [form, setForm] = useState(emptyForm)
   const [options, setOptions] = useState<{ specializations: RegistrationOption[]; locations: RegistrationOption[] }>({ specializations: [], locations: [] })
   const [status, setStatus] = useState('')
@@ -41,9 +42,7 @@ export function DoctorRegistrationPage() {
     setSubmitting(true)
     try {
       await registerDoctor({ first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, password: form.password, password_confirmation: form.passwordConfirmation, specialization: form.specialization, ...(form.location === OTHER_CITY ? { proposed_city: form.proposedCity.trim() } : { location: form.location }), clinic_name: form.clinicName, profile_photo: profilePhoto })
-      setForm(emptyForm)
-      setStatus('auth.doctorRegistration.success')
-      setProfilePhoto(null)
+      navigate('/login', { replace: true, state: { registrationSuccess: true, registrationRole: 'doctor' } })
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) setProfilePhotoError(t('profilePhoto.invalid'))
       setStatus(error instanceof ApiError && error.status === 422 ? 'auth.doctorRegistration.invalid' : 'auth.doctorRegistration.serviceError')

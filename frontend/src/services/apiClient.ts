@@ -45,6 +45,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
+      'Accept-Language': document.documentElement.lang || 'en',
       ...(options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
       ...options.headers,
@@ -83,6 +84,12 @@ export const apiClient = {
   patch<T>(path: string, body?: unknown): Promise<T> {
     return request<T>(path, {
       method: 'PATCH',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  },
+  put<T>(path: string, body?: unknown): Promise<T> {
+    return request<T>(path, {
+      method: 'PUT',
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   },

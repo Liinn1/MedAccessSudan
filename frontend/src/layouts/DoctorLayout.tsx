@@ -3,9 +3,10 @@ import { DoctorAppHeader } from '../components/navigation/DoctorAppHeader'
 import { PublicFooter } from '../components/public/PublicFooter'
 
 interface DoctorLayoutProps {
-  activeSection?: 'dashboard' | 'availability' | 'profile'
+  activeSection?: 'dashboard' | 'appointments' | 'availability' | 'profile'
   children: ReactNode
   isLoggingOut: boolean
+  onAppointments: () => void
   onAvailability: () => void
   onLogout: () => void
   onProfile: () => void

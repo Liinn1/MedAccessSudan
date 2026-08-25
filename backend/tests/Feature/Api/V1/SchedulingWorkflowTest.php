@@ -10,6 +10,7 @@ use App\Models\DoctorProfile;
 use App\Models\Location;
 use App\Models\Specialization;
 use App\Models\User;
+use App\Services\AvailabilityResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -18,6 +19,12 @@ use Tests\TestCase;
 class SchedulingWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('medaccess.demo_auto_verify_doctors', false);
+    }
 
     public function test_patient_can_book_a_resolved_slot_and_it_immediately_disappears(): void
     {
@@ -113,11 +120,12 @@ class SchedulingWorkflowTest extends TestCase
         ]]])->assertOk();
 
         $this->assertDatabaseHas('appointments', ['id' => $appointment->id]);
-        $this->assertDatabaseHas('doctor_availability_schedules', [
-            'doctor_profile_id' => $profile->id,
-            'start_time' => '13:00:00',
-            'slot_duration_minutes' => 60,
-        ]);
+        $schedule = DoctorAvailabilitySchedule::query()->where('doctor_profile_id', $profile->id)->sole();
+        $this->assertSame('13:00', substr($schedule->start_time, 0, 5));
+        $this->assertSame(60, $schedule->slot_duration_minutes);
+        $this->getJson('/api/v1/doctor/resolved-availability')
+            ->assertOk()
+            ->assertJsonPath('data.timezone', config('app.timezone'));
     }
 
     public function test_unverified_doctors_and_blocked_times_cannot_be_booked(): void
@@ -133,6 +141,13 @@ class SchedulingWorkflowTest extends TestCase
             'start_time' => '09:00',
             'end_time' => '09:30',
         ]);
+
+        $resolved = app(AvailabilityResolver::class)->resolve(
+            $profile->fresh(),
+            $slotStart->startOfDay(),
+            $slotStart->startOfDay(),
+        );
+        $this->assertNotContains($slotStart->toIso8601String(), collect($resolved)->flatMap(fn ($day) => $day['slots'])->pluck('starts_at'));
 
         $this->postJson('/api/v1/patient/appointments', [
             'doctor_profile_id' => $profile->id,

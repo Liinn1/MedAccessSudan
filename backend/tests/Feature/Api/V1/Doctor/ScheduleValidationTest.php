@@ -26,5 +26,6 @@ class ScheduleValidationTest extends TestCase
         $patient->id = 9;
         Sanctum::actingAs($patient);
         $this->putJson('/api/v1/doctor/schedule', ['periods' => []])->assertForbidden();
+        $this->getJson('/api/v1/doctor/resolved-availability')->assertForbidden();
     }
 }

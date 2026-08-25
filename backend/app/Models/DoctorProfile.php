@@ -53,12 +53,22 @@ class DoctorProfile extends Model
         return $this->hasOne(CityProposal::class);
     }
 
-    public function scopeBookable(Builder $query): Builder
+    public function scopeVisibleToPatients(Builder $query): Builder
     {
-        return $query->where('verification_status', 'verified')
-            ->whereNotNull('profile_image_path')
+        // Pending providers are visible only in the explicit demo mode used for
+        // end-to-end graduation-project testing. Production remains verified-only.
+        $visibleStatuses = config('medaccess.demo_auto_verify_doctors')
+            ? ['verified', 'pending']
+            : ['verified'];
+
+        return $query->whereIn('verification_status', $visibleStatuses)
             ->whereHas('user', fn (Builder $user) => $user->where('role', UserRole::Doctor->value))
             ->whereHas('specialization', fn (Builder $specialization) => $specialization->where('is_active', true))
             ->whereHas('location', fn (Builder $location) => $location->where('is_active', true));
+    }
+
+    public function scopeBookable(Builder $query): Builder
+    {
+        return $query->visibleToPatients();
     }
 }

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BrandMark } from '../../components/branding/BrandMark'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
@@ -34,6 +34,7 @@ const initialForm: RegistrationForm = {
 export function PatientRegistrationPage() {
   const { t } = useTranslation()
   const location = useLocation()
+  const navigate = useNavigate()
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState<RegistrationErrors>({})
   const [passwordVisible, setPasswordVisible] = useState(false)
@@ -101,9 +102,10 @@ export function PatientRegistrationPage() {
         password_confirmation: form.passwordConfirmation,
         profile_photo: profilePhoto,
       })
-      setForm((current) => ({ ...current, password: '', passwordConfirmation: '' }))
-      setStatusMessage('auth.registration.success')
-      setProfilePhoto(null)
+      navigate(
+        { pathname: '/login', search: location.search },
+        { replace: true, state: { registrationSuccess: true, registrationRole: 'patient' } },
+      )
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 422 && typeof error.details === 'object' && error.details !== null && 'errors' in error.details) {
         const serverErrors = error.details.errors

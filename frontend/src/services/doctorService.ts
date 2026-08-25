@@ -12,7 +12,7 @@ export interface DoctorSummary {
   clinic_name: string | null
   specialization: DoctorFilterOption
   location: DoctorFilterOption
-  next_available_at: string
+  next_available_at: string | null
   profile_image_url: string | null
 }
 
@@ -24,8 +24,9 @@ export interface DoctorAvailabilitySlot {
 }
 
 export interface DoctorProfile extends Omit<DoctorSummary, 'next_available_at'> {
-  bio_en: string | null
-  bio_ar: string | null
+  biography: string | null
+  biography_language: 'en' | 'ar'
+  biography_is_translated: boolean
   profile_image_url: string | null
   verification_status: 'verified'
   availability: DoctorAvailabilitySlot[]
@@ -48,8 +49,8 @@ export async function getDoctorFilters(signal?: AbortSignal): Promise<DoctorFilt
   return response.data
 }
 
-export async function searchDoctors(filters: { specialization: string; location: string; availability: 'today' | 'week' }, signal?: AbortSignal): Promise<DoctorSearchResponse> {
-  const query = new URLSearchParams(filters)
+export async function searchDoctors(filters: { specialization?: string; location?: string; availability?: 'today' | 'week' }, signal?: AbortSignal): Promise<DoctorSearchResponse> {
+  const query = new URLSearchParams(Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])))
   return apiClient.get<DoctorSearchResponse>(`/api/v1/patient/doctors?${query}`, signal)
 }
 

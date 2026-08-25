@@ -16,19 +16,21 @@ class DoctorSearchController extends Controller
     public function __invoke(SearchDoctorsRequest $request, AvailabilityResolver $resolver): JsonResponse
     {
         $validated = $request->validated();
-        $rangeEnd = $validated['availability'] === 'today' ? now()->endOfDay() : now()->endOfWeek();
-
         $from = CarbonImmutable::now(config('app.timezone'));
-        $to = CarbonImmutable::instance($rangeEnd);
-        $doctors = DoctorProfile::query()
+        $availability = $validated['availability'] ?? null;
+        $to = $availability === 'today' ? $from->endOfDay() : $from->addDays(6)->endOfDay();
+        $query = DoctorProfile::query()
             ->with(['user:id,name', 'specialization:id,code,name_en,name_ar', 'location:id,code,name_en,name_ar'])
-            ->bookable()
-            ->whereHas('specialization', fn (Builder $query) => $query->where('code', $validated['specialization']))
-            ->whereHas('location', fn (Builder $query) => $query->where('code', $validated['location']))
-            ->get()
-            ->map(function (DoctorProfile $profile) use ($resolver, $from, $to) {
+            ->visibleToPatients()
+            ->when($validated['specialization'] ?? null, fn (Builder $doctorQuery, string $code) => $doctorQuery
+                ->whereHas('specialization', fn (Builder $specialization) => $specialization->where('code', $code)))
+            ->when($validated['location'] ?? null, fn (Builder $doctorQuery, string $code) => $doctorQuery
+                ->whereHas('location', fn (Builder $location) => $location->where('code', $code)));
+
+        $doctors = $query->get()
+            ->map(function (DoctorProfile $profile) use ($availability, $resolver, $from, $to) {
                 $first = collect($resolver->resolve($profile, $from, $to))->flatMap(fn ($day) => $day['slots'])->first();
-                if (! $first) {
+                if ($availability && ! $first) {
                     return null;
                 }
 
@@ -39,9 +41,9 @@ class DoctorSearchController extends Controller
                     'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path),
                     'specialization' => $profile->specialization->only(['code', 'name_en', 'name_ar']),
                     'location' => $profile->location->only(['code', 'name_en', 'name_ar']),
-                    'next_available_at' => $first['starts_at'],
+                    'next_available_at' => $first['starts_at'] ?? null,
                 ];
-            })->filter()->sortBy('next_available_at')->values();
+            })->filter()->sortBy(fn (array $doctor) => $doctor['next_available_at'] ?? '9999-12-31')->values();
 
         return response()->json([
             'data' => ['doctors' => $doctors],

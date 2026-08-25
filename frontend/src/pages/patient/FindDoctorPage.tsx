@@ -8,14 +8,14 @@ import { getDoctorFilters, searchDoctors, type DoctorFilterOption } from '../../
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { buildLoginPath } from '../../utils/navigation'
 
-type Availability = 'today' | 'week'
+type Availability = '' | 'today' | 'week'
 
 export function FindDoctorPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [specialization, setSpecialization] = useState('general_medicine')
-  const [location, setLocation] = useState('khartoum')
-  const [availability, setAvailability] = useState<Availability>('today')
+  const [location, setLocation] = useState('')
+  const [availability, setAvailability] = useState<Availability>('')
   const [notice, setNotice] = useState('')
   const [specializations, setSpecializations] = useState<DoctorFilterOption[]>([])
   const [locations, setLocations] = useState<DoctorFilterOption[]>([])
@@ -32,7 +32,7 @@ export function FindDoctorPage() {
         setSpecializations(filters.specializations)
         setLocations(filters.locations)
         setSpecialization(filters.specializations[0]?.code ?? '')
-        setLocation(filters.locations[0]?.code ?? '')
+        setLocation('')
       })
       .catch((error: unknown) => {
         if (!active || (error instanceof DOMException && error.name === 'AbortError')) return
@@ -54,8 +54,10 @@ export function FindDoctorPage() {
     setNotice('')
     setIsSearching(true)
     try {
-      await searchDoctors({ specialization, location, availability })
-      const query = new URLSearchParams({ specialization, location, availability })
+      await searchDoctors({ specialization, location: location || undefined, availability: availability || undefined })
+      const query = new URLSearchParams({ specialization })
+      if (location) query.set('location', location)
+      if (availability) query.set('availability', availability)
       navigate(`/patient/doctors/results?${query}`)
     } catch (error: unknown) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
@@ -84,7 +86,7 @@ export function FindDoctorPage() {
           <div className="space-y-7">
             <SelectField disabled={isLoadingFilters} id="doctor-specialization" icon={<SearchIcon className="size-6" />} label={t('patient.findDoctor.specialization')} onChange={(event) => setSpecialization(event.target.value)} options={specializations.map((option) => ({ value: option.code, label: optionLabel(option) }))} value={specialization} />
 
-            <SelectField disabled={isLoadingFilters} id="doctor-location" icon={<LocationIcon className="size-6" />} label={t('patient.findDoctor.location')} onChange={(event) => setLocation(event.target.value)} options={locations.map((option) => ({ value: option.code, label: optionLabel(option) }))} value={location} />
+            <SelectField disabled={isLoadingFilters} id="doctor-location" icon={<LocationIcon className="size-6" />} label={t('patient.findDoctor.location')} onChange={(event) => setLocation(event.target.value)} options={[{ value: '', label: t('patient.findDoctor.allLocations') }, ...locations.map((option) => ({ value: option.code, label: optionLabel(option) }))]} value={location} />
 
             <fieldset>
               <legend className="mb-3 text-base font-semibold text-[var(--color-text-secondary)] sm:text-lg">{t('patient.findDoctor.availability')}</legend>
@@ -97,7 +99,7 @@ export function FindDoctorPage() {
           </div>
 
           <p aria-live="polite" className="mt-6 min-h-6 text-center text-sm font-medium text-[var(--color-primary)]">{notice}</p>
-          <button className="mt-auto flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[var(--color-primary)] px-6 py-3 text-lg font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoadingFilters || isSearching || !specialization || !location} type="submit"><SearchIcon className="size-6" />{t(isSearching ? 'patient.findDoctor.searching' : 'patient.findDoctor.search')}</button>
+          <button className="mt-auto flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[var(--color-primary)] px-6 py-3 text-lg font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoadingFilters || isSearching || !specialization} type="submit"><SearchIcon className="size-6" />{t(isSearching ? 'patient.findDoctor.searching' : 'patient.findDoctor.search')}</button>
         </form>
       </section>
       </div>

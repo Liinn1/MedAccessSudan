@@ -44,7 +44,7 @@ export function DoctorProfilePage() {
       })
 
     return () => controller.abort()
-  }, [attempt, hasValidDoctorId, navigate, numericDoctorId])
+  }, [attempt, hasValidDoctorId, i18n.resolvedLanguage, navigate, numericDoctorId])
 
   const formatSlot = (startsAt: string, endsAt: string) => {
     const locale = arabic ? 'ar-SD' : 'en'
@@ -69,7 +69,7 @@ export function DoctorProfilePage() {
 
   const specialization = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
   const location = arabic ? doctor.location.name_ar : doctor.location.name_en
-  const biography = (arabic ? doctor.bio_ar : doctor.bio_en) || t('patient.doctorProfile.noBiography')
+  const biography = doctor.biography || t('patient.doctorProfile.noBiography')
   const initials = doctor.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
 
   return (

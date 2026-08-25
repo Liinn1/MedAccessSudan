@@ -37,11 +37,14 @@ class DoctorDashboardController extends Controller
                 'profile' => $profile ? [
                     'id' => $profile->id,
                     'clinic_name' => $profile->clinic_name,
+                    'biography' => $profile->biography,
+                    'biography_language' => $profile->biography_language,
                     'verification_status' => $profile->verification_status,
                     'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path),
                     'specialization' => $profile->specialization?->only(['code', 'name_en', 'name_ar']),
                     'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                     'available_slots_count' => $availableSlotsCount,
+                    'has_weekly_availability' => $profile->schedules()->where('is_active', true)->exists(),
                 ] : null,
             ],
         ]);

@@ -12,7 +12,9 @@ use App\Http\Controllers\Api\V1\Auth\RegisterPatientController;
 use App\Http\Controllers\Api\V1\Doctor\AppointmentController as DoctorAppointmentController;
 use App\Http\Controllers\Api\V1\Doctor\AvailabilityExceptionController;
 use App\Http\Controllers\Api\V1\Doctor\DoctorDashboardController;
+use App\Http\Controllers\Api\V1\Doctor\ProfileController as DoctorProfessionalProfileController;
 use App\Http\Controllers\Api\V1\Doctor\ProfilePhotoController as DoctorProfilePhotoController;
+use App\Http\Controllers\Api\V1\Doctor\ResolvedAvailabilityController;
 use App\Http\Controllers\Api\V1\Doctor\ScheduleController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Patient\AppointmentController as PatientAppointmentController;
@@ -48,6 +50,8 @@ Route::middleware(['auth:sanctum', 'role:patient'])
         Route::get('/doctors/{doctor}/availability', DoctorAvailabilityController::class)->whereNumber('doctor');
         Route::get('/appointments', [PatientAppointmentController::class, 'index']);
         Route::post('/appointments', [PatientAppointmentController::class, 'store']);
+        Route::get('/appointments/{appointment}', [PatientAppointmentController::class, 'show'])->whereNumber('appointment');
+        Route::patch('/appointments/{appointment}/cancel', [PatientAppointmentController::class, 'cancel'])->whereNumber('appointment');
         Route::post('/profile-photo', [PatientProfilePhotoController::class, 'store']);
         Route::delete('/profile-photo', [PatientProfilePhotoController::class, 'destroy']);
     });
@@ -57,11 +61,13 @@ Route::middleware(['auth:sanctum', 'role:doctor'])
     ->group(function (): void {
         Route::get('/dashboard', DoctorDashboardController::class);
         Route::get('/schedule', [ScheduleController::class, 'index']);
+        Route::get('/resolved-availability', ResolvedAvailabilityController::class);
         Route::put('/schedule', [ScheduleController::class, 'replace']);
         Route::post('/schedule/exceptions', [AvailabilityExceptionController::class, 'store']);
         Route::put('/schedule/exceptions/{exception}', [AvailabilityExceptionController::class, 'update'])->whereNumber('exception');
         Route::delete('/schedule/exceptions/{exception}', [AvailabilityExceptionController::class, 'destroy'])->whereNumber('exception');
         Route::get('/appointments', DoctorAppointmentController::class);
+        Route::put('/profile', [DoctorProfessionalProfileController::class, 'update']);
         Route::post('/profile-photo', [DoctorProfilePhotoController::class, 'store']);
     });
 

@@ -23,11 +23,35 @@ class AppointmentController extends Controller
         return AppointmentResource::collection(Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location'])->where('patient_id', $request->user()->id)->orderBy('starts_at')->get());
     }
 
+    public function show(Request $request, int $appointment): AppointmentResource
+    {
+        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location'])
+            ->where('patient_id', $request->user()->id)
+            ->findOrFail($appointment);
+
+        return new AppointmentResource($record);
+    }
+
+    public function cancel(Request $request, int $appointment): AppointmentResource
+    {
+        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location'])
+            ->where('patient_id', $request->user()->id)
+            ->findOrFail($appointment);
+
+        abort_unless($record->status === AppointmentStatus::Confirmed && $record->starts_at->isFuture(), 409, 'This appointment can no longer be cancelled.');
+
+        $record->update(['status' => AppointmentStatus::Cancelled]);
+
+        return new AppointmentResource($record->fresh(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location']));
+    }
+
     public function store(BookAppointmentRequest $request, AvailabilityResolver $resolver): JsonResponse
     {
         $data = $request->validated();
         $requested = CarbonImmutable::parse($data['starts_at'], config('app.timezone'))->startOfMinute();
         try {
+            // Availability shown in the browser can become stale. Resolve it again
+            // while holding the doctor row lock before creating the appointment.
             $appointment = DB::transaction(function () use ($request, $resolver, $data, $requested) {
                 $doctor = DoctorProfile::query()->bookable()->lockForUpdate()->findOrFail($data['doctor_profile_id']);
                 $slots = collect($resolver->resolve($doctor, $requested->startOfDay(), $requested->startOfDay()))->flatMap(fn ($day) => $day['slots']);
@@ -37,6 +61,8 @@ class AppointmentController extends Controller
                 return Appointment::create(['patient_id' => $request->user()->id, 'doctor_profile_id' => $doctor->id, 'starts_at' => $requested, 'ends_at' => CarbonImmutable::parse($slot['ends_at']), 'status' => AppointmentStatus::Confirmed, 'service_type' => AppointmentServiceType::Clinic, 'notes' => $data['notes'] ?? null]);
             }, 3);
         } catch (QueryException $error) {
+            // The unique doctor/start-time index is the final concurrency guard
+            // when two requests reach the database at nearly the same moment.
             if (in_array($error->getCode(), ['23000', '23505'], true)) {
                 return response()->json(['message' => 'The selected appointment time is no longer available.', 'code' => 'SLOT_UNAVAILABLE'], 409);
             }

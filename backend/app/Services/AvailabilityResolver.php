@@ -10,23 +10,36 @@ use InvalidArgumentException;
 
 class AvailabilityResolver
 {
-    /** @return array<int, array{date:string,slots:array<int,array{starts_at:string,ends_at:string}>}> */
+    /**
+     * Resolve bookable slots in the application timezone for an inclusive date range.
+     *
+     * Modified-day exceptions replace the regular schedule for that day, blocked
+     * exceptions remove overlapping slots, and confirmed appointments always win.
+     *
+     * @return array<int, array{date:string,slots:array<int,array{starts_at:string,ends_at:string}>}>
+     */
     public function resolve(DoctorProfile $doctor, CarbonImmutable $from, CarbonImmutable $to): array
     {
         if ($to->lt($from) || $from->diffInDays($to) > 31) {
             throw new InvalidArgumentException('Availability range must be between 1 and 31 days.');
         }
-        $doctor->loadMissing([
-            'schedules' => fn ($query) => $query->where('is_active', true)->orderBy('start_time'),
-            'exceptions' => fn ($query) => $query->whereBetween('exception_date', [$from->toDateString(), $to->toDateString()]),
-            'appointments' => fn ($query) => $query->where('status', AppointmentStatus::Confirmed->value)
-                ->where('ends_at', '>', $from)->where('starts_at', '<', $to->endOfDay()),
-        ]);
+        // Persisted profiles load a constrained working set. Unsaved profiles are
+        // used by unit tests with explicit in-memory relations and must not query DB.
+        if ($doctor->exists) {
+            $doctor->load([
+                'schedules' => fn ($query) => $query->where('is_active', true)->orderBy('start_time'),
+                'exceptions',
+                'appointments' => fn ($query) => $query->where('status', AppointmentStatus::Confirmed->value)
+                    ->where('ends_at', '>', $from)->where('starts_at', '<', $to->endOfDay()),
+            ]);
+        }
 
         $now = CarbonImmutable::now(config('app.timezone'));
         $result = [];
         for ($date = $from->startOfDay(); $date->lte($to->startOfDay()); $date = $date->addDay()) {
-            $exceptions = $doctor->exceptions->filter(fn ($item) => $item->exception_date->isSameDay($date));
+            $exceptions = $doctor->exceptions->filter(
+                fn ($item) => $item->exception_date->toDateString() === $date->toDateString()
+            );
             $windows = $this->windowsForDate($doctor->schedules, $exceptions, $date);
             $slots = [];
             foreach ($windows as $window) {

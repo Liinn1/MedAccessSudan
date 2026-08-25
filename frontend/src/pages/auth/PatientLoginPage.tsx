@@ -16,6 +16,11 @@ interface LoginFormErrors {
   password?: boolean
 }
 
+interface LoginRouteState {
+  registrationSuccess?: boolean
+  registrationRole?: 'patient' | 'doctor'
+}
+
 function getApiErrorCode(error: ApiError): string | undefined {
   if (typeof error.details !== 'object' || error.details === null || !('code' in error.details)) return undefined
   return typeof error.details.code === 'string' ? error.details.code : undefined
@@ -26,6 +31,10 @@ export function PatientLoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const destination = getSafeRedirect(location.search)
+  const [registrationRole] = useState<'patient' | 'doctor' | null>(() => {
+    const state = location.state as LoginRouteState | null
+    return state?.registrationSuccess && (state.registrationRole === 'patient' || state.registrationRole === 'doctor') ? state.registrationRole : null
+  })
   const openSignUpModal = useSignUpModal()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -35,6 +44,11 @@ export function PatientLoginPage() {
   const [authenticatedUser, setAuthenticatedUser] = useState<AuthenticatedUser | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCheckingSession, setIsCheckingSession] = useState(true)
+
+  useEffect(() => {
+    if (!registrationRole) return
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+  }, [location.pathname, location.search, navigate, registrationRole])
 
   useEffect(() => {
     const requestController = new AbortController()
@@ -116,6 +130,7 @@ export function PatientLoginPage() {
         </header>
 
         <form className="mt-6 flex flex-col sm:mt-8" noValidate onSubmit={handleSubmit}>
+          {registrationRole && <div aria-live="polite" className="page-enter mb-5 rounded-2xl border border-emerald-200 bg-[var(--color-success-surface)] px-4 py-3 text-sm font-semibold text-emerald-800" role="status">{t('auth.login.registrationSuccess')}</div>}
           <div className="space-y-4 [@media(min-height:760px)]:space-y-5">
             <InputField
               autoComplete="username"

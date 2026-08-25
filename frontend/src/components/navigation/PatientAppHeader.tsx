@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { LanguageToggle } from '../LanguageToggle'
 import { BrandMark } from '../branding/BrandMark'
 
@@ -15,11 +15,12 @@ interface PatientAppHeaderProps {
 
 export function PatientAppHeader({ activeSection = 'dashboard', isLoggingOut, onAppointments, onDashboard, onLogout, onProfile }: PatientAppHeaderProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navigationItems = [
     { key: 'dashboard', active: activeSection === 'dashboard', onSelect: onDashboard },
-    { key: 'appointments', active: activeSection === 'appointments', onSelect: onAppointments },
+    { key: 'appointments', active: activeSection === 'appointments', onSelect: () => { onAppointments(); navigate('/patient/appointments') } },
     { key: 'profile', active: activeSection === 'profile', onSelect: onProfile },
   ] as const
 

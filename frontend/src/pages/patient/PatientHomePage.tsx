@@ -16,7 +16,7 @@ const services = [
   { key: 'findDoctor', path: '/patient/doctors/search', accent: 'bg-[var(--color-primary-surface)] text-[var(--color-primary)]', icon: StethoscopeIcon },
   { key: 'homeVisit', path: null, accent: 'bg-amber-100 text-amber-600', icon: VisitIcon },
   { key: 'laboratory', path: null, accent: 'bg-sky-100 text-sky-600', icon: LaboratoryIcon },
-  { key: 'appointments', path: null, accent: 'bg-purple-100 text-purple-600', icon: CalendarIcon },
+  { key: 'appointments', path: '/patient/appointments', accent: 'bg-purple-100 text-purple-600', icon: CalendarIcon },
 ] as const
 
 export function PatientHomePage() {
@@ -80,7 +80,7 @@ export function PatientHomePage() {
   const initials = `${user.first_name?.[0] ?? user.name[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase()
 
   return (
-    <PatientLayout isLoggingOut={isLoggingOut} onAppointments={() => announcePendingPage(t('patient.navigation.appointments'))} onDashboard={() => navigate('/patient/home')} onLogout={handleLogout} onProfile={() => navigate('/patient/profile')}>
+    <PatientLayout isLoggingOut={isLoggingOut} onAppointments={() => navigate('/patient/appointments')} onDashboard={() => navigate('/patient/home')} onLogout={handleLogout} onProfile={() => navigate('/patient/profile')}>
       <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-10">
 
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-teal-100 bg-gradient-to-r from-[var(--color-primary-surface)] to-white p-5 shadow-sm rtl:bg-gradient-to-l sm:p-7">

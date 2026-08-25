@@ -60,8 +60,6 @@ export function DoctorDashboardPage() {
     }
   }
 
-  const announcePending = (page: string) => setNotice(t('doctor.dashboard.pendingPage', { page }))
-
   if (loadState === 'loading') {
     return <PublicLayout><LoadingState contained message={t('doctor.dashboard.loading')} /></PublicLayout>
   }
@@ -77,7 +75,8 @@ export function DoctorDashboardPage() {
   return (
     <DoctorLayout
       isLoggingOut={isLoggingOut}
-      onAvailability={() => announcePending(t('doctor.navigation.availability'))}
+      onAppointments={() => navigate('/doctor/appointments')}
+      onAvailability={() => navigate('/doctor/availability')}
       onLogout={handleLogout}
       onProfile={() => navigate('/doctor/profile')}
     >
@@ -94,7 +93,7 @@ export function DoctorDashboardPage() {
           <section className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm lg:col-span-2" aria-labelledby="doctor-profile-summary">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 id="doctor-profile-summary" className="text-2xl font-extrabold text-[var(--color-text-primary)]">{t('doctor.dashboard.profileTitle')}</h2>
-              <button className="rounded-full border border-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-primary)] transition hover:bg-[var(--color-primary-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-reduce:transition-none" onClick={() => announcePending(t('doctor.dashboard.editProfile'))} type="button">{t('doctor.dashboard.editProfile')}</button>
+              <button className="rounded-full border border-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-primary)] transition hover:bg-[var(--color-primary-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-reduce:transition-none" onClick={() => navigate('/doctor/profile')} type="button">{t('doctor.dashboard.editProfile')}</button>
             </div>
             {profile ? (
               <dl className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -111,13 +110,12 @@ export function DoctorDashboardPage() {
             <h2 id="doctor-availability" className="text-xl font-extrabold text-[var(--color-text-primary)]">{t('doctor.dashboard.availabilityTitle')}</h2>
             <p className="mt-5 text-4xl font-extrabold text-[var(--color-primary)]">{profile?.available_slots_count ?? 0}</p>
             <p className="mt-1 text-sm font-semibold text-[var(--color-text-secondary)]">{t('doctor.dashboard.availableSlots', { count: profile?.available_slots_count ?? 0 })}</p>
-            <button className="mt-6 w-full rounded-full bg-[var(--color-primary)] px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-reduce:transform-none motion-reduce:transition-none" onClick={() => announcePending(t('doctor.dashboard.manageAvailability'))} type="button">{t('doctor.dashboard.manageAvailability')}</button>
+            <button className="mt-6 w-full rounded-full bg-[var(--color-primary)] px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-reduce:transform-none motion-reduce:transition-none" onClick={() => navigate('/doctor/availability')} type="button">{t('doctor.dashboard.manageAvailability')}</button>
           </section>
         </div>
 
         <section className="mt-5 rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm" aria-labelledby="doctor-appointments">
-          <h2 id="doctor-appointments" className="text-2xl font-extrabold text-[var(--color-text-primary)]">{t('doctor.dashboard.appointmentsTitle')}</h2>
-          <p className="mt-2 text-[var(--color-text-secondary)]">{t('doctor.dashboard.appointmentsPending')}</p>
+          <div className="flex flex-wrap items-center justify-between gap-4"><div><h2 id="doctor-appointments" className="text-2xl font-extrabold text-[var(--color-text-primary)]">{t('doctor.dashboard.appointmentsTitle')}</h2><p className="mt-2 text-[var(--color-text-secondary)]">{t('doctor.dashboard.appointmentsDescription')}</p></div><button className="rounded-full bg-[var(--color-primary)] px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-reduce:transform-none" onClick={() => navigate('/doctor/appointments')} type="button">{t('doctor.dashboard.viewAppointments')}</button></div>
         </section>
         <p aria-live="polite" className="mt-4 min-h-6 text-center text-sm font-semibold text-[var(--color-primary)]">{notice}</p>
       </div>

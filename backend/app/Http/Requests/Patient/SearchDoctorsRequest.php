@@ -10,9 +10,9 @@ class SearchDoctorsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'specialization' => ['required', 'string', Rule::exists('specializations', 'code')->where('is_active', true)],
-            'location' => ['required', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
-            'availability' => ['required', Rule::in(['today', 'week'])],
+            'specialization' => ['sometimes', 'nullable', 'string', Rule::exists('specializations', 'code')->where('is_active', true)],
+            'location' => ['sometimes', 'nullable', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
+            'availability' => ['sometimes', 'nullable', Rule::in(['today', 'week'])],
         ];
     }
 }

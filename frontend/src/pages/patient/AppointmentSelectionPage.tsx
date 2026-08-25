@@ -60,7 +60,7 @@ export function AppointmentSelectionPage() {
   function continueToConfirmation() {
     if (!selectedSlotId) return
     saveAppointmentDraft({ doctorId: numericDoctorId, availabilityId: selectedSlotId })
-    setNotice(t('patient.appointmentSelection.confirmationPending'))
+    navigate('/patient/appointments/confirm')
   }
 
   if (state === 'loading') return <PublicLayout><LoadingState contained message={t('patient.appointmentSelection.loading')} /></PublicLayout>
