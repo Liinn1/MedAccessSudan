@@ -17,6 +17,7 @@ class AppointmentResource extends JsonResource
             'status' => $this->status->value,
             'service_type' => $this->service_type->value,
             'notes' => $this->notes,
+            'review' => $this->whenLoaded('review', fn () => $this->review ? (new DoctorReviewResource($this->review))->resolve($request) : null),
             'patient' => $this->whenLoaded('patient', fn () => ['id' => $this->patient->id, 'name' => $this->patient->name]),
             'doctor' => $this->whenLoaded('doctorProfile', fn () => [
                 'id' => $this->doctorProfile->id,

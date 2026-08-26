@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AppointmentStatus;
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -46,6 +47,14 @@ class DoctorProfile extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(DoctorReview::class)->whereHas('appointment', fn (Builder $appointment) => $appointment
+            ->where('status', AppointmentStatus::Completed->value)
+            ->whereColumn('appointments.patient_id', 'doctor_reviews.patient_id')
+            ->whereColumn('appointments.doctor_profile_id', 'doctor_reviews.doctor_profile_id'));
     }
 
     public function cityProposal(): HasOne

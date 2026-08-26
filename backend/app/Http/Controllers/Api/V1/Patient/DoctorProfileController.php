@@ -17,7 +17,10 @@ class DoctorProfileController extends Controller
                 'user:id,name',
                 'specialization:id,code,name_en,name_ar',
                 'location:id,code,name_en,name_ar',
+                'reviews' => fn ($query) => $query->whereNotNull('comment')->latest()->limit(10),
             ])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
             ->whereKey($doctor)
             ->bookable()
             ->firstOrFail();

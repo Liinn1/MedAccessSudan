@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
-use App\Enums\AppointmentServiceType;
-use App\Enums\AppointmentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class Appointment extends Model
+class DoctorReview extends Model
 {
     protected $guarded = [];
 
     protected function casts(): array
     {
-        return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'status' => AppointmentStatus::class, 'service_type' => AppointmentServiceType::class];
+        return ['rating' => 'integer'];
+    }
+
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class);
     }
 
     public function patient(): BelongsTo
@@ -25,10 +27,5 @@ class Appointment extends Model
     public function doctorProfile(): BelongsTo
     {
         return $this->belongsTo(DoctorProfile::class);
-    }
-
-    public function review(): HasOne
-    {
-        return $this->hasOne(DoctorReview::class);
     }
 }

@@ -17,3 +17,8 @@ export async function getDoctorAppointments(signal?: AbortSignal): Promise<Docto
   const response = await apiClient.get<{ data: DoctorAppointment[] }>('/api/v1/doctor/appointments', signal)
   return response.data
 }
+
+export async function completeDoctorAppointment(id: number): Promise<DoctorAppointment> {
+  const response = await apiClient.patch<{ data: DoctorAppointment }>(`/api/v1/doctor/appointments/${id}/complete`)
+  return response.data
+}

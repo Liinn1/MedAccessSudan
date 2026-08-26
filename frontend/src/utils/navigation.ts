@@ -3,6 +3,10 @@ export const APPOINTMENT_SEARCH_ROUTE = '/patient/doctors/search'
 export const DOCTOR_DASHBOARD_ROUTE = '/doctor/dashboard'
 export const ADMIN_DASHBOARD_ROUTE = '/admin/dashboard'
 
+export function buildDoctorBookingPath(doctorId: number | string): string {
+  return `/patient/doctors/${doctorId}/book`
+}
+
 export function buildLoginPath(destination: string): string {
   return `/login?redirect=${encodeURIComponent(destination)}`
 }

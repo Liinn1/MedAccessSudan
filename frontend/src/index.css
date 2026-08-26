@@ -30,6 +30,16 @@
   text-align: start;
 }
 
+.appointment-time-grid {
+  grid-template-columns: repeat(auto-fit, minmax(5.25rem, 1fr));
+}
+
+@media (min-width: 640px) {
+  .appointment-time-grid {
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  }
+}
+
 @keyframes service-card-enter {
   from {
     opacity: 0;
@@ -54,9 +64,37 @@
   animation: page-enter 240ms ease-out both;
 }
 
+.feedback-enter {
+  animation: page-enter 220ms ease-out both;
+}
+
+.confirmation-overlay {
+  animation: confirmation-overlay-enter 180ms ease-out both;
+}
+
+.confirmation-dialog {
+  animation: confirmation-dialog-enter 180ms ease-out both;
+}
+
+@keyframes confirmation-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirmation-dialog-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .service-card-enter,
-  .page-enter {
+  .page-enter,
+  .feedback-enter {
+    animation: none;
+  }
+
+  .confirmation-overlay,
+  .confirmation-dialog {
     animation: none;
   }
 }

@@ -16,17 +16,21 @@ use App\Http\Controllers\Api\V1\Doctor\ProfileController as DoctorProfessionalPr
 use App\Http\Controllers\Api\V1\Doctor\ProfilePhotoController as DoctorProfilePhotoController;
 use App\Http\Controllers\Api\V1\Doctor\ResolvedAvailabilityController;
 use App\Http\Controllers\Api\V1\Doctor\ScheduleController;
+use App\Http\Controllers\Api\V1\FeaturedDoctorController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Patient\AppointmentController as PatientAppointmentController;
 use App\Http\Controllers\Api\V1\Patient\DoctorAvailabilityController;
 use App\Http\Controllers\Api\V1\Patient\DoctorFilterController;
 use App\Http\Controllers\Api\V1\Patient\DoctorProfileController;
+use App\Http\Controllers\Api\V1\Patient\DoctorReviewController;
 use App\Http\Controllers\Api\V1\Patient\DoctorSearchController;
 use App\Http\Controllers\Api\V1\Patient\PatientHomeController;
+use App\Http\Controllers\Api\V1\Patient\ProfileController as PatientProfileController;
 use App\Http\Controllers\Api\V1\Patient\ProfilePhotoController as PatientProfilePhotoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/v1/health', HealthController::class);
+Route::get('/v1/doctors/featured', FeaturedDoctorController::class);
 
 Route::prefix('v1/auth')->group(function () {
     Route::post('/login', LoginController::class);
@@ -52,6 +56,8 @@ Route::middleware(['auth:sanctum', 'role:patient'])
         Route::post('/appointments', [PatientAppointmentController::class, 'store']);
         Route::get('/appointments/{appointment}', [PatientAppointmentController::class, 'show'])->whereNumber('appointment');
         Route::patch('/appointments/{appointment}/cancel', [PatientAppointmentController::class, 'cancel'])->whereNumber('appointment');
+        Route::post('/appointments/{appointment}/review', [DoctorReviewController::class, 'store'])->whereNumber('appointment');
+        Route::put('/profile', [PatientProfileController::class, 'update']);
         Route::post('/profile-photo', [PatientProfilePhotoController::class, 'store']);
         Route::delete('/profile-photo', [PatientProfilePhotoController::class, 'destroy']);
     });
@@ -66,7 +72,8 @@ Route::middleware(['auth:sanctum', 'role:doctor'])
         Route::post('/schedule/exceptions', [AvailabilityExceptionController::class, 'store']);
         Route::put('/schedule/exceptions/{exception}', [AvailabilityExceptionController::class, 'update'])->whereNumber('exception');
         Route::delete('/schedule/exceptions/{exception}', [AvailabilityExceptionController::class, 'destroy'])->whereNumber('exception');
-        Route::get('/appointments', DoctorAppointmentController::class);
+        Route::get('/appointments', [DoctorAppointmentController::class, 'index']);
+        Route::patch('/appointments/{appointment}/complete', [DoctorAppointmentController::class, 'complete'])->whereNumber('appointment');
         Route::put('/profile', [DoctorProfessionalProfileController::class, 'update']);
         Route::post('/profile-photo', [DoctorProfilePhotoController::class, 'store']);
     });

@@ -16,7 +16,7 @@ export const arTranslation = {
     connected: 'متصلة',
   },
   profilePhoto: { optionalLabel: 'الصورة الشخصية (اختيارية)', requiredLabel: 'الصورة الشخصية (مطلوبة)', choose: 'اختيار صورة', replace: 'استبدال الصورة', remove: 'إزالة الصورة', previewAlt: 'معاينة الصورة الشخصية المختارة', help: 'JPEG أو PNG أو WebP بحد أقصى 3 ميجابايت.', required: 'اختر صورة شخصية للمتابعة.', invalid: 'اختر صورة JPEG أو PNG أو WebP صالحة بحد أقصى 3 ميجابايت.', updated: 'تم تحديث الصورة الشخصية بنجاح.', removed: 'تمت إزالة الصورة الشخصية.', updateError: 'تعذر تحديث الصورة الشخصية. حاول مرة أخرى.' },
-  profilePage: { patientTitle: 'ملف المريض', patientDescription: 'أدر صورتك الشخصية الاختيارية. تؤدي إزالتها إلى استعادة صورة الأحرف الأولى.', eyebrow: 'مساحة عمل الطبيب', doctorTitle: 'الملف المهني', doctorDescription: 'حافظ على دقة معلومات مقدم الرعاية العامة للمرضى.', loading: 'جارٍ تحميل ملفك…', loadError: 'تعذر تحميل ملفك المهني. حاول مرة أخرى.', missing: 'ملفك المهني غير متاح.', professionalDetails: 'التفاصيل المهنية', clinic: 'اسم العيادة', biography: 'النبذة المهنية', biographyLanguage: 'لغة النبذة', biographyHelp: 'اكتب نبذة أصلية واحدة. تستخدم ميد أكسس الترجمة المتاحة للغة الواجهة المختارة، وتحافظ على النص الأصلي عند عدم توفر ترجمة.', languages: { en: 'الإنجليزية', ar: 'العربية' }, photo: 'الصورة المهنية', save: 'حفظ الصورة', savePhoto: 'حفظ الصورة', saveDetails: 'حفظ تفاصيل الملف', saving: 'جارٍ الحفظ…', verifiedDetails: 'التفاصيل المعتمدة', verifiedNote: 'يتحكم مسؤولو ميد أكسس في التخصص والموقع وحالة التحقق.', updated: 'تم تحديث الملف المهني بنجاح.', validationError: 'تحقق من تفاصيل الملف وحاول مرة أخرى.', updateError: 'تعذر تحديث ملفك المهني.' },
+  profilePage: { patientEyebrow: 'حسابك', patientTitle: 'ملف المريض', patientDescription: 'حافظ على تحديث معلومات الاتصال والصورة الشخصية.', patientLoading: 'جارٍ تحميل ملف المريض…', patientLoadError: 'تعذر تحميل ملف المريض. حاول مرة أخرى.', personalInformation: 'المعلومات الشخصية', personalInformationHelp: 'تساعد هذه البيانات ميد أكسس في التعرف عليك والتواصل معك بشأن رعايتك.', firstName: 'الاسم الأول', lastName: 'اسم العائلة', email: 'البريد الإلكتروني', phone: 'رقم الهاتف', patientPhotoHelp: 'أضف صورة اختيارية، أو استخدم الأحرف الأولى كصورة بديلة خاصة.', patientDetailsUpdated: 'تم تحديث المعلومات الشخصية بنجاح.', patientValidationError: 'تحقق من معلوماتك. قد يكون البريد الإلكتروني أو رقم الهاتف مستخدماً.', patientUpdateError: 'تعذر تحديث معلوماتك الشخصية. حاول مرة أخرى.', eyebrow: 'مساحة عمل الطبيب', doctorTitle: 'الملف المهني', doctorDescription: 'حافظ على دقة معلومات مقدم الرعاية العامة للمرضى.', loading: 'جارٍ تحميل ملفك…', loadError: 'تعذر تحميل ملفك المهني. حاول مرة أخرى.', missing: 'ملفك المهني غير متاح.', professionalDetails: 'التفاصيل المهنية', clinic: 'اسم العيادة', biography: 'النبذة المهنية', biographyLanguage: 'لغة النبذة', biographyHelp: 'اكتب نبذة أصلية واحدة. تستخدم ميد أكسس الترجمة المتاحة للغة الواجهة المختارة، وتحافظ على النص الأصلي عند عدم توفر ترجمة.', languages: { en: 'الإنجليزية', ar: 'العربية' }, photo: 'الصورة الشخصية', save: 'حفظ الصورة', savePhoto: 'حفظ الصورة', saveDetails: 'حفظ التفاصيل', saving: 'جارٍ الحفظ…', verifiedDetails: 'التفاصيل المعتمدة', verifiedNote: 'يتحكم مسؤولو ميد أكسس في التخصص والموقع وحالة التحقق.', updated: 'تم تحديث الملف المهني بنجاح.', validationError: 'تحقق من تفاصيل الملف وحاول مرة أخرى.', updateError: 'تعذر تحديث ملفك المهني.' },
   profileCompletion: { label: 'اكتمال الملف', title: 'أكمل ملفك', completeTitle: 'الملف مكتمل', percentComplete: 'اكتمل {{percentage}}٪ من الملف', summary: 'اكتملت {{completed}} من {{total}} خطوات', items: { basicInformation: 'أكمل المعلومات الأساسية', contactInformation: 'أكمل معلومات التواصل', profilePicture: 'أضف صورة الملف', specialty: 'أضف التخصص', location: 'أضف الموقع', professionalBio: 'أضف النبذة المهنية', clinic: 'أضف معلومات العيادة', weeklyAvailability: 'أضف الأوقات الأسبوعية المتاحة' } },
   auth: {
     login: {
@@ -265,22 +265,28 @@ export const arTranslation = {
       error: 'تعذر تحميل المواعيد المتاحة. حاول مرة أخرى.',
       back: 'العودة إلى ملف الطبيب',
       eyebrow: 'حجز موعد',
-      title: 'اختر موعداً',
+      title: 'احجز موعداً',
       description: 'اختر أحد الأوقات المتاحة فعلياً لدى الطبيب. سيُعاد التحقق من اختيارك قبل الحجز.',
       availableTimes: 'الأوقات المتاحة',
+      chooseDate: 'اختر تاريخ الموعد',
+      chooseTime: 'اختر وقتاً',
+      unavailable: 'غير متاح',
       timezone: 'تُعرض الأوقات حسب التوقيت المحلي للسودان.',
       selected: 'تم الاختيار',
+      selectedSummaryLabel: 'الموعد المختار',
+      selectedSummary: '{{date}} الساعة {{time}}',
       continue: 'المتابعة إلى التأكيد',
       confirmationPending: 'تم حفظ وقت الموعد. صفحة تأكيد الحجز هي الصفحة التالية المعتمدة.',
     },
-    appointmentConfirmation: { loading: 'جارٍ تحميل ملخص الحجز…', error: 'تعذر تحميل ملخص الحجز. حاول مرة أخرى.', missing: 'اختيار الموعد غير موجود أو انتهت صلاحيته.', findDoctor: 'ابحث عن طبيب', slotUnavailable: 'لم يعد وقت الموعد هذا متاحاً. اختر وقتاً آخر.', chooseAgain: 'اختيار وقت آخر', back: 'العودة إلى أوقات المواعيد', eyebrow: 'المراجعة النهائية', title: 'تأكيد موعدك', description: 'راجع الطبيب ووقت الموعد قبل إنشاء الحجز بأمان.', summary: 'ملخص الموعد', notes: 'ملاحظات للطبيب (اختياري)', notesPlaceholder: 'أضف معلومات متعلقة بهذه الزيارة', confirm: 'تأكيد الموعد', confirming: 'جارٍ التأكيد…', bookingError: 'تعذر تأكيد الموعد. حاول مرة أخرى.', successTitle: 'تم تأكيد الموعد', successDescription: 'تم حفظ موعدك بأمان وهو متاح الآن ضمن مواعيدي.', viewAppointment: 'عرض الموعد', home: 'الصفحة الرئيسية للمريض' },
+    appointmentConfirmation: { loading: 'جارٍ تحميل ملخص الحجز…', error: 'تعذر تحميل ملخص الحجز. حاول مرة أخرى.', missing: 'اختيار الموعد غير موجود أو انتهت صلاحيته.', findDoctor: 'ابحث عن طبيب', slotUnavailable: 'لم يعد وقت الموعد هذا متاحاً. اختر وقتاً آخر.', chooseAgain: 'اختيار وقت آخر', back: 'العودة / تعديل الموعد', eyebrow: 'المراجعة النهائية', title: 'تأكيد موعدك', description: 'راجع الطبيب ووقت الموعد قبل إنشاء الحجز بأمان.', summary: 'ملخص الموعد', doctor: 'الطبيب', specialty: 'التخصص', date: 'التاريخ', time: 'الوقت', location: 'الموقع', serviceType: 'نوع الخدمة', clinicVisit: 'موعد في العيادة', notes: 'ملاحظات للطبيب (اختياري)', notesPlaceholder: 'أضف معلومات متعلقة بهذه الزيارة', confirm: 'تأكيد الموعد', confirming: 'جارٍ التأكيد…', bookingError: 'تعذر تأكيد الموعد. حاول مرة أخرى.', successTitle: 'تم تأكيد الموعد', successDescription: 'تم حفظ موعدك بأمان وهو متاح الآن ضمن مواعيدي.', viewAppointment: 'عرض الموعد', home: 'الصفحة الرئيسية للمريض' },
     appointments: {
-      title: 'مواعيدي', description: 'راجع مواعيدك الصحية القادمة والسابقة والملغاة.', loading: 'جارٍ تحميل مواعيدك…', error: 'تعذر تحميل مواعيدك. حاول مرة أخرى.', date: 'التاريخ', time: 'الوقت', viewDetails: 'عرض التفاصيل',
-      sections: { upcoming: 'القادمة', previous: 'السابقة', cancelled: 'الملغاة' },
-      empty: { upcoming: 'لا توجد لديك مواعيد قادمة.', previous: 'لا توجد لديك مواعيد سابقة.', cancelled: 'لا توجد لديك مواعيد ملغاة.' },
-      statuses: { confirmed: 'مؤكد', cancelled: 'ملغى' }, services: { clinic: 'موعد في العيادة', home_visit: 'زيارة منزلية' },
+      title: 'مواعيدي', description: 'راجع مواعيدك الصحية القادمة والمكتملة والسابقة والملغاة.', loading: 'جارٍ تحميل مواعيدك…', error: 'تعذر تحميل مواعيدك. حاول مرة أخرى.', date: 'التاريخ', time: 'الوقت', viewDetails: 'عرض التفاصيل', rateDoctor: 'قيّم طبيبك', viewReview: 'عرض تقييمك',
+      sections: { upcoming: 'القادمة', previous: 'السابقة', completed: 'المواعيد المكتملة', cancelled: 'الملغاة' },
+      empty: { upcoming: 'لا توجد لديك مواعيد قادمة.', previous: 'لا توجد لديك مواعيد سابقة.', completed: 'لا توجد لديك مواعيد مكتملة.', cancelled: 'لا توجد لديك مواعيد ملغاة.' },
+      statuses: { confirmed: 'مؤكد', completed: 'مكتمل', cancelled: 'ملغى' }, services: { clinic: 'موعد في العيادة', home_visit: 'زيارة منزلية' },
     },
     appointmentDetails: { loading: 'جارٍ تحميل تفاصيل الموعد…', error: 'تعذر تحميل هذا الموعد. حاول مرة أخرى.', notFound: 'هذا الموعد غير متاح.', back: 'العودة إلى مواعيدي', eyebrow: 'تفاصيل الموعد', schedule: 'الجدول', locationTitle: 'مكان الرعاية', service: 'الخدمة', notes: 'الملاحظات', cancel: 'إلغاء الموعد', cancelling: 'جارٍ الإلغاء…', cancelConfirm: 'هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟', cancelledSuccess: 'تم إلغاء موعدك بنجاح.', cancelUnavailable: 'لم يعد من الممكن إلغاء هذا الموعد.', cancelError: 'تعذر إلغاء الموعد. حاول مرة أخرى.' },
+    review: { loading: 'جارٍ التحقق من أهلية التقييم…', loadError: 'تعذر التحقق من أهلية التقييم. حاول مرة أخرى.', ineligible: 'هذا الموعد غير مؤهل للتقييم.', eyebrow: 'تقييم موعد موثق', rating: 'تقييمك', starLabel: '{{value}} نجوم', comment: 'مراجعة مكتوبة (اختياري)', submit: 'إرسال التقييم', submitting: 'جارٍ الإرسال…', submitted: 'تم إرسال التقييم بنجاح.', alreadySubmitted: 'تم إرسال التقييم', error: 'تعذر إرسال تقييمك.', back: 'العودة إلى الموعد' },
   },
   doctor: {
     navigation: {
@@ -322,10 +328,11 @@ export const arTranslation = {
     },
     appointments: {
       eyebrow: 'مساحة عمل الطبيب', title: 'إدارة المواعيد', description: 'راجع المواعيد المسندة إليك. تقتصر معلومات المريض على ما يلزم للزيارة المجدولة.', loading: 'جارٍ تحميل مواعيدك…', error: 'تعذر تحميل المواعيد. حاول مرة أخرى.', emptyTitle: 'لا توجد مواعيد بعد', emptyDescription: 'ستظهر حجوزات المرضى الجديدة هنا تلقائياً.', date: 'التاريخ', time: 'الوقت', notes: 'ملاحظات الموعد',
-      sections: { today: 'مواعيد اليوم', upcoming: 'المواعيد القادمة', previous: 'المواعيد السابقة' },
-      sectionDescriptions: { today: 'الزيارات المجدولة اليوم بتوقيت السودان.', upcoming: 'الزيارات المؤكدة المجدولة بعد اليوم.', previous: 'المواعيد التي مضى تاريخها المجدول.' },
-      empty: { today: 'لا توجد مواعيد مجدولة لليوم.', upcoming: 'لا توجد مواعيد قادمة مجدولة.', previous: 'لا توجد مواعيد سابقة لعرضها.' },
+      sections: { today: 'مواعيد اليوم', upcoming: 'المواعيد القادمة', previous: 'المواعيد السابقة', completed: 'المواعيد المكتملة' },
+      sectionDescriptions: { today: 'الزيارات المجدولة اليوم بتوقيت السودان.', upcoming: 'الزيارات المؤكدة المجدولة بعد اليوم.', previous: 'المواعيد التي مضى تاريخها المجدول.', completed: 'المواعيد التي حددتها كمكتملة.' },
+      empty: { today: 'لا توجد مواعيد مجدولة لليوم.', upcoming: 'لا توجد مواعيد قادمة مجدولة.', previous: 'لا توجد مواعيد سابقة لعرضها.', completed: 'لا توجد مواعيد مكتملة لعرضها.' },
       statuses: { pending: 'قيد الانتظار', confirmed: 'مؤكد', completed: 'مكتمل', cancelled: 'ملغي', rejected: 'مرفوض' },
+      complete: 'إكمال الموعد', completeConfirm: 'هل تريد تحديد الموعد كمكتمل؟', completeDescription: 'أكد أن هذا الموعد قد اكتمل. بعد التأكيد، سيتمكن المريض من تقييم الطبيب.', completeCancel: 'إلغاء', completing: 'جارٍ الإكمال…', completedSuccess: 'تم تحديد الموعد كمكتمل.', completeError: 'تعذر إكمال هذا الموعد. حاول مرة أخرى.',
       services: { clinic: 'موعد في العيادة', home_visit: 'زيارة منزلية' },
     },
     availability: {
@@ -345,7 +352,7 @@ export const arTranslation = {
     services: { eyebrow: 'ما نقدمه', title: 'خدماتنا الطبية', description: 'مسارات واضحة ومريحة للوصول إلى الدعم الصحي الذي تحتاجه.', items: {
       doctor: { title: 'ابحث عن طبيب', description: 'ابحث عن مقدمي رعاية معتمدين حسب التخصص والموقع والتوفر.' }, visit: { title: 'زيارة منزلية', description: 'خطط للحصول على الدعم الصحي في المنزل عند توفر الخدمة.' }, laboratory: { title: 'الفحوصات المخبرية', description: 'استكشف خدمات المختبر المتاحة واحجزها.' }, appointments: { title: 'مواعيدي', description: 'نظم مواعيدك الصحية القادمة والسابقة.' },
     } },
-    doctors: { title: 'أطباء مميزون', description: 'نماذج لمقدمي رعاية معتمدين توضح تجربة ميد أكسس.', verified: 'معتمد', available: 'متاح', view: 'عرض الملف', book: 'حجز موعد', empty: 'لا يوجد حالياً أطباء مميزون مدرجون في هذا التخصص.', profilePending: 'ستفتح ملفات الأطباء العامة في صفحتها بعد اعتمادها.', filters: { all: 'الكل', cardiology: 'أمراض القلب', dermatology: 'الأمراض الجلدية', pediatrics: 'طب الأطفال', generalMedicine: 'الطب العام' }, items: {
+    doctors: { title: 'أطباء مميزون', description: 'أفضل مقدمي الرعاية المعتمدين حسب تقييمات المواعيد المكتملة الموثوقة.', loading: 'جارٍ تحميل الأطباء المميزين…', loadError: 'الأطباء المميزون غير متاحين مؤقتاً.', reviewCount: '{{count}} تقييمات', verified: 'معتمد', available: 'متاح', view: 'عرض الملف', book: 'حجز موعد', empty: 'لا يوجد حالياً أطباء يستوفون شرط التقييمات المميزة.', profilePending: 'ستفتح ملفات الأطباء العامة في صفحتها بعد اعتمادها.', filters: { all: 'الكل', cardiology: 'أمراض القلب', dermatology: 'الأمراض الجلدية', pediatrics: 'طب الأطفال', generalMedicine: 'الطب العام' }, items: {
       ahmed: { initials: 'أح', name: 'د. أحمد حسن', specialty: 'الطب العام', specialtyKey: 'generalMedicine', location: 'الخرطوم' }, fatima: { initials: 'فع', name: 'د. فاطمة علي', specialty: 'طب الأطفال', specialtyKey: 'pediatrics', location: 'أم درمان' }, omar: { initials: 'عخ', name: 'د. عمر خليل', specialty: 'أمراض القلب', specialtyKey: 'cardiology', location: 'بحري' },
     } },
     why: { title: 'لماذا تختار ميد أكسس؟', items: {

@@ -30,6 +30,13 @@ export interface DoctorProfile extends Omit<DoctorSummary, 'next_available_at'> 
   profile_image_url: string | null
   verification_status: 'verified'
   availability: DoctorAvailabilitySlot[]
+  average_rating: number
+  review_count: number
+  reviews: { id: number; rating: number; comment: string | null; created_at: string }[]
+}
+
+export interface FeaturedDoctor {
+  id: number; name: string; profile_image_url: string | null; specialization: DoctorFilterOption; location: DoctorFilterOption; average_rating: number; review_count: number; verification_status: string
 }
 
 interface DoctorFiltersResponse {
@@ -56,5 +63,10 @@ export async function searchDoctors(filters: { specialization?: string; location
 
 export async function getDoctorProfile(doctorId: number, signal?: AbortSignal): Promise<DoctorProfile> {
   const response = await apiClient.get<{ data: DoctorProfile }>(`/api/v1/patient/doctors/${doctorId}`, signal)
+  return response.data
+}
+
+export async function getFeaturedDoctors(signal?: AbortSignal): Promise<FeaturedDoctor[]> {
+  const response = await apiClient.get<{ data: FeaturedDoctor[] }>('/api/v1/doctors/featured', signal)
   return response.data
 }

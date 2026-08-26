@@ -20,12 +20,12 @@ class AppointmentController extends Controller
 {
     public function index(Request $request)
     {
-        return AppointmentResource::collection(Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location'])->where('patient_id', $request->user()->id)->orderBy('starts_at')->get());
+        return AppointmentResource::collection(Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'review'])->where('patient_id', $request->user()->id)->orderBy('starts_at')->get());
     }
 
     public function show(Request $request, int $appointment): AppointmentResource
     {
-        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location'])
+        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'review'])
             ->where('patient_id', $request->user()->id)
             ->findOrFail($appointment);
 

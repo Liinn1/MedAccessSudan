@@ -6,4 +6,5 @@ enum AppointmentStatus: string
 {
     case Confirmed = 'confirmed';
     case Cancelled = 'cancelled';
+    case Completed = 'completed';
 }

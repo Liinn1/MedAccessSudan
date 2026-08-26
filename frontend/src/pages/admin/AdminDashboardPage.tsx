@@ -36,21 +36,14 @@ export function AdminDashboardPage() {
           return null
         }
 
-        return Promise.all([getCityProposals(controller.signal), getProviderApplications(controller.signal), getAdminLocations(controller.signal)])
-      })
-      .then((result) => {
-        if (!result) return
-        const [cityData, providerData, locationData] = result
-        setProposals(cityData.proposals)
-        setLocations(locationData)
-        setProviders(providerData)
+        return load(controller.signal)
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('admin.errors.load')
       })
 
     return () => controller.abort()
-  }, [navigate])
+  }, [load, navigate])
   const localized = (location: AdminLocation | ProviderApplication['specialization']) => i18n.language.startsWith('ar') ? location.name_ar : location.name_en
 
   async function reviewCity(proposal: CityProposal, action: 'approve' | 'map' | 'reject') {

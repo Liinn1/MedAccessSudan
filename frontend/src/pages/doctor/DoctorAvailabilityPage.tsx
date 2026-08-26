@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { LoadingState } from '../../components/feedback/LoadingState'
 import { DoctorLayout } from '../../layouts/DoctorLayout'
 import { ApiError } from '../../services/apiClient'
 import { logout } from '../../services/authService'
@@ -15,22 +16,13 @@ export function DoctorAvailabilityPage() {
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]); const [exceptions, setExceptions] = useState<AvailabilityException[]>([]); const [resolved, setResolved] = useState<ResolvedDate[]>([])
   const [exceptionForm, setExceptionForm] = useState<ExceptionInput>(emptyException); const [editingId, setEditingId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(''); const [message, setMessage] = useState('')
-  const load = useCallback(async (signal?: AbortSignal) => { try { const [schedule, availability] = await Promise.all([getDoctorSchedule(signal), getResolvedDoctorAvailability(signal)]); setPeriods(schedule.periods.map((p) => ({ ...p, start_time: p.start_time.slice(0, 5), end_time: p.end_time.slice(0, 5) }))); setExceptions(schedule.exceptions); setResolved(availability.dates) } catch (error) { if (error instanceof ApiError && (error.status === 401 || error.status === 403)) navigate('/login', { replace: true }); else if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('doctor.availability.errors.load') } finally { setLoading(false) } }, [navigate])
+  const load = useCallback(async (signal?: AbortSignal) => { try { const [schedule, availability] = await Promise.all([getDoctorSchedule(signal), getResolvedDoctorAvailability(signal)]); setPeriods(schedule.periods.map((p) => ({ ...p, start_time: p.start_time.slice(0, 5), end_time: p.end_time.slice(0, 5) }))); setExceptions(schedule.exceptions); setResolved(availability.dates) } catch (error) { if (error instanceof ApiError && (error.status === 401 || error.status === 403)) navigate('/login', { replace: true }); else if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('doctor.availability.errors.load') } finally { if (!signal?.aborted) setLoading(false) } }, [navigate])
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([getDoctorSchedule(controller.signal), getResolvedDoctorAvailability(controller.signal)])
-      .then(([schedule, availability]) => {
-        setPeriods(schedule.periods.map((period) => ({ ...period, start_time: period.start_time.slice(0, 5), end_time: period.end_time.slice(0, 5) })))
-        setExceptions(schedule.exceptions)
-        setResolved(availability.dates)
-      })
-      .catch((error: unknown) => {
-        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) navigate('/login', { replace: true })
-        else if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('doctor.availability.errors.load')
-      })
-      .finally(() => setLoading(false))
-    return () => controller.abort()
-  }, [navigate])
+    // Start after effect setup so React can register cleanup before async state updates.
+    const timer = window.setTimeout(() => void load(controller.signal), 0)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [load])
   const entriesFor = (day: number) => periods.map((period, index) => ({ period, index })).filter(({ period }) => period.day_of_week === day)
   const updatePeriod = (index: number, field: keyof SchedulePeriod, value: string | number) => setPeriods((current) => current.map((period, position) => position === index ? { ...period, [field]: value } : period))
   const toggleDay = (day: number) => setPeriods((current) => current.some((period) => period.day_of_week === day) ? current.filter((period) => period.day_of_week !== day) : [...current, defaultPeriod(day)])
@@ -43,7 +35,7 @@ export function DoctorAvailabilityPage() {
   const locale = i18n.language.startsWith('ar') ? 'ar-SD' : 'en'; const slots = resolved.flatMap((date) => date.slots).slice(0, 12)
 
   return <DoctorLayout activeSection="availability" isLoggingOut={false} onAppointments={() => navigate('/doctor/appointments')} onAvailability={() => undefined} onLogout={signOut} onProfile={() => navigate('/doctor/profile')}><div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"><header><p className="font-bold text-[var(--color-primary)]">{t('doctor.availability.eyebrow')}</p><h1 className="mt-1 text-3xl font-extrabold sm:text-4xl">{t('doctor.availability.title')}</h1><p className="mt-2 max-w-3xl text-[var(--color-text-secondary)]">{t('doctor.availability.description')}</p></header>
-    {loading ? <p className="mt-8 rounded-2xl bg-white p-6">{t('doctor.availability.loading')}</p> : <>
+    {loading ? <div className="mt-8"><LoadingState message={t('doctor.availability.loading')} section /></div> : <>
       <section className="mt-7 rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-extrabold">{t('doctor.availability.weeklyTitle')}</h2><p className="mt-1 text-sm text-[var(--color-text-secondary)]">{t('doctor.availability.weeklyDescription')}</p></div><button className="rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white disabled:opacity-50" disabled={busy === 'schedule'} onClick={saveSchedule}>{t(busy === 'schedule' ? 'doctor.availability.saving' : 'doctor.availability.saveSchedule')}</button></div>
         <div className="mt-6 grid gap-4">{weekdays.map((day) => { const entries = entriesFor(day); const enabled = entries.length > 0; return <article className="rounded-2xl border border-[var(--color-border)] bg-slate-50 p-4" key={day}><div className="flex items-center justify-between gap-3"><h3 className="text-lg font-bold">{t(`doctor.availability.days.${day}`)}</h3><label className="flex cursor-pointer items-center gap-2 font-semibold"><input checked={enabled} className="size-5 accent-[var(--color-primary)]" onChange={() => toggleDay(day)} type="checkbox" />{t(enabled ? 'doctor.availability.available' : 'doctor.availability.unavailable')}</label></div>{enabled && <div className="mt-4 grid gap-3">{entries.map(({ period, index }) => <div className="grid items-end gap-3 rounded-xl bg-white p-3 sm:grid-cols-[1fr_1fr_1fr_auto]" key={`${day}-${index}`}><label className="text-sm font-semibold">{t('doctor.availability.start')}<input className="direction-ltr mt-1 block w-full rounded-xl border border-[var(--color-border)] px-3 py-2" onChange={(e) => updatePeriod(index, 'start_time', e.target.value)} type="time" value={period.start_time} /></label><label className="text-sm font-semibold">{t('doctor.availability.end')}<input className="direction-ltr mt-1 block w-full rounded-xl border border-[var(--color-border)] px-3 py-2" onChange={(e) => updatePeriod(index, 'end_time', e.target.value)} type="time" value={period.end_time} /></label><label className="text-sm font-semibold">{t('doctor.availability.duration')}<select className="mt-1 block w-full rounded-xl border border-[var(--color-border)] px-3 py-2" onChange={(e) => updatePeriod(index, 'slot_duration_minutes', Number(e.target.value))} value={period.slot_duration_minutes}>{[15, 20, 30, 45, 60, 90, 120].map((duration) => <option key={duration} value={duration}>{t('doctor.availability.minutes', { count: duration })}</option>)}</select></label><button className="rounded-full border border-red-200 px-4 py-2 font-bold text-red-700" onClick={() => setPeriods((current) => current.filter((_, position) => position !== index))}>{t('doctor.availability.remove')}</button></div>)}{entries.length < 3 && <button className="justify-self-start rounded-full border border-[var(--color-primary)] px-4 py-2 font-bold text-[var(--color-primary)]" onClick={() => setPeriods((current) => [...current, { ...defaultPeriod(day), start_time: '14:00', end_time: '17:00' }])}>{t('doctor.availability.addPeriod')}</button>}</div>}</article> })}</div>
       </section>
