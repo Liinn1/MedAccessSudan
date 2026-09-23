@@ -31,4 +31,9 @@ class Appointment extends Model
     {
         return $this->hasOne(DoctorReview::class);
     }
+
+    public function homeVisitDetail(): HasOne
+    {
+        return $this->hasOne(HomeVisitDetail::class);
+    }
 }

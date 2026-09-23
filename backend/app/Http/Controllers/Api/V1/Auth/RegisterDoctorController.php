@@ -44,7 +44,10 @@ class RegisterDoctorController extends Controller
                 $profile = $user->doctorProfile()->create([
                     'specialization_id' => Specialization::where('code', $validated['specialization'])->valueOrFail('id'),
                     'location_id' => $locationId,
+                    'home_visit_location_id' => ($validated['offers_home_visits'] ?? false) ? $locationId : null,
                     'clinic_name' => $validated['clinic_name'] ?? null,
+                    'offers_clinic_visits' => (bool) ($validated['offers_clinic_visits'] ?? true),
+                    'offers_home_visits' => (bool) ($validated['offers_home_visits'] ?? false),
                     'profile_image_path' => $photoPath,
                     'verification_status' => $initialVerificationStatus->value,
                 ]);

@@ -71,7 +71,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->assertSame('verified', $profile->verification_status);
 
         Sanctum::actingAs($doctor);
-        $this->putJson('/api/v1/doctor/schedule', ['periods' => [[
+        $this->putJson('/api/v1/doctor/schedule', ['consultation_type' => 'clinic', 'periods' => [[
             'day_of_week' => 1,
             'start_time' => '09:00',
             'end_time' => '11:00',
@@ -123,7 +123,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->postJson('/api/v1/auth/register/doctor', $this->registrationPayload(['proposed_city' => 'portsudan']))->assertCreated();
         $profile = DoctorProfile::query()->firstOrFail();
         $proposal = CityProposal::query()->firstOrFail();
-        $admin = User::factory()->create(['role' => UserRole::Administrator]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
         Sanctum::actingAs($admin);
 
         $this->patchJson("/api/v1/admin/city-proposals/{$proposal->id}", [
@@ -164,7 +164,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $proposal = CityProposal::query()->firstOrFail();
         $omdurman = Location::query()->where('code', 'omdurman')->firstOrFail();
         $locationCount = Location::count();
-        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Administrator]));
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
         $this->patchJson("/api/v1/admin/city-proposals/{$proposal->id}", [
             'action' => 'map',
@@ -175,11 +175,38 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->assertSame($omdurman->id, $profile->fresh()->location_id);
     }
 
+    public function test_corrected_duplicate_city_name_must_be_mapped_instead_of_created(): void
+    {
+        $this->postJson('/api/v1/auth/register/doctor', $this->registrationPayload(['proposed_city' => 'omdurmaan']))->assertCreated();
+        $profile = DoctorProfile::query()->firstOrFail();
+        $proposal = CityProposal::query()->firstOrFail();
+        $omdurman = Location::query()->where('code', 'omdurman')->firstOrFail();
+        $locationCount = Location::count();
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+        $this->patchJson("/api/v1/admin/city-proposals/{$proposal->id}", [
+            'action' => 'approve',
+            'name_en' => '  OMDURMAN  ',
+        ])->assertUnprocessable()->assertJsonValidationErrors('name_en');
+
+        $this->assertSame($locationCount, Location::count());
+        $this->assertNull($profile->fresh()->location_id);
+        $this->assertSame('pending', $proposal->fresh()->status->value);
+
+        $this->patchJson("/api/v1/admin/city-proposals/{$proposal->id}", [
+            'action' => 'map',
+            'location_id' => $omdurman->id,
+        ])->assertOk();
+
+        $this->assertSame($locationCount, Location::count());
+        $this->assertSame($omdurman->id, $profile->fresh()->location_id);
+    }
+
     public function test_provider_verification_is_blocked_until_city_is_resolved(): void
     {
         $this->postJson('/api/v1/auth/register/doctor', $this->registrationPayload(['proposed_city' => 'Unknown City']))->assertCreated();
         $profile = DoctorProfile::query()->firstOrFail();
-        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Administrator]));
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
         $this->patchJson("/api/v1/admin/providers/{$profile->id}/verification", ['status' => 'verified'])
             ->assertUnprocessable()
@@ -191,7 +218,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
     {
         $this->postJson('/api/v1/auth/register/doctor', $this->registrationPayload(['proposed_city' => 'Invalid City']))->assertCreated();
         $proposal = CityProposal::query()->firstOrFail();
-        $admin = User::factory()->create(['role' => UserRole::Administrator]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
         Sanctum::actingAs($admin);
         $this->patchJson("/api/v1/admin/city-proposals/{$proposal->id}", ['action' => 'reject'])->assertOk();
         $this->assertDatabaseMissing('locations', ['normalized_name' => 'invalid city']);

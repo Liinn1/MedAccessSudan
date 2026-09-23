@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AppointmentServiceType;
 use App\Enums\AppointmentStatus;
 use App\Models\DoctorProfile;
 use Carbon\CarbonImmutable;
@@ -14,17 +15,16 @@ class AvailabilityResolver
      * Resolve bookable slots in the application timezone for an inclusive date range.
      *
      * Modified-day exceptions replace the regular schedule for that day, blocked
-     * exceptions remove overlapping slots, and confirmed appointments always win.
+     * exceptions remove overlapping slots, and confirmed appointments always win
+     * across every consultation type so the doctor cannot be double-booked.
      *
-     * @return array<int, array{date:string,slots:array<int,array{starts_at:string,ends_at:string}>}>
+     * @return array<int, array{date:string,slots:array<int,array{starts_at:string,ends_at:string,consultation_type:string}>}>
      */
-    public function resolve(DoctorProfile $doctor, CarbonImmutable $from, CarbonImmutable $to): array
+    public function resolve(DoctorProfile $doctor, CarbonImmutable $from, CarbonImmutable $to, ?AppointmentServiceType $consultationType = null): array
     {
         if ($to->lt($from) || $from->diffInDays($to) > 31) {
             throw new InvalidArgumentException('Availability range must be between 1 and 31 days.');
         }
-        // Persisted profiles load a constrained working set. Unsaved profiles are
-        // used by unit tests with explicit in-memory relations and must not query DB.
         if ($doctor->exists) {
             $doctor->load([
                 'schedules' => fn ($query) => $query->where('is_active', true)->orderBy('start_time'),
@@ -34,23 +34,35 @@ class AvailabilityResolver
             ]);
         }
 
+        $types = $consultationType ? [$consultationType] : $this->offeredTypes($doctor);
         $now = CarbonImmutable::now(config('app.timezone'));
         $result = [];
         for ($date = $from->startOfDay(); $date->lte($to->startOfDay()); $date = $date->addDay()) {
-            $exceptions = $doctor->exceptions->filter(
-                fn ($item) => $item->exception_date->toDateString() === $date->toDateString()
-            );
-            $windows = $this->windowsForDate($doctor->schedules, $exceptions, $date);
             $slots = [];
-            foreach ($windows as $window) {
-                for ($start = $window['start']; $start->addMinutes($window['duration'])->lte($window['end']); $start = $start->addMinutes($window['duration'])) {
-                    $end = $start->addMinutes($window['duration']);
-                    if ($start->lte($now) || $this->isBlocked($start, $end, $exceptions) || $this->hasAppointment($start, $end, $doctor->appointments)) {
-                        continue;
+            foreach ($types as $type) {
+                $exceptions = $doctor->exceptions->filter(function ($item) use ($date, $type) {
+                    if ($item->exception_date->toDateString() !== $date->toDateString()) {
+                        return false;
                     }
-                    $slots[] = ['starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String()];
+
+                    return $this->exceptionType($item) === $type;
+                });
+                $windows = $this->windowsForDate($this->schedulesForType($doctor->schedules, $type), $exceptions, $date);
+                foreach ($windows as $window) {
+                    for ($start = $window['start']; $start->addMinutes($window['duration'])->lte($window['end']); $start = $start->addMinutes($window['duration'])) {
+                        $end = $start->addMinutes($window['duration']);
+                        if ($start->lte($now) || $this->isBlocked($start, $end, $exceptions) || $this->hasAppointment($start, $end, $doctor->appointments)) {
+                            continue;
+                        }
+                        $slots[] = [
+                            'starts_at' => $start->toIso8601String(),
+                            'ends_at' => $end->toIso8601String(),
+                            'consultation_type' => $type->value,
+                        ];
+                    }
                 }
             }
+            usort($slots, fn (array $left, array $right) => strcmp($left['starts_at'], $right['starts_at']));
             if ($slots !== []) {
                 $result[] = ['date' => $date->toDateString(), 'slots' => $slots];
             }
@@ -59,9 +71,39 @@ class AvailabilityResolver
         return $result;
     }
 
+    /** @return list<AppointmentServiceType> */
+    private function offeredTypes(DoctorProfile $doctor): array
+    {
+        $types = [];
+        if ($doctor->offers(AppointmentServiceType::Clinic)) {
+            $types[] = AppointmentServiceType::Clinic;
+        }
+        if ($doctor->offers(AppointmentServiceType::HomeVisit)) {
+            $types[] = AppointmentServiceType::HomeVisit;
+        }
+
+        return $types !== [] ? $types : [AppointmentServiceType::Clinic];
+    }
+
+    private function schedulesForType(Collection $schedules, AppointmentServiceType $type): Collection
+    {
+        return $schedules->filter(function ($period) use ($type) {
+            $periodType = $period->consultation_type ?? AppointmentServiceType::Clinic;
+
+            return ($periodType instanceof AppointmentServiceType ? $periodType : AppointmentServiceType::from((string) $periodType)) === $type;
+        });
+    }
+
+    private function exceptionType($exception): AppointmentServiceType
+    {
+        $type = $exception->consultation_type ?? AppointmentServiceType::Clinic;
+
+        return $type instanceof AppointmentServiceType ? $type : AppointmentServiceType::from((string) $type);
+    }
+
     private function windowsForDate(Collection $schedules, Collection $exceptions, CarbonImmutable $date): array
     {
-        if ($exceptions->contains('type', 'unavailable')) {
+        if ($exceptions->contains(fn ($item) => $item->type === 'unavailable')) {
             return [];
         }
         $modified = $exceptions->where('type', 'modified');

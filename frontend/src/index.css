@@ -55,6 +55,37 @@
   animation: service-card-enter 360ms ease-out both;
 }
 
+.dashboard-card-enter {
+  animation: service-card-enter 320ms ease-out both;
+}
+
+@keyframes dashboard-drawer-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dashboard-drawer-enter {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes dashboard-drawer-enter-rtl {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.dashboard-drawer-overlay {
+  animation: dashboard-drawer-overlay-enter 180ms ease-out both;
+}
+
+.dashboard-drawer-enter {
+  animation: dashboard-drawer-enter 220ms ease-out both;
+}
+
+[dir="rtl"] .dashboard-drawer-enter {
+  animation-name: dashboard-drawer-enter-rtl;
+}
+
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -66,6 +97,158 @@
 
 .feedback-enter {
   animation: page-enter 220ms ease-out both;
+}
+
+.auth-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(20 184 166 / 0.10), transparent 30rem),
+    linear-gradient(180deg, #f0fdfa 0%, #f9fafb 52%, #ffffff 100%);
+}
+
+.auth-page--login {
+  min-height: calc(100dvh - 4.75rem);
+  display: flex;
+  align-items: center;
+  padding-block: clamp(1rem, 2.5vh, 2rem);
+}
+
+.auth-page--registration {
+  padding-block: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.auth-shell {
+  border-radius: 2rem;
+  border-end-start-radius: clamp(3.5rem, 7vw, 6.5rem);
+}
+.auth-visual {
+  animation: auth-visual-enter 420ms ease-out both;
+}
+.auth-visual--login {
+  min-height: clamp(31rem, calc(100dvh - 9rem), 36rem);
+}
+.auth-shell--registration {
+  align-items: stretch;
+}
+.auth-visual--registration {
+  min-height: 39rem;
+}
+.auth-shell--registration .auth-visual-copy {
+  position: sticky;
+  inset-block-start: 7rem;
+}
+.auth-shell--registration .auth-visual-portrait {
+  position: sticky;
+  inset-block-start: calc(100dvh - 31rem);
+  margin-block-start: 7rem;
+  min-height: 27rem;
+}
+.auth-visual-portrait {
+  height: min(78%, 34rem);
+  padding-inline: clamp(1rem, 4vw, 3rem);
+}
+.auth-visual-image { animation: auth-portrait-enter 520ms 90ms ease-out both; }
+.page-background-shape {
+  position: absolute;
+  pointer-events: none;
+  animation: auth-shape-enter 520ms ease-out both;
+}
+.page-background-shape--halo {
+  inset-block-start: -9rem;
+  inset-inline-start: -7rem;
+  width: clamp(18rem, 34vw, 31rem);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: rgb(153 246 228 / 0.28);
+}
+.page-background-shape--orb {
+  inset-block-end: -8rem;
+  inset-inline-end: -5rem;
+  width: clamp(14rem, 25vw, 23rem);
+  aspect-ratio: 1.25;
+  border-radius: 48% 52% 64% 36% / 45% 40% 60% 55%;
+  background: rgb(13 148 136 / 0.10);
+}
+.page-background-shape--arc {
+  inset-block-start: 23%;
+  inset-inline-end: clamp(-7rem, -5vw, -3rem);
+  width: clamp(9rem, 17vw, 15rem);
+  aspect-ratio: 1;
+  border: clamp(1.5rem, 3vw, 2.5rem) solid rgb(7 59 58 / 0.06);
+  border-radius: 9999px;
+}
+.auth-form-enter,
+.auth-form-content { animation: page-enter 360ms ease-out both; }
+.auth-form-content { animation-delay: 70ms; }
+.auth-input:hover { border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); }
+.auth-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgb(255 255 255 / 0.45);
+  border-top-color: #fff;
+  border-radius: 9999px;
+  animation: auth-spinner 650ms linear infinite;
+}
+
+@keyframes auth-spinner { to { transform: rotate(360deg); } }
+
+.medaccess-loader-pulse {
+  height: auto;
+  overflow: visible;
+}
+
+.medaccess-loader-track,
+.medaccess-loader-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.medaccess-loader-track {
+  stroke: rgb(13 148 136 / 0.14);
+}
+
+.medaccess-loader-line {
+  stroke-dasharray: 70 210;
+  animation: medaccess-pulse-line 1.45s ease-in-out infinite;
+  filter: drop-shadow(0 2px 3px rgb(13 148 136 / 0.18));
+}
+
+.medaccess-loader-label {
+  animation: medaccess-loader-fade 1.45s ease-in-out infinite;
+}
+
+@keyframes medaccess-pulse-line {
+  from { stroke-dashoffset: 140; }
+  to { stroke-dashoffset: -140; }
+}
+
+@keyframes medaccess-loader-fade {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 1; }
+}
+
+@keyframes auth-visual-enter {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+[dir="rtl"] .auth-visual { animation-name: auth-visual-enter-rtl; }
+
+@keyframes auth-visual-enter-rtl {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes auth-portrait-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes auth-shape-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .confirmation-overlay {
@@ -88,8 +271,26 @@
 
 @media (prefers-reduced-motion: reduce) {
   .service-card-enter,
+  .dashboard-card-enter,
+  .dashboard-drawer-overlay,
+  .dashboard-drawer-enter,
   .page-enter,
   .feedback-enter {
+    animation: none;
+  }
+
+  .auth-visual,
+  .auth-visual-image,
+  .page-background-shape,
+  .auth-form-enter,
+  .auth-form-content {
+    animation: none;
+  }
+
+  .auth-spinner { animation: none; }
+
+  .medaccess-loader-line,
+  .medaccess-loader-label {
     animation: none;
   }
 
@@ -97,6 +298,44 @@
   .confirmation-dialog {
     animation: none;
   }
+}
+
+@media (max-width: 1023px) {
+  .auth-shell {
+    border-radius: 1.5rem;
+    border-end-start-radius: clamp(2.75rem, 10vw, 5rem);
+  }
+  .auth-visual-portrait {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    width: 58%;
+    height: 100%;
+    padding-inline: clamp(0.5rem, 2vw, 1.5rem);
+  }
+  .auth-visual-copy { max-width: 48%; }
+  .page-background-shape--arc { display: none; }
+  .auth-page--login {
+    min-height: auto;
+    display: block;
+  }
+  .auth-visual--login,
+  .auth-visual--registration {
+    min-height: 15rem;
+  }
+  .auth-shell--registration .auth-visual-copy,
+  .auth-shell--registration .auth-visual-portrait {
+    position: relative;
+    inset-block-start: auto;
+    margin-block-start: 0;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .auth-visual-copy { max-width: 58%; }
+  .auth-visual-copy p:last-child { display: none; }
+  .auth-visual-portrait { width: 52%; }
+  .page-background-shape--orb { opacity: 0.65; }
 }
 
 .public-reveal {

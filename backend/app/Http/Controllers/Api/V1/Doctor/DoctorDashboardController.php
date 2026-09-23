@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AuthenticatedUserResource;
 use App\Models\DoctorProfile;
 use App\Services\AvailabilityResolver;
+use App\Services\DoctorDashboardInsights;
 use App\Services\ProfilePhotoService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,10 @@ use Illuminate\Http\Request;
 
 class DoctorDashboardController extends Controller
 {
-    public function __construct(private readonly AvailabilityResolver $availabilityResolver) {}
+    public function __construct(
+        private readonly AvailabilityResolver $availabilityResolver,
+        private readonly DoctorDashboardInsights $insights,
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -22,13 +26,12 @@ class DoctorDashboardController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
 
+        $insights = $profile ? $this->insights->build($profile) : null;
         $availableSlotsCount = 0;
-
-        if ($profile && DoctorProfile::query()->bookable()->whereKey($profile->id)->exists()) {
+        if ($profile) {
             $from = CarbonImmutable::today(config('app.timezone'));
-            $availableSlotsCount = collect(
-                $this->availabilityResolver->resolve($profile, $from, $from->addDays(13))
-            )->sum(fn (array $date): int => count($date['slots']));
+            $availableSlotsCount = collect($this->availabilityResolver->resolve($profile, $from, $from->addDays(13)))
+                ->sum(fn (array $date): int => count($date['slots']));
         }
 
         return response()->json([
@@ -40,12 +43,16 @@ class DoctorDashboardController extends Controller
                     'biography' => $profile->biography,
                     'biography_language' => $profile->biography_language,
                     'verification_status' => $profile->verification_status,
+                    'offers_clinic_visits' => (bool) $profile->offers_clinic_visits,
+                    'offers_home_visits' => (bool) $profile->offers_home_visits,
                     'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path),
                     'specialization' => $profile->specialization?->only(['code', 'name_en', 'name_ar']),
                     'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                     'available_slots_count' => $availableSlotsCount,
                     'has_weekly_availability' => $profile->schedules()->where('is_active', true)->exists(),
+                    'next_available' => $insights['next_available'] ?? [],
                 ] : null,
+                'insights' => $insights,
             ],
         ]);
     }

@@ -12,6 +12,8 @@ Read this document completely before generating, modifying, or deleting any proj
 
 Do not invent functionality outside this specification unless explicitly requested.
 
+Native browser dialogs (`window.alert`, `window.confirm`, `window.prompt`, and their global equivalents) must never be used for normal MedAccess user experience. Important decisions must use the shared MedAccess confirmation dialog; routine success feedback should remain contextual, and form/action failures should remain inline.
+
 The first development phase is a **responsive web application**. The architecture must be designed so that a mobile application can later consume the same Laravel API without requiring the backend to be rebuilt.
 
 ---

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Doctor;
 
+use App\Enums\AppointmentServiceType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class ReplaceScheduleRequest extends FormRequest
@@ -15,6 +17,7 @@ class ReplaceScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'consultation_type' => ['required', Rule::enum(AppointmentServiceType::class)],
             'periods' => ['present', 'array', 'max:21'],
             'periods.*.day_of_week' => ['required', 'integer', 'between:0,6'],
             'periods.*.start_time' => ['required', 'date_format:H:i'],

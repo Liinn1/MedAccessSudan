@@ -1,97 +1,74 @@
-import { useCallback, useEffect, useState } from 'react'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { BrandMark } from '../../components/branding/BrandMark'
+import { CityRequestReviewDialog } from '../../components/admin/CityRequestReviewDialog'
+import { ConfirmationDialog } from '../../components/feedback/ConfirmationDialog'
+import { LoadingState } from '../../components/feedback/LoadingState'
 import { LanguageToggle } from '../../components/LanguageToggle'
 import { ApiError } from '../../services/apiClient'
-import { getAdminLocations, getCityProposals, getProviderApplications, resolveCityProposal, updateLocationStatus, updateProviderVerification, type AdminLocation, type CityProposal, type ProviderApplication } from '../../services/adminService'
-import { getCurrentUser, logout } from '../../services/authService'
+import { createAdminAccount, getAdminAccounts, getAdminAppointments, getAdminLocations, getAdminMetrics, getAdminReviews, getAdminUsers, getCityProposals, getProviderApplications, resolveCityProposal, updateAdminAccount, updateLocationStatus, updateProviderVerification, type AdminAccount, type AdminLocation, type AdminMetrics, type CityProposal, type MonitoredAppointment, type MonitoredReview, type MonitoredUser, type ProviderApplication } from '../../services/adminService'
+import { getCurrentUser, logout, type AuthenticatedUser } from '../../services/authService'
+
+type Section = 'dashboard' | 'providers' | 'cities' | 'users' | 'appointments' | 'reviews' | 'admins'
+type PendingAction = { title: string; description: string; run: () => Promise<unknown>; danger?: boolean } | null
+const sections: Section[] = ['dashboard', 'providers', 'cities', 'users', 'appointments', 'reviews', 'admins']
 
 export function AdminDashboardPage() {
-  const { i18n, t } = useTranslation()
-  const navigate = useNavigate()
-  const [proposals, setProposals] = useState<CityProposal[]>([])
-  const [providers, setProviders] = useState<ProviderApplication[]>([])
-  const [locations, setLocations] = useState<AdminLocation[]>([])
-  const [busy, setBusy] = useState('')
-  const [message, setMessage] = useState('')
-
-  const load = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const [cityData, providerData, locationData] = await Promise.all([getCityProposals(signal), getProviderApplications(signal), getAdminLocations(signal)])
-      setProposals(cityData.proposals)
-      setLocations(locationData)
-      setProviders(providerData)
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('admin.errors.load')
-    }
-  }, [])
-
+  const { i18n, t } = useTranslation(); const navigate = useNavigate()
+  const [current, setCurrent] = useState<AuthenticatedUser | null>(null); const [section, setSection] = useState<Section>('dashboard'); const [drawer, setDrawer] = useState(false)
+  const [metrics, setMetrics] = useState<AdminMetrics | null>(null); const [providers, setProviders] = useState<ProviderApplication[]>([]); const [proposals, setProposals] = useState<CityProposal[]>([]); const [locations, setLocations] = useState<AdminLocation[]>([])
+  const [users, setUsers] = useState<MonitoredUser[]>([]); const [appointments, setAppointments] = useState<MonitoredAppointment[]>([]); const [reviews, setReviews] = useState<MonitoredReview[]>([]); const [admins, setAdmins] = useState<AdminAccount[]>([])
+  const [cityReview, setCityReview] = useState<CityProposal | null>(null); const [cityBusy, setCityBusy] = useState(false); const [cityError, setCityError] = useState('')
+  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated'>('checking'); const [loading, setLoading] = useState(true); const [message, setMessage] = useState(''); const [pending, setPending] = useState<PendingAction>(null); const [actionBusy, setActionBusy] = useState(false); const [actionError, setActionError] = useState('')
+  const load = useCallback(async (user: AuthenticatedUser, signal?: AbortSignal) => { setLoading(true); try { const data = await Promise.all([getAdminMetrics(signal), getProviderApplications(signal), getCityProposals(signal), getAdminLocations(signal), getAdminUsers(signal), getAdminAppointments(signal), getAdminReviews(signal)]); setMetrics(data[0]); setProviders(data[1]); setProposals(data[2].proposals); setLocations(data[3]); setUsers(data[4]); setAppointments(data[5]); setReviews(data[6]); if (user.role === 'super_admin') setAdmins(await getAdminAccounts(signal)) } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('admin.errors.load') } finally { setLoading(false) } }, [])
   useEffect(() => {
     const controller = new AbortController()
+
     getCurrentUser(controller.signal)
       .then((user) => {
-        if (user.role !== 'administrator') {
-          navigate('/login', { replace: true })
-          return null
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+          navigate('/admin/login', { replace: true })
+          return
         }
 
-        return load(controller.signal)
+        setCurrent(user)
+        setAuthStatus('authenticated')
+        return load(user, controller.signal)
       })
       .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('admin.errors.load')
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        navigate('/admin/login', { replace: true })
       })
 
     return () => controller.abort()
   }, [load, navigate])
-  const localized = (location: AdminLocation | ProviderApplication['specialization']) => i18n.language.startsWith('ar') ? location.name_ar : location.name_en
-
-  async function reviewCity(proposal: CityProposal, action: 'approve' | 'map' | 'reject') {
-    const name = (document.getElementById(`city-name-${proposal.id}`) as HTMLInputElement | null)?.value.trim()
-    const locationId = Number((document.getElementById(`city-map-${proposal.id}`) as HTMLSelectElement | null)?.value)
-    setBusy(`city-${proposal.id}`); setMessage('')
-    try {
-      await resolveCityProposal(proposal.id, { action, ...(action === 'approve' ? { name_en: name } : {}), ...(action === 'map' ? { location_id: locationId } : {}) })
-      setMessage('admin.messages.cityUpdated'); await load()
-    } catch (error) {
-      setMessage(error instanceof ApiError && error.status === 422 ? 'admin.errors.validation' : 'admin.errors.action')
-    } finally { setBusy('') }
-  }
-
-  async function reviewProvider(provider: ProviderApplication, status: ProviderApplication['verification_status']) {
-    setBusy(`provider-${provider.id}`); setMessage('')
-    try { await updateProviderVerification(provider.id, status); setMessage('admin.messages.providerUpdated'); await load() }
-    catch (error) { setMessage(error instanceof ApiError && error.status === 422 ? 'admin.errors.cityUnresolved' : 'admin.errors.action') }
-    finally { setBusy('') }
-  }
-
-  async function toggleLocation(location: AdminLocation) {
-    setBusy(`location-${location.id}`); setMessage('')
-    try { await updateLocationStatus(location.id, !location.is_active); setMessage('admin.messages.cityStatusUpdated'); await load() }
-    catch { setMessage('admin.errors.action') }
-    finally { setBusy('') }
-  }
-
-  return <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-text-primary)]">
-    <header className="border-b border-[var(--color-border)] bg-white px-5 py-3"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4"><BrandMark compact /><div className="flex items-center gap-3"><LanguageToggle /><button className="rounded-full border border-[var(--color-border)] px-4 py-2 font-semibold hover:border-[var(--color-primary)]" onClick={async () => { await logout(); navigate('/login') }}>{t('admin.logout')}</button></div></div></header>
-    <main className="mx-auto max-w-7xl px-5 py-8">
-      <p className="font-bold text-[var(--color-primary)]">{t('admin.eyebrow')}</p><h1 className="mt-1 text-3xl font-extrabold">{t('admin.title')}</h1>
-      <p aria-live="polite" className="mt-3 min-h-6 text-sm text-[var(--color-text-secondary)]">{message ? t(message) : ''}</p>
-      <section className="mt-5"><h2 className="text-2xl font-bold">{t('admin.cities.title')}</h2><div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {proposals.length === 0 && <p className="rounded-2xl border border-[var(--color-border)] bg-white p-5">{t('admin.cities.empty')}</p>}
-        {proposals.map((proposal) => <article className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm" key={proposal.id}>
-          <p className="text-sm text-[var(--color-text-secondary)]">{t('admin.cities.provider')}: {proposal.doctor.name}</p><h3 className="mt-1 text-xl font-bold">{proposal.proposed_name}</h3>
-          <label className="mt-4 block font-semibold" htmlFor={`city-name-${proposal.id}`}>{t('admin.cities.correctedName')}</label><input className="mt-1 w-full rounded-xl border border-[var(--color-border)] px-3 py-2 focus:border-[var(--color-primary)] focus:outline-none" defaultValue={proposal.proposed_name} id={`city-name-${proposal.id}`} />
-          <label className="mt-3 block font-semibold" htmlFor={`city-map-${proposal.id}`}>{t('admin.cities.existingMatch')}</label><select className="mt-1 w-full rounded-xl border border-[var(--color-border)] px-3 py-2" defaultValue={proposal.likely_matches[0]?.id ?? ''} id={`city-map-${proposal.id}`}><option value="">{t('admin.cities.chooseExisting')}</option>{locations.filter((location) => location.is_active).map((location) => <option key={location.id} value={location.id}>{localized(location)}</option>)}</select>
-          {proposal.likely_matches.length > 0 && <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{t('admin.cities.likely')}: {proposal.likely_matches.map(localized).join(', ')}</p>}
-          <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-full bg-[var(--color-primary)] px-4 py-2 font-bold text-white disabled:opacity-50" disabled={busy === `city-${proposal.id}`} onClick={() => reviewCity(proposal, 'approve')}>{t('admin.actions.approveNew')}</button><button className="rounded-full border border-[var(--color-primary)] px-4 py-2 font-bold text-[var(--color-primary)] disabled:opacity-50" disabled={busy === `city-${proposal.id}`} onClick={() => reviewCity(proposal, 'map')}>{t('admin.actions.map')}</button><button className="rounded-full border border-red-200 px-4 py-2 font-bold text-red-700 disabled:opacity-50" disabled={busy === `city-${proposal.id}`} onClick={() => reviewCity(proposal, 'reject')}>{t('admin.actions.reject')}</button></div>
-        </article>)}
-      </div></section>
-      <section className="mt-10"><h2 className="text-2xl font-bold">{t('admin.locations.title')}</h2><div className="mt-4 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">{locations.map((location) => <div className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4 last:border-b-0" key={location.id}><div><p className="font-bold">{localized(location)}</p><p className="text-sm text-[var(--color-text-secondary)]">{location.code}</p></div><button className={`rounded-full px-4 py-2 font-bold ${location.is_active ? 'border border-amber-200 text-amber-700' : 'bg-[var(--color-primary)] text-white'}`} disabled={busy === `location-${location.id}`} onClick={() => toggleLocation(location)}>{t(location.is_active ? 'admin.actions.deactivate' : 'admin.actions.activate')}</button></div>)}</div></section>
-      <section className="mt-10"><h2 className="text-2xl font-bold">{t('admin.providers.title')}</h2><div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {providers.length === 0 && <p className="rounded-2xl border border-[var(--color-border)] bg-white p-5">{t('admin.providers.empty')}</p>}
-        {providers.map((provider) => <article className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm" key={provider.id}><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-bold">{provider.user.name}</h3><p className="text-sm text-[var(--color-text-secondary)]">{provider.user.email}</p></div><span className="rounded-full bg-[var(--color-primary-surface)] px-3 py-1 text-sm font-bold text-[var(--color-primary)]">{t(`admin.statuses.${provider.verification_status}`)}</span></div><dl className="mt-4 grid gap-2 text-sm"><div><dt className="font-bold">{t('admin.providers.specialty')}</dt><dd>{localized(provider.specialization)}</dd></div><div><dt className="font-bold">{t('admin.providers.city')}</dt><dd>{provider.location ? localized(provider.location) : provider.city_proposal?.proposed_name ?? t('admin.providers.unresolved')}</dd></div></dl><div className="mt-4 flex flex-wrap gap-2"><button className="rounded-full bg-[var(--color-primary)] px-4 py-2 font-bold text-white disabled:opacity-50" disabled={busy === `provider-${provider.id}`} onClick={() => reviewProvider(provider, 'verified')}>{t('admin.actions.verify')}</button><button className="rounded-full border border-red-200 px-4 py-2 font-bold text-red-700 disabled:opacity-50" disabled={busy === `provider-${provider.id}`} onClick={() => reviewProvider(provider, 'rejected')}>{t('admin.actions.reject')}</button><button className="rounded-full border border-amber-200 px-4 py-2 font-bold text-amber-700 disabled:opacity-50" disabled={busy === `provider-${provider.id}`} onClick={() => reviewProvider(provider, 'suspended')}>{t('admin.actions.suspend')}</button></div></article>)}
-      </div></section>
-    </main>
-  </div>
+  const localized = (item: { name_en: string; name_ar: string }) => i18n.language.startsWith('ar') ? item.name_ar : item.name_en
+  const ask = (action: NonNullable<PendingAction>) => { setActionError(''); setPending(action) }
+  async function confirmAction() { if (!pending || !current) return; setActionBusy(true); try { await pending.run(); setPending(null); setMessage('admin.messages.providerUpdated'); await load(current) } catch (error) { setActionError(error instanceof ApiError && error.status === 422 ? t('admin.errors.validation') : t('admin.errors.action')) } finally { setActionBusy(false) } }
+  async function resolveCity(input: { action: 'approve'; name_en: string } | { action: 'map'; location_id: number } | { action: 'reject' }) { if (!cityReview || !current) return; setCityBusy(true); setCityError(''); try { await resolveCityProposal(cityReview.id, input); setMessage(input.action === 'approve' ? 'admin.cityReview.approved' : input.action === 'map' ? 'admin.cityReview.mapped' : 'admin.cityReview.rejected'); setCityReview(null); await load(current) } catch (error) { setCityError(error instanceof ApiError && error.status === 422 ? t('admin.cityReview.duplicateError') : t('admin.errors.action')) } finally { setCityBusy(false) } }
+  if (authStatus === 'checking') return <main className="grid min-h-screen place-items-center bg-[var(--color-background)]"><p aria-live="polite" className="rounded-2xl border border-[var(--color-border)] bg-white px-8 py-6 font-semibold text-[var(--color-text-secondary)]">{t('admin.login.checkingSession')}</p></main>
+  const cityDialog = cityReview ? createPortal(<CityRequestReviewDialog busy={cityBusy} error={cityError} locations={locations} onClose={() => { if (!cityBusy) setCityReview(null) }} onResolve={resolveCity} open proposal={cityReview}/>, document.body) : null
+  const nav = <><nav aria-label={t('admin.navigation.label')} className="space-y-1">{sections.filter((item) => item !== 'admins' || current?.role === 'super_admin').map((item) => <button className={`w-full rounded-xl px-4 py-3 text-start font-bold ${section === item ? 'bg-[var(--color-primary)] text-white' : 'text-slate-600 hover:bg-[var(--color-primary-surface)]'}`} key={item} onClick={() => { setSection(item); setDrawer(false) }}>{t(`admin.navigation.${item}`)}</button>)}</nav>{cityDialog}</>
+  return <div className="min-h-screen bg-[var(--color-background)]"><header className="sticky top-0 z-30 border-b bg-white/95 px-4 py-3"><div className="mx-auto flex max-w-[1500px] items-center justify-between"><div className="flex items-center gap-3"><button aria-label={t('admin.navigation.open')} className="rounded-xl border p-2 lg:hidden" onClick={() => setDrawer(true)}>☰</button><BrandMark compact /></div><div className="flex items-center gap-2"><LanguageToggle/><button className="rounded-full border px-4 py-2 font-bold" onClick={async () => { await logout(); navigate('/admin/login') }}>{t('admin.logout')}</button></div></div></header><div className="mx-auto flex max-w-[1500px]"><aside className="hidden w-64 shrink-0 border-e bg-white p-5 lg:block">{nav}</aside>{drawer && <div className="fixed inset-0 z-40 bg-slate-950/45 lg:hidden" onMouseDown={() => setDrawer(false)}><aside className="h-full w-[min(82vw,20rem)] bg-white p-5" onMouseDown={(e) => e.stopPropagation()}><button className="mb-5 rounded-lg border px-3 py-2" onClick={() => setDrawer(false)}>{t('admin.navigation.close')}</button>{nav}</aside></div>}<main className="min-w-0 flex-1 px-4 py-7 sm:px-7"><p className="font-bold text-[var(--color-primary)]">{t('admin.eyebrow')}</p><h1 className="text-3xl font-extrabold">{t(`admin.navigation.${section}`)}</h1><p aria-live="polite" className="mt-2 min-h-6 text-sm text-slate-500">{message ? t(message) : ''}</p>{loading ? <LoadingState message={t('admin.loading')} section /> : <AdminSection {...{ section, metrics, providers, proposals, locations, users, appointments, reviews, admins, localized, t, ask, reviewCity: setCityReview }} />}</main></div><ConfirmationDialog busy={actionBusy} cancelLabel={t('admin.actions.cancel')} confirmLabel={t('admin.actions.confirm')} description={pending?.description ?? ''} error={actionError} loadingLabel={t('admin.actions.working')} onCancel={() => setPending(null)} onConfirm={confirmAction} open={Boolean(pending)} title={pending?.title ?? ''} variant={pending?.danger ? 'danger' : 'default'}/></div>
 }
+
+interface AdminSectionProps { section: Section; metrics: AdminMetrics | null; providers: ProviderApplication[]; proposals: CityProposal[]; locations: AdminLocation[]; users: MonitoredUser[]; appointments: MonitoredAppointment[]; reviews: MonitoredReview[]; admins: AdminAccount[]; localized: (item: { name_en: string; name_ar: string }) => string; t: TFunction; ask: (action: NonNullable<PendingAction>) => void; reviewCity: (proposal: CityProposal) => void }
+function AdminSection({ section, metrics, providers, proposals, locations, users, appointments, reviews, admins, localized, t, ask, reviewCity }: AdminSectionProps) {
+  if (section === 'dashboard') return <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{metrics && Object.entries(metrics).map(([key, value]) => <article className="rounded-2xl border bg-white p-5 shadow-sm" key={key}><p className="text-sm font-bold text-slate-500">{t(`admin.metrics.${key}`)}</p><p className="mt-2 text-3xl font-extrabold text-[var(--color-primary)]">{String(value)}</p></article>)}</div>
+  if (section === 'providers') return <div className="mt-6 grid gap-4 xl:grid-cols-2">{providers.length ? providers.map((p: ProviderApplication) => <article className="rounded-2xl border bg-white p-5" key={p.id}><h2 className="text-xl font-bold">{p.user.name}</h2><p className="text-sm text-slate-500">{p.user.email}</p><p className="mt-3">{localized(p.specialization)} · {p.location ? localized(p.location) : p.city_proposal?.proposed_name}</p><div className="mt-4 flex flex-wrap gap-2">{(['verified','rejected','suspended'] as const).map((status) => { const label = status === 'verified' ? 'verify' : status === 'rejected' ? 'reject' : 'suspend'; return <button className="rounded-full border border-teal-200 px-4 py-2 font-bold text-[var(--color-primary)]" key={status} onClick={() => ask({ title: t(`admin.actions.${label}`), description: t('admin.confirm.provider'), danger: status !== 'verified', run: () => updateProviderVerification(p.id, status) })}>{t(`admin.actions.${label}`)}</button> })}</div></article>) : <Empty t={t} />}</div>
+  if (section === 'cities') return <div className="mt-6 space-y-4">{proposals.length ? proposals.map((proposal) => <article className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white p-5 shadow-sm" key={proposal.id}><div><span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-800">{t('admin.statuses.pending')}</span><h2 className="mt-3 text-xl font-bold">{proposal.proposed_name}</h2><p className="text-sm text-slate-500">{t('admin.cities.provider')}: {proposal.doctor.name}</p></div><button className="rounded-full bg-[var(--color-primary)] px-5 py-3 font-bold text-white" onClick={() => reviewCity(proposal)}>{t('admin.cityReview.open')}</button></article>) : <Empty t={t}/>}<h2 className="pt-4 text-xl font-bold">{t('admin.locations.title')}</h2>{locations.map((location) => <div className="flex items-center justify-between rounded-2xl border bg-white p-4" key={location.id}><span>{localized(location)}</span><Action onClick={() => ask({title:t(location.is_active?'admin.actions.deactivate':'admin.actions.activate'),description:t('admin.confirm.location'),danger:location.is_active,run:() => updateLocationStatus(location.id,!location.is_active)})}>{t(location.is_active?'admin.actions.deactivate':'admin.actions.activate')}</Action></div>)}</div>
+  if (section === 'users') return <UserMonitoring users={users} t={t}/>
+  if (section === 'appointments') return <AppointmentMonitoring appointments={appointments} t={t}/>
+  if (section === 'reviews') return <DataTable headers={['reference','patient','doctor','rating','comment']} rows={reviews.map((r: MonitoredReview) => [`#${r.appointment_id}`,r.patient.name,r.doctor_profile.user.name,`${r.rating}/5`,r.comment||'—'])} t={t}/>
+  return <AdminManagement admins={admins} t={t} ask={ask}/>
+}
+function Action({ children, onClick }: { children: React.ReactNode; onClick: () => void }) { return <button className="rounded-full border px-4 py-2 font-bold hover:border-[var(--color-primary)]" onClick={onClick}>{children}</button> }
+function DataTable({ headers, rows, t }: { headers: string[]; rows: string[][]; t: any }) { return <div className="mt-6 overflow-x-auto rounded-2xl border bg-white"><table className="w-full min-w-[720px]"><thead className="bg-slate-50"><tr>{headers.map((h) => <th className="px-4 py-3 text-start text-sm" key={h}>{t(`admin.table.${h}`)}</th>)}</tr></thead><tbody>{rows.map((row,i) => <tr className="border-t" key={i}>{row.map((cell,j) => <td className="px-4 py-3" key={j}>{cell}</td>)}</tr>)}</tbody></table>{!rows.length && <Empty t={t}/>}</div> }
+function Empty({ t }: { t: any }) { return <p className="rounded-2xl border bg-white p-6 text-slate-500">{t('admin.empty')}</p> }
+function UserMonitoring({ users, t }: { users: MonitoredUser[]; t: TFunction }) { const [role,setRole]=useState(''); const [status,setStatus]=useState(''); const filtered=users.filter((u)=>!role||u.role===role).filter((u)=>!status||(status==='active')===u.is_active); return <><div className="mt-6 flex flex-wrap gap-3"><select aria-label={t('admin.table.role')} className="rounded-xl border bg-white px-3 py-2" onChange={(e)=>setRole(e.target.value)}><option value="">{t('admin.filters.allRoles')}</option>{['patient','doctor','admin','super_admin'].map((r)=><option key={r} value={r}>{t(`roles.${r}`)}</option>)}</select><select aria-label={t('admin.table.status')} className="rounded-xl border bg-white px-3 py-2" onChange={(e)=>setStatus(e.target.value)}><option value="">{t('admin.filters.allStatuses')}</option><option value="active">{t('admin.active')}</option><option value="inactive">{t('admin.inactive')}</option></select></div><DataTable headers={['name','email','role','status','created']} rows={filtered.map((u)=>[u.name,u.email,t(`roles.${u.role}`),t(u.is_active?'admin.active':'admin.inactive'),new Date(u.created_at).toLocaleDateString()])} t={t}/></> }
+function AppointmentMonitoring({ appointments, t }: { appointments: MonitoredAppointment[]; t: TFunction }) { const [status,setStatus]=useState(''); const [query,setQuery]=useState(''); const [date,setDate]=useState(''); const filtered=appointments.filter((a)=>!status||a.status===status).filter((a)=>!date||a.starts_at.startsWith(date)).filter((a)=>!query||`${a.patient.name} ${a.doctor_profile.user.name}`.toLowerCase().includes(query.toLowerCase())); return <><div className="mt-6 flex flex-wrap gap-3"><select aria-label={t('admin.table.status')} className="rounded-xl border bg-white px-3 py-2" onChange={(e)=>setStatus(e.target.value)}><option value="">{t('admin.filters.allStatuses')}</option>{['confirmed','completed','cancelled'].map((s)=><option key={s} value={s}>{t(`admin.statuses.${s}`)}</option>)}</select><input aria-label={t('admin.filters.searchPeople')} className="rounded-xl border bg-white px-3 py-2" onChange={(e)=>setQuery(e.target.value)} placeholder={t('admin.filters.searchPeople')}/><input aria-label={t('admin.table.date')} className="rounded-xl border bg-white px-3 py-2" onChange={(e)=>setDate(e.target.value)} type="date"/></div><DataTable headers={['reference','patient','doctor','status','date']} rows={filtered.map((a)=>[`#${a.id}`,a.patient.name,a.doctor_profile.user.name,a.status,new Date(a.starts_at).toLocaleString()])} t={t}/></> }
+function AdminManagement({ admins, t, ask }: { admins: AdminAccount[]; t: any; ask: (a: NonNullable<PendingAction>) => void }) { const [form,setForm]=useState({name:'',email:'',password:'',password_confirmation:'',role:'admin' as 'admin'|'super_admin'}); function submit(e:FormEvent){e.preventDefault();ask({title:t('admin.management.create'),description:t('admin.confirm.adminCreate'),run:()=>createAdminAccount(form)})} return <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]"><div className="space-y-3">{admins.map((a)=><article className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white p-5" key={a.id}><div><h2 className="font-bold">{a.name}</h2><p className="text-sm text-slate-500">{a.email} · {t(`roles.${a.role}`)}</p></div><Action onClick={()=>ask({title:t(a.is_active?'admin.actions.deactivate':'admin.actions.activate'),description:t('admin.confirm.adminAccess'),danger:a.is_active,run:()=>updateAdminAccount(a.id,{is_active:!a.is_active})})}>{t(a.is_active?'admin.actions.deactivate':'admin.actions.activate')}</Action></article>)}</div><form className="h-fit space-y-3 rounded-2xl border bg-white p-5" onSubmit={submit}><h2 className="text-xl font-bold">{t('admin.management.create')}</h2>{(['name','email','password','password_confirmation'] as const).map((key)=><input className="w-full rounded-xl border px-3 py-2" key={key} onChange={(e)=>setForm({...form,[key]:e.target.value})} placeholder={t(`admin.management.${key}`)} required type={key.includes('password')?'password':'text'} value={form[key]}/>)}<select className="w-full rounded-xl border px-3 py-2" onChange={(e)=>setForm({...form,role:e.target.value as 'admin'|'super_admin'})} value={form.role}><option value="admin">{t('roles.admin')}</option><option value="super_admin">{t('roles.super_admin')}</option></select><button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-3 font-bold text-white">{t('admin.management.create')}</button></form></div> }

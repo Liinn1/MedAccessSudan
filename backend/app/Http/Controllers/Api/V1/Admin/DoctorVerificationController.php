@@ -8,9 +8,11 @@ use App\Http\Requests\Admin\UpdateDoctorVerificationRequest;
 use App\Models\DoctorProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use App\Services\AdminAuditService;
 
 class DoctorVerificationController extends Controller
 {
+    public function __construct(private readonly AdminAuditService $audit) {}
     public function index(): JsonResponse
     {
         $profiles = DoctorProfile::query()
@@ -46,6 +48,7 @@ class DoctorVerificationController extends Controller
         }
 
         $doctor->update(['verification_status' => $status->value]);
+        $this->audit->record($request->user(), 'provider.verification_updated', $doctor, ['status' => $status->value]);
 
         return response()->json(['data' => ['provider' => $doctor->fresh(['user', 'specialization', 'location', 'cityProposal'])], 'message' => 'Provider verification status updated.']);
     }

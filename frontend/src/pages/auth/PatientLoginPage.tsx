@@ -1,15 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { BrandMark } from '../../components/branding/BrandMark'
+import { AuthShell } from '../../components/auth/AuthShell'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
+import { LoadingState } from '../../components/feedback/LoadingState'
 import { InputField } from '../../components/forms/InputField'
 import { EyeIcon, LockIcon, MailIcon } from '../../components/icons/AuthIcons'
-import { ApiError } from '../../services/apiClient'
-import { getCurrentUser, login, type AuthenticatedUser } from '../../services/authService'
-import { ADMIN_DASHBOARD_ROUTE, DOCTOR_DASHBOARD_ROUTE, getSafeRedirect } from '../../utils/navigation'
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { useSignUpModal } from '../../contexts/signUpModal'
+import { ApiError } from '../../services/apiClient'
+import { getCurrentUser, login } from '../../services/authService'
+import { getAuthenticatedDestination } from '../../utils/navigation'
 
 interface LoginFormErrors {
   identifier?: boolean
@@ -30,7 +31,6 @@ export function PatientLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const destination = getSafeRedirect(location.search)
   const [registrationRole] = useState<'patient' | 'doctor' | null>(() => {
     const state = location.state as LoginRouteState | null
     return state?.registrationSuccess && (state.registrationRole === 'patient' || state.registrationRole === 'doctor') ? state.registrationRole : null
@@ -41,7 +41,6 @@ export function PatientLoginPage() {
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [statusMessageKey, setStatusMessageKey] = useState('')
-  const [authenticatedUser, setAuthenticatedUser] = useState<AuthenticatedUser | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCheckingSession, setIsCheckingSession] = useState(true)
 
@@ -55,21 +54,23 @@ export function PatientLoginPage() {
 
     getCurrentUser(requestController.signal)
       .then((user) => {
-        setAuthenticatedUser(user)
-        if (user.role === 'patient') navigate(destination, { replace: true })
-        else if (user.role === 'doctor') navigate(DOCTOR_DASHBOARD_ROUTE, { replace: true })
-        else navigate(ADMIN_DASHBOARD_ROUTE, { replace: true })
+        const destination = getAuthenticatedDestination(user.role, location.search)
+        if (!destination) {
+          setIsCheckingSession(false)
+          return
+        }
+        navigate(destination, { replace: true })
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') return
         if (!(error instanceof ApiError) || error.status !== 401) {
           setStatusMessageKey('auth.login.errors.serviceUnavailable')
         }
+        setIsCheckingSession(false)
       })
-      .finally(() => setIsCheckingSession(false))
 
     return () => requestController.abort()
-  }, [destination, navigate])
+  }, [location.search, navigate])
 
   function validateForm(): LoginFormErrors {
     const nextErrors: LoginFormErrors = {}
@@ -92,14 +93,15 @@ export function PatientLoginPage() {
 
     try {
       const user = await login(identifier.trim(), password)
-      setAuthenticatedUser(user)
       setPassword('')
-      if (user.role === 'patient') navigate(destination, { replace: true })
-      else if (user.role === 'doctor') navigate(DOCTOR_DASHBOARD_ROUTE, { replace: true })
-      else navigate(ADMIN_DASHBOARD_ROUTE, { replace: true })
+      const destination = getAuthenticatedDestination(user.role, location.search)
+      if (!destination) {
+        setStatusMessageKey('auth.login.errors.invalidCredentials')
+        setIsSubmitting(false)
+        return
+      }
+      navigate(destination, { replace: true })
     } catch (error: unknown) {
-      setAuthenticatedUser(null)
-
       if (error instanceof ApiError) {
         const errorCode = getApiErrorCode(error)
         if (errorCode === 'INVALID_CREDENTIALS') {
@@ -114,24 +116,21 @@ export function PatientLoginPage() {
       } else {
         setStatusMessageKey('auth.login.errors.serviceUnavailable')
       }
-    } finally {
       setIsSubmitting(false)
     }
   }
 
+  const isResolvingSession = isCheckingSession || isSubmitting
+
   return (
     <PublicLayout>
-      <div className="bg-gradient-to-b from-[var(--color-primary-surface)]/70 to-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
-      <section className="mx-auto flex w-full max-w-2xl flex-col rounded-3xl border border-[var(--color-border)] bg-white px-5 py-7 shadow-[0_18px_45px_rgb(15_118_110/0.08)] sm:px-10 sm:py-9 lg:px-16">
-        <header className="text-center">
-          <Link aria-label={t('publicHome.header.logoLabel')} className="inline-block rounded-xl focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" to="/"><BrandMark /></Link>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-primary)] [@media(min-height:760px)]:mt-4 [@media(min-height:760px)]:text-4xl">{t('auth.login.brandName')}</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)] [@media(min-height:760px)]:mt-2 [@media(min-height:760px)]:text-base">{t('auth.login.tagline')}</p>
-        </header>
-
-        <form className="mt-6 flex flex-col sm:mt-8" noValidate onSubmit={handleSubmit}>
-          {registrationRole && <div aria-live="polite" className="page-enter mb-5 rounded-2xl border border-emerald-200 bg-[var(--color-success-surface)] px-4 py-3 text-sm font-semibold text-emerald-800" role="status">{t('auth.login.registrationSuccess')}</div>}
-          <div className="space-y-4 [@media(min-height:760px)]:space-y-5">
+      <AuthShell title={t('auth.login.welcomeBack')} subtitle={t('auth.login.patientTagline')}>
+        {isResolvingSession ? (
+          <LoadingState section message={t(isSubmitting ? 'auth.login.submitting' : 'auth.login.checkingSession')} />
+        ) : (
+          <form className="flex flex-col" noValidate onSubmit={handleSubmit}>
+          {registrationRole && <div aria-live="polite" className="page-enter mb-4 rounded-2xl border border-emerald-200 bg-[var(--color-success-surface)] px-4 py-2.5 text-sm font-semibold text-emerald-800" role="status">{t('auth.login.registrationSuccess')}</div>}
+          <div className="space-y-3.5">
             <InputField
               autoComplete="username"
               className="direction-ltr"
@@ -175,29 +174,26 @@ export function PatientLoginPage() {
           </div>
 
           <button
-            className="mt-3 self-end rounded text-sm font-medium text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] rtl:self-start [@media(min-height:760px)]:mt-4"
+            className="mt-2.5 self-end rounded text-sm font-medium text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] rtl:self-start"
             onClick={() => setStatusMessageKey('auth.login.recoveryPending')}
             type="button"
           >
             {t('auth.login.forgotPassword')}
           </button>
 
-          <div className="mt-2 min-h-10" aria-live="polite">
+          <div className="mt-1.5 min-h-8" aria-live="polite">
             {statusMessageKey && (
               <p className="rounded-xl bg-[var(--color-primary-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-                {t(statusMessageKey, authenticatedUser ? {
-                  name: authenticatedUser.name,
-                  role: t(`roles.${authenticatedUser.role}`),
-                } : undefined)}
+                {t(statusMessageKey)}
               </p>
             )}
           </div>
 
-          <div className="pt-3 [@media(min-height:760px)]:pt-6">
-            <PrimaryButton disabled={isSubmitting || isCheckingSession} type="submit">
-              {t(isSubmitting ? 'auth.login.submitting' : isCheckingSession ? 'auth.login.checkingSession' : 'auth.login.submit')}
+          <div className="pt-2.5">
+            <PrimaryButton type="submit">
+              {t('auth.login.submit')}
             </PrimaryButton>
-            <p className="mt-3 text-center text-sm text-[var(--color-text-secondary)] [@media(min-height:760px)]:mt-4 [@media(min-height:760px)]:text-base">
+            <p className="mt-2.5 text-center text-sm text-[var(--color-text-secondary)]">
               {t('auth.login.noAccount')}{' '}
               <button
                 className="font-bold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
@@ -209,9 +205,9 @@ export function PatientLoginPage() {
             </p>
           </div>
         </form>
-        <Link className="mt-3 text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
-      </section>
-      </div>
+        )}
+        <Link className="mt-3.5 block text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
+      </AuthShell>
     </PublicLayout>
   )
 }

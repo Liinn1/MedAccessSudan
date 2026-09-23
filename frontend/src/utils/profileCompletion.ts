@@ -29,7 +29,7 @@ export function doctorProfileCompletion(user: AuthenticatedUser, profile: Doctor
     { key: 'specialty', complete: Boolean(profile.specialization) },
     { key: 'location', complete: Boolean(profile.location) },
     { key: 'professionalBio', complete: present(profile.biography) },
-    { key: 'clinic', complete: present(profile.clinic_name) },
+    { key: 'clinic', complete: !profile.offers_clinic_visits || present(profile.clinic_name) },
     { key: 'weeklyAvailability', complete: profile.has_weekly_availability },
   ])
 }

@@ -36,8 +36,16 @@ export function HomeIcon(props: IconProps) {
   return <svg {...defaults} {...props}><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>
 }
 
+export function GlobeIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>
+}
+
 export function ProfileIcon(props: IconProps) {
   return <svg {...defaults} {...props}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+}
+
+export function SupportIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><path d="M4 13v-2a8 8 0 0 1 16 0v2" /><path d="M4 13a2 2 0 0 1 2-2h1v6H6a2 2 0 0 1-2-2ZM20 13a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2Z" /><path d="M17 17c0 2-1.5 3-4 3h-1" /></svg>
 }
 
 export function SearchIcon(props: IconProps) {

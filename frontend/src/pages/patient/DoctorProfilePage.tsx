@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { CalendarIcon, ChevronIcon, LocationIcon, StethoscopeIcon } from '../../components/icons/PatientHomeIcons'
-import { PublicLayout } from '../../layouts/PublicLayout'
+import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorProfile, type DoctorProfile } from '../../services/doctorService'
 import { buildDoctorBookingPath, buildLoginPath } from '../../utils/navigation'
@@ -56,19 +56,19 @@ export function DoctorProfilePage() {
   }
 
   if (!hasValidDoctorId) {
-    return <PublicLayout><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PublicLayout>
+    return <PatientLayout activeSection="book"><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PatientLayout>
   }
 
   if (state === 'loading') {
-    return <PublicLayout><LoadingState contained message={t('patient.doctorProfile.loading')} /></PublicLayout>
+    return <PatientLayout activeSection="book"><LoadingState contained message={t('patient.doctorProfile.loading')} /></PatientLayout>
   }
 
   if (state === 'error') {
-    return <PublicLayout><ErrorState contained message={t('patient.doctorProfile.error')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1) }} retryLabel={t('patient.home.retry')} /></PublicLayout>
+    return <PatientLayout activeSection="book"><ErrorState contained message={t('patient.doctorProfile.error')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1) }} retryLabel={t('patient.home.retry')} /></PatientLayout>
   }
 
   if (state === 'notFound' || !doctor) {
-    return <PublicLayout><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PublicLayout>
+    return <PatientLayout activeSection="book"><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PatientLayout>
   }
 
   const specialization = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
@@ -84,8 +84,8 @@ export function DoctorProfilePage() {
   }, [])
 
   return (
-    <PublicLayout>
-      <div className="bg-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
+    <PatientLayout activeSection="book">
+      <div className="px-5 py-8 sm:px-8 sm:py-12">
         <article className="mx-auto max-w-5xl">
           <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" onClick={() => navigate(-1)} type="button">
             <ChevronIcon className="size-5 rtl:rotate-180" />
@@ -126,6 +126,6 @@ export function DoctorProfilePage() {
           </section>
         </article>
       </div>
-    </PublicLayout>
+    </PatientLayout>
   )
 }

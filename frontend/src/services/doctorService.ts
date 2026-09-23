@@ -56,13 +56,13 @@ export async function getDoctorFilters(signal?: AbortSignal): Promise<DoctorFilt
   return response.data
 }
 
-export async function searchDoctors(filters: { specialization?: string; location?: string; availability?: 'today' | 'week' }, signal?: AbortSignal): Promise<DoctorSearchResponse> {
+export async function searchDoctors(filters: { specialization?: string; location?: string; availability?: 'today' | 'week'; service_type?: 'clinic' | 'home_visit' }, signal?: AbortSignal): Promise<DoctorSearchResponse> {
   const query = new URLSearchParams(Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])))
   return apiClient.get<DoctorSearchResponse>(`/api/v1/patient/doctors?${query}`, signal)
 }
 
-export async function getDoctorProfile(doctorId: number, signal?: AbortSignal): Promise<DoctorProfile> {
-  const response = await apiClient.get<{ data: DoctorProfile }>(`/api/v1/patient/doctors/${doctorId}`, signal)
+export async function getDoctorProfile(doctorId: number, signal?: AbortSignal, serviceType: 'clinic' | 'home_visit' = 'clinic'): Promise<DoctorProfile> {
+  const response = await apiClient.get<{ data: DoctorProfile }>(`/api/v1/patient/doctors/${doctorId}?service_type=${serviceType}`, signal)
   return response.data
 }
 

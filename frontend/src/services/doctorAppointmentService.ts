@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient'
+import type { HomeVisitDetails } from './patientAppointmentService'
 
 export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled' | 'rejected' | 'pending'
 export type AppointmentServiceType = 'clinic' | 'home_visit'
@@ -10,6 +11,7 @@ export interface DoctorAppointment {
   status: AppointmentStatus
   service_type: AppointmentServiceType
   notes: string | null
+  home_visit: HomeVisitDetails | null
   patient: { id: number; name: string }
 }
 

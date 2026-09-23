@@ -26,6 +26,8 @@ class DoctorProfileResource extends JsonResource
             'reviews' => DoctorReviewResource::collection($this->whenLoaded('reviews')),
             'profile_image_url' => ProfilePhotoService::publicUrl($this->profile_image_path),
             'verification_status' => $this->verification_status,
+            'offers_clinic_visits' => (bool) $this->offers_clinic_visits,
+            'offers_home_visits' => (bool) $this->offers_home_visits,
             'specialization' => $this->specialization->only(['code', 'name_en', 'name_ar']),
             'location' => $this->location->only(['code', 'name_en', 'name_ar']),
             'availability' => collect($this->resolved_availability ?? [])->map(fn ($slot) => [

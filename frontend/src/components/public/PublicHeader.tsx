@@ -69,11 +69,11 @@ export function PublicHeader({ onSignUp }: PublicHeaderProps) {
         <div className="ms-auto hidden items-center gap-2 lg:flex">
           <LanguageToggle />
           {accountActions}
-          {(!user || user.role === 'patient') && <Link className="rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" to={bookingPath}>{t('publicHome.header.book')}</Link>}
+          <Link className="rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" to={bookingPath}>{t('publicHome.header.book')}</Link>
         </div>
         <button aria-expanded={open} className="ms-auto rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-bold text-[var(--color-text-secondary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] lg:hidden" onClick={() => setOpen((value) => !value)} type="button">{t('publicHome.header.menu')}</button>
       </div>
-      {open && <div className="border-t border-[var(--color-border)] bg-white p-4 lg:hidden"><nav className="mx-auto grid max-w-7xl gap-1" aria-label={t('publicHome.header.mobileNavigation')}>{links.map(([to, key]) => <Link className="rounded-xl px-4 py-3 font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-background)]" to={to} key={key} onClick={() => setOpen(false)}>{t(`publicHome.header.${key}`)}</Link>)}<div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-3"><LanguageToggle />{accountActions}{(!user || user.role === 'patient') && <Link className="rounded-full bg-[var(--color-primary)] px-4 py-2 font-bold text-white" onClick={() => setOpen(false)} to={bookingPath}>{t('publicHome.header.book')}</Link>}</div></nav></div>}
+          {open && <div className="border-t border-[var(--color-border)] bg-white p-4 lg:hidden"><nav className="mx-auto grid max-w-7xl gap-1" aria-label={t('publicHome.header.mobileNavigation')}>{links.map(([to, key]) => <Link className="rounded-xl px-4 py-3 font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-background)]" to={to} key={key} onClick={() => setOpen(false)}>{t(`publicHome.header.${key}`)}</Link>)}<div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-3"><LanguageToggle />{accountActions}<Link className="rounded-full bg-[var(--color-primary)] px-4 py-2 font-bold text-white" onClick={() => setOpen(false)} to={bookingPath}>{t('publicHome.header.book')}</Link></div></nav></div>}
     </header>
   )
 }

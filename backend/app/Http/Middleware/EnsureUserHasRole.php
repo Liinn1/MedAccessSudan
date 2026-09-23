@@ -10,11 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserHasRole
 {
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        $expectedRole = UserRole::tryFrom($role);
+        $expectedRoles = array_filter(array_map(UserRole::tryFrom(...), $roles));
+        $user = $request->user();
 
-        if ($expectedRole === null || $request->user()?->role !== $expectedRole) {
+        if (! $user || $user->is_active === false || ! in_array($user->role, $expectedRoles, true)) {
             return new JsonResponse([
                 'message' => 'You are not authorized to access this resource.',
                 'code' => 'FORBIDDEN_ROLE',

@@ -13,16 +13,16 @@ class AppointmentController extends Controller
     {
         $profile = $request->user()->doctorProfile()->firstOrFail();
 
-        return AppointmentResource::collection($profile->appointments()->with('patient:id,name')->orderBy('starts_at')->get());
+        return AppointmentResource::collection($profile->appointments()->with(['patient:id,name', 'homeVisitDetail.location'])->orderBy('starts_at')->get());
     }
 
     public function complete(Request $request, int $appointment): AppointmentResource
     {
         $profile = $request->user()->doctorProfile()->firstOrFail();
-        $record = $profile->appointments()->with('patient:id,name')->findOrFail($appointment);
+        $record = $profile->appointments()->with(['patient:id,name', 'homeVisitDetail.location'])->findOrFail($appointment);
         abort_unless($record->status === AppointmentStatus::Confirmed && $record->ends_at->isPast(), 409, 'Only past confirmed appointments can be completed.');
         $record->update(['status' => AppointmentStatus::Completed]);
 
-        return new AppointmentResource($record->fresh('patient:id,name'));
+        return new AppointmentResource($record->fresh(['patient:id,name', 'homeVisitDetail.location']));
     }
 }

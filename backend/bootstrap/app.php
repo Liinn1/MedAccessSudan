@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum's stateful middleware lets the first-party React SPA use
         // secure session cookies while preserving token support for mobile.
         $middleware->statefulApi();
+        // This is an API-only authentication boundary. Unauthenticated API
+        // requests must return JSON 401 responses, never attempt a redirect to
+        // a server-rendered route that does not exist in this SPA project.
+        $middleware->redirectGuestsTo(
+            fn (Request $request): ?string => $request->is('api/*') ? null : '/login',
+        );
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
         ]);

@@ -134,3 +134,12 @@ and never commit database credentials, application keys, or API tokens.
 - `docs/requirements/` contains the approved functional and non-functional
   requirements.
 - `docs/design/` contains the approved Figma prototype export.
+# Initial MedAccess administrator
+
+There is no public administrator registration. After running migrations, create the first Super Admin from the backend with:
+
+```bash
+php artisan medaccess:create-super-admin --email=admin@example.com --name="MedAccess Administrator"
+```
+
+The command securely prompts for a password (minimum 12 characters), so the password is not committed or placed in frontend code. Subsequent administrator accounts are managed by a signed-in Super Admin at `/admin/dashboard`.

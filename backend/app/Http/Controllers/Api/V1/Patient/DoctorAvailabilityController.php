@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Patient;
 
+use App\Enums\AppointmentServiceType;
 use App\Http\Controllers\Controller;
 use App\Models\DoctorProfile;
 use App\Services\AvailabilityResolver;
@@ -13,11 +14,14 @@ class DoctorAvailabilityController extends Controller
 {
     public function __invoke(Request $request, DoctorProfile $doctor, AvailabilityResolver $resolver): JsonResponse
     {
-        $validated = $request->validate(['from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from']]);
+        $validated = $request->validate(['from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'], 'service_type' => ['nullable', 'in:clinic,home_visit']]);
         $from = CarbonImmutable::parse($validated['from'] ?? now()->toDateString(), config('app.timezone'))->startOfDay();
         $to = CarbonImmutable::parse($validated['to'] ?? $from->addDays(13)->toDateString(), config('app.timezone'))->startOfDay();
         abort_unless(DoctorProfile::query()->bookable()->whereKey($doctor->id)->exists(), 404);
 
-        return response()->json(['data' => ['doctor_id' => $doctor->id, 'timezone' => config('app.timezone'), 'dates' => $resolver->resolve($doctor, $from, $to)]]);
+        $serviceType = AppointmentServiceType::tryFrom($validated['service_type'] ?? '') ?? AppointmentServiceType::Clinic;
+        abort_unless($doctor->offers($serviceType), 404);
+
+        return response()->json(['data' => ['doctor_id' => $doctor->id, 'timezone' => config('app.timezone'), 'dates' => $resolver->resolve($doctor, $from, $to, $serviceType)]]);
     }
 }

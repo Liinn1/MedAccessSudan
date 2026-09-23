@@ -4,7 +4,21 @@ if (!configuredApiBaseUrl) {
   throw new Error('VITE_API_BASE_URL is not configured.')
 }
 
-const apiBaseUrl = configuredApiBaseUrl.replace(/\/$/, '')
+function resolveApiBaseUrl(configuredUrl: string): string {
+  const url = new URL(configuredUrl)
+  const loopbackHosts = new Set(['localhost', '127.0.0.1'])
+
+  // During local development, keep the SPA and API on the same loopback
+  // hostname. XSRF cookies are host-scoped, so mixing localhost and 127.0.0.1
+  // prevents the page from reading the token Laravel issued.
+  if (loopbackHosts.has(window.location.hostname) && loopbackHosts.has(url.hostname)) {
+    url.hostname = window.location.hostname
+  }
+
+  return url.toString().replace(/\/$/, '')
+}
+
+const apiBaseUrl = resolveApiBaseUrl(configuredApiBaseUrl)
 
 function getXsrfToken(): string | undefined {
   const tokenCookie = document.cookie

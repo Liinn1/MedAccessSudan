@@ -5,7 +5,7 @@ import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { CalendarIcon, ChevronIcon, LocationIcon, StethoscopeIcon } from '../../components/icons/PatientHomeIcons'
 import { TimeSlot } from '../../components/patient/TimeSlot'
-import { PublicLayout } from '../../layouts/PublicLayout'
+import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorProfile, type DoctorProfile } from '../../services/doctorService'
 import { loadAppointmentDraft, saveAppointmentDraft } from '../../utils/appointmentDraft'
@@ -70,10 +70,10 @@ export function AppointmentSelectionPage() {
     navigate('/patient/appointments/confirm')
   }
 
-  if (!hasValidDoctorId) return <PublicLayout><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PublicLayout>
-  if (state === 'loading') return <PublicLayout><LoadingState contained message={t('patient.appointmentSelection.loading')} /></PublicLayout>
-  if (state === 'error') return <PublicLayout><ErrorState contained message={t('patient.appointmentSelection.error')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1) }} retryLabel={t('patient.home.retry')} /></PublicLayout>
-  if (state === 'notFound' || !doctor) return <PublicLayout><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PublicLayout>
+  if (!hasValidDoctorId) return <PatientLayout activeSection="book"><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PatientLayout>
+  if (state === 'loading') return <PatientLayout activeSection="book"><LoadingState contained message={t('patient.appointmentSelection.loading')} /></PatientLayout>
+  if (state === 'error') return <PatientLayout activeSection="book"><ErrorState contained message={t('patient.appointmentSelection.error')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1) }} retryLabel={t('patient.home.retry')} /></PatientLayout>
+  if (state === 'notFound' || !doctor) return <PatientLayout activeSection="book"><ErrorState contained message={t('patient.doctorProfile.notFound')} onRetry={() => navigate('/patient/doctors/search')} retryLabel={t('patient.doctorProfile.backToSearch')} /></PatientLayout>
 
   const specialization = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
   const location = arabic ? doctor.location.name_ar : doctor.location.name_en
@@ -90,8 +90,8 @@ export function AppointmentSelectionPage() {
   const selectedDateGroup = dateGroups.find((group) => group.key === selectedDate)
 
   return (
-    <PublicLayout>
-      <div className="bg-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
+    <PatientLayout activeSection="book">
+      <div className="px-5 py-8 sm:px-8 sm:py-12">
         <div className="mx-auto max-w-6xl">
           <button className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 font-semibold text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" onClick={() => navigate(`/patient/doctors/${numericDoctorId}`)} type="button"><ChevronIcon className="size-5 rtl:rotate-180" />{t('patient.appointmentSelection.back')}</button>
 
@@ -130,6 +130,6 @@ export function AppointmentSelectionPage() {
           </div>
         </div>
       </div>
-    </PublicLayout>
+    </PatientLayout>
   )
 }

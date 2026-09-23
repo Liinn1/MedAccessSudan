@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { PatientLoginPage } from './pages/auth/PatientLoginPage'
+import { ProviderComingSoonPage } from './pages/public/ProviderComingSoonPage'
 import { PatientRegistrationPage } from './pages/auth/PatientRegistrationPage'
 import { PatientHomePage } from './pages/patient/PatientHomePage'
 import { FindDoctorPage } from './pages/patient/FindDoctorPage'
@@ -11,6 +12,7 @@ import { DoctorDashboardPage } from './pages/doctor/DoctorDashboardPage'
 import { DoctorRegistrationPage } from './pages/auth/DoctorRegistrationPage'
 import { SignUpModalProvider } from './contexts/SignUpModalContext'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
+import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { PatientProfilePage } from './pages/patient/PatientProfilePage'
 import { DoctorProfileManagementPage } from './pages/doctor/DoctorProfileManagementPage'
 import { DoctorAvailabilityPage } from './pages/doctor/DoctorAvailabilityPage'
@@ -19,7 +21,8 @@ import { PatientAppointmentsPage } from './pages/patient/PatientAppointmentsPage
 import { PatientAppointmentDetailsPage } from './pages/patient/PatientAppointmentDetailsPage'
 import { AppointmentConfirmationPage } from './pages/patient/AppointmentConfirmationPage'
 import { PatientReviewPage } from './pages/patient/PatientReviewPage'
-import { buildDoctorBookingPath } from './utils/navigation'
+import { HomeVisitPage } from './pages/patient/HomeVisitPage'
+import { buildDoctorBookingPath, PROVIDER_LOGIN_ROUTE } from './utils/navigation'
 
 function LegacyAppointmentSelectionRedirect() {
   const { doctorId } = useParams()
@@ -31,10 +34,12 @@ function App() {
     <SignUpModalProvider><Routes>
       <Route path="/" element={<PublicHomePage />} />
       <Route path="/login" element={<PatientLoginPage />} />
+      <Route path={PROVIDER_LOGIN_ROUTE} element={<ProviderComingSoonPage />} />
       <Route path="/register" element={<PatientRegistrationPage />} />
       <Route path="/register/patient" element={<PatientRegistrationPage />} />
       <Route path="/register/doctor" element={<DoctorRegistrationPage />} />
       <Route path="/patient/home" element={<PatientHomePage />} />
+      <Route path="/patient/home-visits" element={<HomeVisitPage />} />
       <Route path="/patient/doctors/search" element={<FindDoctorPage />} />
       <Route path="/patient/doctors/results" element={<DoctorSearchResultsPage />} />
       <Route path="/patient/doctors/:doctorId" element={<DoctorProfilePage />} />
@@ -50,6 +55,7 @@ function App() {
       <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
       <Route path="/patient/profile" element={<PatientProfilePage />} />
       <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="*" element={<Navigate replace to="/" />} />
     </Routes></SignUpModalProvider>
   )

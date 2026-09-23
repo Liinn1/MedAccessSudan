@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AppointmentServiceType;
 use App\Enums\AppointmentStatus;
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,6 +14,22 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class DoctorProfile extends Model
 {
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'offers_clinic_visits' => 'boolean',
+            'offers_home_visits' => 'boolean',
+        ];
+    }
+
+    public function offers(AppointmentServiceType $type): bool
+    {
+        return match ($type) {
+            AppointmentServiceType::Clinic => (bool) ($this->offers_clinic_visits ?? true),
+            AppointmentServiceType::HomeVisit => (bool) ($this->offers_home_visits ?? false),
+        };
+    }
 
     public function user(): BelongsTo
     {
@@ -27,6 +44,11 @@ class DoctorProfile extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function homeVisitLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'home_visit_location_id');
     }
 
     public function availability(): HasMany

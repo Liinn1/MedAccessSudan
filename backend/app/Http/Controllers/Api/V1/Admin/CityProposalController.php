@@ -12,9 +12,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\AdminAuditService;
 
 class CityProposalController extends Controller
 {
+    public function __construct(private readonly AdminAuditService $audit) {}
     public function index(Request $request): JsonResponse
     {
         $status = $request->validate(['status' => ['nullable', 'in:pending,approved,mapped,rejected']])['status'] ?? 'pending';
@@ -91,6 +93,8 @@ class CityProposalController extends Controller
 
             return $proposal;
         });
+
+        $this->audit->record($request->user(), 'city_proposal.'.$data['action'], $proposal, ['resolved_location_id' => $proposal->resolved_location_id]);
 
         return response()->json(['data' => ['proposal' => $proposal->fresh(['resolvedLocation', 'reviewer'])], 'message' => 'City proposal reviewed successfully.']);
     }

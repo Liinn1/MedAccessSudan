@@ -26,13 +26,13 @@ export function InputField({
   return (
     <div>
       <label
-        className="mb-1.5 block text-base font-semibold text-[var(--color-text-secondary)] [@media(min-height:760px)]:mb-2"
+        className="mb-1.5 block text-sm font-bold text-[var(--color-text-primary)]"
         htmlFor={id}
       >
         {label}
       </label>
       <div
-        className={`flex min-h-13 items-center gap-3 rounded-full border bg-[#F9FAFB] px-4 transition-colors focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--color-primary)_18%,transparent)] [@media(min-height:760px)]:min-h-14 [@media(min-height:760px)]:px-5 ${
+        className={`auth-input flex min-h-12 items-center gap-3 rounded-xl border bg-white px-3.5 transition focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-primary-surface)]/25 focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] ${
           error ? 'border-red-500' : 'border-[var(--color-border)]'
         }`}
       >
@@ -43,13 +43,13 @@ export function InputField({
           {...inputProps}
           aria-describedby={error ? errorId : inputProps['aria-describedby']}
           aria-invalid={Boolean(error)}
-          className={`min-w-0 flex-1 border-0 bg-transparent py-2.5 text-base text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] ${className}`}
+          className={`min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-[var(--color-text-primary)] outline-none placeholder:text-slate-400 ${className}`}
           id={id}
         />
         {endAdornment}
       </div>
       {error && (
-        <p className="mt-2 px-4 text-sm text-red-700" id={errorId} role="alert">
+        <p className="mt-1.5 px-3.5 text-sm text-red-700" id={errorId} role="alert">
           {error}
         </p>
       )}

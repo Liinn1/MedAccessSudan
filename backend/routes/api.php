@@ -3,6 +3,10 @@
 use App\Http\Controllers\Api\V1\Admin\CityProposalController;
 use App\Http\Controllers\Api\V1\Admin\DoctorVerificationController;
 use App\Http\Controllers\Api\V1\Admin\LocationController;
+use App\Http\Controllers\Api\V1\Admin\AdminAccountController;
+use App\Http\Controllers\Api\V1\Admin\AdminLoginController;
+use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\V1\Admin\MonitoringController;
 use App\Http\Controllers\Api\V1\Auth\CurrentUserController;
 use App\Http\Controllers\Api\V1\Auth\DoctorRegistrationOptionsController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
@@ -31,6 +35,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/v1/health', HealthController::class);
 Route::get('/v1/doctors/featured', FeaturedDoctorController::class);
+Route::post('/v1/admin/login', AdminLoginController::class)->middleware('throttle:5,1');
 
 Route::prefix('v1/auth')->group(function () {
     Route::post('/login', LoginController::class);
@@ -78,13 +83,22 @@ Route::middleware(['auth:sanctum', 'role:doctor'])
         Route::post('/profile-photo', [DoctorProfilePhotoController::class, 'store']);
     });
 
-Route::middleware(['auth:sanctum', 'role:administrator'])
+Route::middleware(['auth:sanctum', 'role:admin,super_admin'])
     ->prefix('v1/admin')
     ->group(function (): void {
+        Route::get('/dashboard', AdminDashboardController::class);
+        Route::get('/users', [MonitoringController::class, 'users']);
+        Route::get('/appointments', [MonitoringController::class, 'appointments']);
+        Route::get('/reviews', [MonitoringController::class, 'reviews']);
         Route::get('/providers', [DoctorVerificationController::class, 'index']);
         Route::patch('/providers/{doctor}/verification', [DoctorVerificationController::class, 'update'])->whereNumber('doctor');
         Route::get('/city-proposals', [CityProposalController::class, 'index']);
         Route::patch('/city-proposals/{proposal}', [CityProposalController::class, 'update'])->whereNumber('proposal');
         Route::get('/locations', [LocationController::class, 'index']);
         Route::patch('/locations/{location}', [LocationController::class, 'update'])->whereNumber('location');
+        Route::middleware('role:super_admin')->group(function (): void {
+            Route::get('/administrators', [AdminAccountController::class, 'index']);
+            Route::post('/administrators', [AdminAccountController::class, 'store']);
+            Route::patch('/administrators/{admin}', [AdminAccountController::class, 'update'])->whereNumber('admin');
+        });
     });

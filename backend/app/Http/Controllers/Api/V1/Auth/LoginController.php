@@ -47,12 +47,28 @@ class LoginController extends Controller
             ], 422);
         }
 
+        $user = Auth::guard('web')->user();
+
+        // /login is for patient and doctor accounts only. Administrators use /admin/login.
+        // Inactive accounts are rejected with the same generic error as bad passwords.
+        if ($user?->is_active === false || $user?->role?->isAdministrative()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.',
+                'code' => 'INVALID_CREDENTIALS',
+            ], 422);
+        }
+
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
 
         return response()->json([
             'data' => [
-                'user' => new AuthenticatedUserResource(Auth::guard('web')->user()),
+                'user' => new AuthenticatedUserResource($user),
             ],
             'message' => 'Login successful.',
         ]);

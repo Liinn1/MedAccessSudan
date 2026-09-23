@@ -5,7 +5,7 @@ import { SelectField } from '../../components/forms/SelectField'
 import { ChevronIcon, LocationIcon, SearchIcon } from '../../components/icons/PatientHomeIcons'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorFilters, searchDoctors, type DoctorFilterOption } from '../../services/doctorService'
-import { PublicLayout } from '../../layouts/PublicLayout'
+import { PatientLayout } from '../../layouts/PatientLayout'
 import { buildLoginPath } from '../../utils/navigation'
 
 type Availability = '' | 'today' | 'week'
@@ -71,8 +71,8 @@ export function FindDoctorPage() {
   }
 
   return (
-    <PublicLayout>
-      <div className="bg-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
+    <PatientLayout activeSection="book">
+      <div className="px-5 py-8 sm:px-8 sm:py-12">
       <section className="mx-auto flex min-h-[36rem] w-full max-w-3xl flex-col rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-8 lg:p-10">
         <header className="flex items-center justify-between gap-3">
           <button aria-label={t('patient.findDoctor.back')} className="grid size-12 shrink-0 place-items-center rounded-full border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]" onClick={() => navigate('/patient/home')} type="button">
@@ -103,6 +103,6 @@ export function FindDoctorPage() {
         </form>
       </section>
       </div>
-    </PublicLayout>
+    </PatientLayout>
   )
 }

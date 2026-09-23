@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Doctor;
 
+use App\Enums\AppointmentServiceType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Doctor\StoreAvailabilityExceptionRequest;
 use App\Models\DoctorAvailabilityException;
@@ -13,6 +14,7 @@ class AvailabilityExceptionController extends Controller
     public function store(StoreAvailabilityExceptionRequest $request): JsonResponse
     {
         $profile = $request->user()->doctorProfile()->firstOrFail();
+        abort_unless($profile->offers(AppointmentServiceType::from($request->validated('consultation_type'))), 422, 'This consultation type is not enabled on the professional profile.');
         $this->ensureNoConflict($profile->exceptions(), $request->validated());
         $exception = $profile->exceptions()->create($request->validated());
 
@@ -22,7 +24,9 @@ class AvailabilityExceptionController extends Controller
     public function update(StoreAvailabilityExceptionRequest $request, DoctorAvailabilityException $exception): JsonResponse
     {
         $this->ensureOwned($request, $exception);
-        $this->ensureNoConflict($request->user()->doctorProfile->exceptions()->whereKeyNot($exception->id), $request->validated());
+        $profile = $request->user()->doctorProfile()->firstOrFail();
+        abort_unless($profile->offers(AppointmentServiceType::from($request->validated('consultation_type'))), 422, 'This consultation type is not enabled on the professional profile.');
+        $this->ensureNoConflict($profile->exceptions()->whereKeyNot($exception->id), $request->validated());
         $exception->update($request->validated());
 
         return response()->json(['data' => $exception->fresh()]);
@@ -44,7 +48,8 @@ class AvailabilityExceptionController extends Controller
 
     private function ensureNoConflict($query, array $data): void
     {
-        $sameDate = (clone $query)->whereDate('exception_date', $data['exception_date']);
+        $sameDate = (clone $query)->whereDate('exception_date', $data['exception_date'])
+            ->where('consultation_type', $data['consultation_type']);
         abort_if($data['type'] === 'unavailable' && (clone $sameDate)->exists(), 422, 'An unavailable day cannot contain other exceptions.');
         abort_if($data['type'] !== 'unavailable' && (clone $sameDate)->where('type', 'unavailable')->exists(), 422, 'This date is marked unavailable.');
         if ($data['type'] !== 'unavailable') {

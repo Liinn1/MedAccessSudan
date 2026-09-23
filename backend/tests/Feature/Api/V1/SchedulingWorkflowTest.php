@@ -112,7 +112,7 @@ class SchedulingWorkflowTest extends TestCase
         ]);
 
         Sanctum::actingAs($doctor);
-        $this->putJson('/api/v1/doctor/schedule', ['periods' => [[
+        $this->putJson('/api/v1/doctor/schedule', ['consultation_type' => 'clinic', 'periods' => [[
             'day_of_week' => $slotStart->dayOfWeek,
             'start_time' => '13:00',
             'end_time' => '15:00',

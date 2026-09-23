@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 interface ConfirmationDialogProps {
   open: boolean
@@ -9,13 +9,15 @@ interface ConfirmationDialogProps {
   loadingLabel: string
   busy?: boolean
   error?: string
+  details?: ReactNode
+  variant?: 'default' | 'danger'
   onCancel: () => void
   onConfirm: () => void
 }
 
-export function ConfirmationDialog({ open, title, description, cancelLabel, confirmLabel, loadingLabel, busy = false, error, onCancel, onConfirm }: ConfirmationDialogProps) {
-  const titleId = useId(); const descriptionId = useId(); const errorId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null); const confirmRef = useRef<HTMLButtonElement>(null); const returnFocusRef = useRef<HTMLElement | null>(null)
+export function ConfirmationDialog({ open, title, description, cancelLabel, confirmLabel, loadingLabel, busy = false, error, details, variant = 'default', onCancel, onConfirm }: ConfirmationDialogProps) {
+  const titleId = useId(); const descriptionId = useId(); const detailsId = useId(); const errorId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null); const cancelRef = useRef<HTMLButtonElement>(null); const confirmRef = useRef<HTMLButtonElement>(null); const returnFocusRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
     if (!open) return
     returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -24,7 +26,7 @@ export function ConfirmationDialog({ open, title, description, cancelLabel, conf
 
   useEffect(() => {
     if (!open) return
-    confirmRef.current?.focus()
+    ;(variant === 'danger' ? cancelRef : confirmRef).current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !busy) { event.preventDefault(); onCancel(); return }
       if (event.key !== 'Tab' || !dialogRef.current) return
@@ -36,7 +38,7 @@ export function ConfirmationDialog({ open, title, description, cancelLabel, conf
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [busy, onCancel, open])
+  }, [busy, onCancel, open, variant])
 
   useEffect(() => {
     if (!open) return
@@ -47,14 +49,15 @@ export function ConfirmationDialog({ open, title, description, cancelLabel, conf
 
   if (!open) return null
   return <div className="confirmation-overlay fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onCancel() }}>
-    <div aria-describedby={`${descriptionId}${error ? ` ${errorId}` : ''}`} aria-labelledby={titleId} aria-modal="true" className="confirmation-dialog w-full max-w-lg rounded-3xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8" ref={dialogRef} role="dialog">
-      <div aria-hidden="true" className="grid size-12 place-items-center rounded-2xl bg-[var(--color-primary-surface)] text-2xl font-black text-[var(--color-primary)]">✓</div>
+    <div aria-describedby={`${descriptionId}${details ? ` ${detailsId}` : ''}${error ? ` ${errorId}` : ''}`} aria-labelledby={titleId} aria-modal="true" className="confirmation-dialog max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8" ref={dialogRef} role="dialog">
+      <div aria-hidden="true" className={`grid size-12 place-items-center rounded-2xl text-2xl font-black ${variant === 'danger' ? 'bg-red-50 text-red-700' : 'bg-[var(--color-primary-surface)] text-[var(--color-primary)]'}`}>{variant === 'danger' ? '!' : '✓'}</div>
       <h2 className="mt-5 text-2xl font-extrabold text-[var(--color-text-primary)]" id={titleId}>{title}</h2>
       <p className="mt-2 leading-relaxed text-[var(--color-text-secondary)]" id={descriptionId}>{description}</p>
+      {details && <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] p-4" id={detailsId}>{details}</div>}
       {error && <p className="feedback-enter mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 motion-reduce:animate-none" id={errorId} role="alert">{error}</p>}
       <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button className="min-h-12 rounded-full border border-[var(--color-border)] bg-white px-6 font-bold text-[var(--color-text-primary)] transition hover:border-teal-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50" disabled={busy} onClick={onCancel} type="button">{cancelLabel}</button>
-        <button className="min-h-12 rounded-full bg-[var(--color-primary)] px-6 font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-wait disabled:opacity-70" disabled={busy} onClick={onConfirm} ref={confirmRef} type="button">{busy ? loadingLabel : confirmLabel}</button>
+        <button className="min-h-12 rounded-full border border-[var(--color-border)] bg-white px-6 font-bold text-[var(--color-text-primary)] transition hover:border-teal-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50" disabled={busy} onClick={onCancel} ref={cancelRef} type="button">{cancelLabel}</button>
+        <button aria-busy={busy} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-70 ${variant === 'danger' ? 'bg-red-700 hover:bg-red-800 focus-visible:outline-red-700' : 'bg-[var(--color-primary)] hover:bg-[#0F766E] focus-visible:outline-[var(--color-primary)]'}`} disabled={busy} onClick={onConfirm} ref={confirmRef} type="button">{busy && <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-white/50 border-t-white motion-reduce:animate-none" />}{busy ? loadingLabel : confirmLabel}</button>
       </div>
     </div>
   </div>

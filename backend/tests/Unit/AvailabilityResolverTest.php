@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\AppointmentServiceType;
 use App\Enums\AppointmentStatus;
 use App\Models\Appointment;
 use App\Models\DoctorAvailabilityException;
@@ -53,6 +54,28 @@ class AvailabilityResolverTest extends TestCase
         $days = (new AvailabilityResolver)->resolve($doctor, CarbonImmutable::parse('2026-08-24'), CarbonImmutable::parse('2026-08-24'));
         $this->assertCount(3, $days[0]['slots']);
         $this->assertFalse(collect($days[0]['slots'])->contains(fn ($slot) => str_contains($slot['starts_at'], '10:00:00')));
+    }
+
+    public function test_confirmed_clinic_appointment_blocks_home_visit_slot_at_the_same_time(): void
+    {
+        CarbonImmutable::setTestNow('2026-08-23 08:00:00 Africa/Khartoum');
+        $doctor = new DoctorProfile([
+            'verification_status' => 'verified',
+            'offers_clinic_visits' => true,
+            'offers_home_visits' => true,
+        ]);
+        $doctor->setRelation('schedules', new Collection([
+            new DoctorAvailabilitySchedule(['day_of_week' => 1, 'start_time' => '09:00', 'end_time' => '11:00', 'slot_duration_minutes' => 30, 'is_active' => true, 'consultation_type' => 'clinic']),
+            new DoctorAvailabilitySchedule(['day_of_week' => 1, 'start_time' => '09:00', 'end_time' => '11:00', 'slot_duration_minutes' => 30, 'is_active' => true, 'consultation_type' => 'home_visit']),
+        ]));
+        $doctor->setRelation('exceptions', new Collection);
+        $doctor->setRelation('appointments', new Collection([
+            new Appointment(['starts_at' => '2026-08-24 10:00', 'ends_at' => '2026-08-24 10:30', 'status' => AppointmentStatus::Confirmed, 'service_type' => 'clinic']),
+        ]));
+
+        $days = (new AvailabilityResolver)->resolve($doctor, CarbonImmutable::parse('2026-08-24'), CarbonImmutable::parse('2026-08-24'), AppointmentServiceType::HomeVisit);
+        $this->assertFalse(collect($days[0]['slots'])->contains(fn ($slot) => str_contains($slot['starts_at'], '10:00:00')));
+        $this->assertTrue(collect($days[0]['slots'])->contains(fn ($slot) => str_contains($slot['starts_at'], '09:00:00')));
     }
 
     public function test_past_slots_are_excluded_without_moving_the_schedule_boundary(): void

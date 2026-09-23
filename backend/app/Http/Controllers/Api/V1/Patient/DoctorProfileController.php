@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Patient;
 
+use App\Enums\AppointmentServiceType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DoctorProfileResource;
 use App\Models\DoctorProfile;
@@ -10,7 +11,7 @@ use Carbon\CarbonImmutable;
 
 class DoctorProfileController extends Controller
 {
-    public function __invoke(int $doctor, AvailabilityResolver $resolver): DoctorProfileResource
+    public function __invoke(int $doctor, AvailabilityResolver $resolver, \Illuminate\Http\Request $request): DoctorProfileResource
     {
         $profile = DoctorProfile::query()
             ->with([
@@ -26,7 +27,9 @@ class DoctorProfileController extends Controller
             ->firstOrFail();
 
         $from = CarbonImmutable::now(config('app.timezone'))->startOfDay();
-        $profile->setAttribute('resolved_availability', collect($resolver->resolve($profile, $from, $from->addDays(13)))->flatMap(fn ($day) => $day['slots'])->take(24)->values());
+        $serviceType = AppointmentServiceType::tryFrom((string) $request->query('service_type')) ?? AppointmentServiceType::Clinic;
+        abort_unless($profile->offers($serviceType), 404);
+        $profile->setAttribute('resolved_availability', collect($resolver->resolve($profile, $from, $from->addDays(13), $serviceType))->flatMap(fn ($day) => $day['slots'])->take(24)->values());
 
         return new DoctorProfileResource($profile);
     }

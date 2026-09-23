@@ -20,7 +20,14 @@ class ProfileController extends Controller
         ]);
 
         return response()->json([
-            'data' => ['profile' => $profile->fresh()->only(['id', 'clinic_name', 'biography', 'biography_language'])],
+            'data' => ['profile' => $profile->fresh()->only([
+                'id',
+                'clinic_name',
+                'biography',
+                'biography_language',
+                'offers_clinic_visits',
+                'offers_home_visits',
+            ])],
             'message' => 'Professional profile updated.',
         ]);
     }

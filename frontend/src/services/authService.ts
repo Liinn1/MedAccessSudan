@@ -1,6 +1,6 @@
-import { apiClient } from './apiClient'
+import { apiClient, ApiError } from './apiClient'
 
-export type UserRole = 'patient' | 'doctor' | 'administrator'
+export type UserRole = 'patient' | 'doctor' | 'admin' | 'super_admin'
 
 export interface AuthenticatedUser {
   id: number
@@ -23,6 +23,7 @@ interface AuthenticationResponse {
 /**
  * Starts a CSRF-protected Laravel Sanctum session using an email or phone
  * identifier. The session cookie is HTTP-only and is never stored in React.
+ * Callers must redirect using the returned user's stored role.
  */
 export async function login(identifier: string, password: string): Promise<AuthenticatedUser> {
   await apiClient.initializeCsrfProtection()
@@ -30,7 +31,18 @@ export async function login(identifier: string, password: string): Promise<Authe
     identifier,
     password,
   })
+  const user = response.data?.user
 
+  if (!user?.role) {
+    throw new ApiError('The login response did not include an authenticated user.', 500, response)
+  }
+
+  return user
+}
+
+export async function loginAdmin(identifier: string, password: string): Promise<AuthenticatedUser> {
+  await apiClient.initializeCsrfProtection()
+  const response = await apiClient.post<AuthenticationResponse>('/api/v1/admin/login', { identifier, password })
   return response.data.user
 }
 
@@ -75,6 +87,8 @@ export interface DoctorRegistrationInput extends PatientRegistrationInput {
   location?: string
   proposed_city?: string
   clinic_name: string
+  offers_clinic_visits: boolean
+  offers_home_visits: boolean
   profile_photo: File
 }
 
@@ -95,6 +109,7 @@ function registrationFormData(input: PatientRegistrationInput | DoctorRegistrati
   const form = new FormData()
   Object.entries(input).forEach(([key, value]) => {
     if (value instanceof File) form.append(key, value)
+    else if (typeof value === 'boolean') form.append(key, value ? '1' : '0')
     else if (value !== undefined && value !== null) form.append(key, String(value))
   })
   return form

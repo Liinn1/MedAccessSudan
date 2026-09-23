@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { BrandMark } from '../../components/branding/BrandMark'
+import { AuthShell } from '../../components/auth/AuthShell'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
 import { ProfilePhotoField } from '../../components/forms/ProfilePhotoField'
@@ -148,22 +148,11 @@ export function PatientRegistrationPage() {
 
   return (
     <PublicLayout>
-      <div className="bg-gradient-to-b from-[var(--color-primary-surface)]/70 to-[var(--color-background)] px-5 py-8 sm:px-8 sm:py-12">
-      {/* Registration intentionally scrolls on compact phones so six required
-          fields retain readable labels and accessible touch targets. */}
-      <section className="mx-auto w-full max-w-4xl rounded-3xl border border-[var(--color-border)] bg-white px-5 py-7 shadow-[0_18px_45px_rgb(15_118_110/0.08)] sm:px-10 sm:py-9 lg:px-14">
-        <header className="text-center">
-          <Link aria-label={t('publicHome.header.logoLabel')} className="inline-block rounded-xl focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" to="/"><BrandMark compact /></Link>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-primary)] sm:text-4xl">
-            {t('auth.registration.title')}
-          </h1>
-          <p className="mx-auto mt-1 max-w-xl text-sm text-[var(--color-text-secondary)] sm:text-base">
-            {t('auth.registration.subtitle')}
-          </p>
-        </header>
-
-        <form className="mt-5" noValidate onSubmit={handleSubmit}>
-          <div className="grid gap-4 md:grid-cols-2 md:gap-x-5 md:gap-y-4">
+      <AuthShell spacious title={t('auth.registration.title')} subtitle={t('auth.registration.subtitle')} variant="registration">
+        {/* Registration intentionally scrolls on compact phones so six required
+            fields retain readable labels and accessible touch targets. */}
+        <form noValidate onSubmit={handleSubmit}>
+          <div className="grid gap-3.5 md:grid-cols-2 md:gap-x-4 md:gap-y-3.5">
             <InputField
               autoComplete="given-name"
               error={getError('firstName')}
@@ -235,9 +224,9 @@ export function PatientRegistrationPage() {
               value={form.passwordConfirmation}
             />
           </div>
-          <div className="mt-5"><ProfilePhotoField error={profilePhotoError} file={profilePhoto} onChange={(file) => { setProfilePhoto(file); setProfilePhotoError('') }} /></div>
+          <div className="mt-4"><ProfilePhotoField error={profilePhotoError} file={profilePhoto} onChange={(file) => { setProfilePhoto(file); setProfilePhotoError('') }} compact /></div>
 
-          <div className="mt-3 min-h-10" aria-live="polite">
+          <div className="mt-2 min-h-8" aria-live="polite">
             {statusMessage && (
               <p className="rounded-xl bg-[var(--color-primary-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                 {t(statusMessage)}
@@ -247,9 +236,10 @@ export function PatientRegistrationPage() {
 
           <div className="mx-auto mt-2 max-w-xl">
             <PrimaryButton disabled={isSubmitting} type="submit">
+              {isSubmitting && <span aria-hidden="true" className="auth-spinner" />}
               {t(isSubmitting ? 'auth.registration.submitting' : 'auth.registration.submit')}
             </PrimaryButton>
-            <p className="mt-3 text-center text-sm text-[var(--color-text-secondary)] sm:text-base">
+            <p className="mt-2.5 text-center text-sm text-[var(--color-text-secondary)]">
               {t('auth.registration.haveAccount')}{' '}
               <Link
                 className="font-bold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
@@ -260,9 +250,8 @@ export function PatientRegistrationPage() {
             </p>
           </div>
         </form>
-        <Link className="mt-3 block text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
-      </section>
-      </div>
+        <Link className="mt-3.5 block text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
+      </AuthShell>
     </PublicLayout>
   )
 }

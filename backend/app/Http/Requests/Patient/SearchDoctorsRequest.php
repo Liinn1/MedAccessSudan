@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Patient;
 
+use App\Enums\AppointmentServiceType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,6 +14,7 @@ class SearchDoctorsRequest extends FormRequest
             'specialization' => ['sometimes', 'nullable', 'string', Rule::exists('specializations', 'code')->where('is_active', true)],
             'location' => ['sometimes', 'nullable', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
             'availability' => ['sometimes', 'nullable', Rule::in(['today', 'week'])],
+            'service_type' => ['sometimes', Rule::enum(AppointmentServiceType::class)],
         ];
     }
 }
