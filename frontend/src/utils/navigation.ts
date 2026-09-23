@@ -13,10 +13,6 @@ export function getDashboardRoute(role: UserRole): string {
   return ADMIN_DASHBOARD_ROUTE
 }
 
-export function buildDoctorBookingPath(doctorId: number | string): string {
-  return `/patient/doctors/${doctorId}/book`
-}
-
 export function buildLoginPath(destination: string): string {
   return `/login?redirect=${encodeURIComponent(destination)}`
 }

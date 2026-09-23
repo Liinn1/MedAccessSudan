@@ -13,6 +13,9 @@ class ProfileController extends Controller
         $profile = $request->user()->doctorProfile()->firstOrFail();
         $data = $request->validated();
         $language = $data['biography_language'] ?? null;
+        if (($data['offers_home_visits'] ?? false) && ! $profile->home_visit_location_id) {
+            $data['home_visit_location_id'] = $profile->location_id;
+        }
         $profile->update([
             ...$data,
             'bio_en' => $language === 'en' ? ($data['biography'] ?? null) : null,

@@ -29,7 +29,7 @@ class DoctorProfileResource extends JsonResource
             'offers_clinic_visits' => (bool) $this->offers_clinic_visits,
             'offers_home_visits' => (bool) $this->offers_home_visits,
             'specialization' => $this->specialization->only(['code', 'name_en', 'name_ar']),
-            'location' => $this->location->only(['code', 'name_en', 'name_ar']),
+            'location' => $this->location?->only(['code', 'name_en', 'name_ar']),
             'availability' => collect($this->resolved_availability ?? [])->map(fn ($slot) => [
                 'id' => $slot['starts_at'],
                 'starts_at' => $slot['starts_at'],

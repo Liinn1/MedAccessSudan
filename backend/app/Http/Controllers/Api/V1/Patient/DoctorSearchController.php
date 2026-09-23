@@ -45,7 +45,7 @@ class DoctorSearchController extends Controller
                     'clinic_name' => $profile->clinic_name,
                     'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path),
                     'specialization' => $profile->specialization->only(['code', 'name_en', 'name_ar']),
-                    'location' => $profile->location->only(['code', 'name_en', 'name_ar']),
+                    'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                     'home_visit_location' => $profile->homeVisitLocation?->only(['code', 'name_en', 'name_ar']),
                     'next_available_at' => $first['starts_at'] ?? null,
                 ];

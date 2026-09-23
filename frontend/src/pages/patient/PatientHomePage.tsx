@@ -149,10 +149,12 @@ export function PatientHomePage() {
                 const date = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', timeZone: SUDAN_TIME_ZONE }).format(startsAt)
                 const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: SUDAN_TIME_ZONE }).format(startsAt)
                 const specialty = i18n.resolvedLanguage === 'ar' ? appointment.doctor.specialization.name_ar : appointment.doctor.specialization.name_en
-                const location = i18n.resolvedLanguage === 'ar' ? appointment.doctor.location.name_ar : appointment.doctor.location.name_en
+                const location = appointment.service_type === 'home_visit'
+                  ? (appointment.home_visit?.city ? (i18n.resolvedLanguage === 'ar' ? appointment.home_visit.city.name_ar : appointment.home_visit.city.name_en) : t('patient.appointments.services.home_visit'))
+                  : (appointment.doctor.clinic_name || (appointment.doctor.location ? (i18n.resolvedLanguage === 'ar' ? appointment.doctor.location.name_ar : appointment.doctor.location.name_en) : ''))
                 return <button className="group grid min-w-0 grid-cols-[4.5rem_1fr_auto] items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-start transition hover:border-teal-200 hover:bg-[var(--color-primary-surface)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] max-sm:grid-cols-[4rem_1fr]" key={appointment.id} onClick={() => navigate(`/patient/appointments/${appointment.id}`)} type="button">
                   <span className="rounded-lg bg-white px-2 py-2 text-center shadow-sm"><strong className="block text-sm text-[var(--color-text-primary)]">{date}</strong><span className="direction-ltr mt-0.5 block text-[0.68rem] text-[var(--color-text-secondary)]">{time}</span></span>
-                  <span className="min-w-0"><strong className="block truncate text-sm">{appointment.doctor.name}</strong><span className="mt-0.5 block truncate text-xs text-[var(--color-text-secondary)]">{specialty}</span><span className="mt-0.5 flex items-center gap-1 truncate text-[0.68rem] text-[var(--color-text-secondary)]"><LocationIcon className="size-3 shrink-0" />{appointment.doctor.clinic_name || location}</span></span>
+                  <span className="min-w-0"><strong className="block truncate text-sm">{appointment.doctor.name}</strong><span className="mt-0.5 block truncate text-xs text-[var(--color-text-secondary)]">{specialty}</span><span className="mt-0.5 flex items-center gap-1 truncate text-[0.68rem] text-[var(--color-text-secondary)]"><LocationIcon className="size-3 shrink-0" />{location}</span></span>
                   <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[0.68rem] font-bold text-sky-700 max-sm:hidden">{t(`patient.appointments.statuses.${appointment.status}`)}</span>
                 </button>
               })}

@@ -11,7 +11,7 @@ export interface DoctorSummary {
   name: string
   clinic_name: string | null
   specialization: DoctorFilterOption
-  location: DoctorFilterOption
+  location: DoctorFilterOption | null
   next_available_at: string | null
   profile_image_url: string | null
 }

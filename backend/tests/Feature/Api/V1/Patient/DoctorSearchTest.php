@@ -133,6 +133,25 @@ class DoctorSearchTest extends TestCase
             ->assertOk()->assertJsonPath('meta.total', 1);
     }
 
+    public function test_home_visit_search_requires_and_enforces_the_service_city(): void
+    {
+        $this->authenticatePatient();
+        $khartoum = Location::query()->where('code', 'khartoum')->firstOrFail();
+        $omdurman = Location::query()->where('code', 'omdurman')->firstOrFail();
+        $khartoumDoctor = $this->createDoctor('neurology', 'omdurman');
+        $omdurmanDoctor = $this->createDoctor('neurology', 'khartoum');
+        $khartoumDoctor->update(['offers_home_visits' => true, 'home_visit_location_id' => $khartoum->id]);
+        $omdurmanDoctor->update(['offers_home_visits' => true, 'home_visit_location_id' => $omdurman->id]);
+        $day = now(config('app.timezone'))->addDay()->dayOfWeek;
+        $this->addSchedule($khartoumDoctor, $day, 'home_visit');
+        $this->addSchedule($omdurmanDoctor, $day, 'home_visit');
+
+        $this->getJson('/api/v1/patient/doctors?specialization=neurology&service_type=home_visit')
+            ->assertUnprocessable()->assertJsonValidationErrors('location');
+        $this->getJson('/api/v1/patient/doctors?specialization=neurology&service_type=home_visit&location=khartoum&availability=week')
+            ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.doctors.0.id', $khartoumDoctor->id);
+    }
+
     private function authenticatePatient(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => UserRole::Patient]));
@@ -150,10 +169,11 @@ class DoctorSearchTest extends TestCase
         ]);
     }
 
-    private function addSchedule(DoctorProfile $doctor, int $dayOfWeek): void
+    private function addSchedule(DoctorProfile $doctor, int $dayOfWeek, string $consultationType = 'clinic'): void
     {
         DoctorAvailabilitySchedule::create([
             'doctor_profile_id' => $doctor->id,
+            'consultation_type' => $consultationType,
             'day_of_week' => $dayOfWeek,
             'start_time' => '09:00',
             'end_time' => '11:00',

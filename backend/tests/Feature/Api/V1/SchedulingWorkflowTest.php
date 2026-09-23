@@ -68,6 +68,39 @@ class SchedulingWorkflowTest extends TestCase
         $this->assertSame($doctor->id, $profile->user_id);
     }
 
+    public function test_home_visit_booking_enforces_and_snapshots_the_selected_city(): void
+    {
+        [, $profile, $slotStart] = $this->createBookableDoctor();
+        $khartoum = Location::query()->where('code', 'khartoum')->firstOrFail();
+        $omdurman = Location::query()->where('code', 'omdurman')->firstOrFail();
+        $profile->update(['offers_home_visits' => true, 'home_visit_location_id' => $khartoum->id]);
+        DoctorAvailabilitySchedule::create([
+            'doctor_profile_id' => $profile->id,
+            'consultation_type' => 'home_visit',
+            'day_of_week' => $slotStart->dayOfWeek,
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'slot_duration_minutes' => 30,
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Patient]));
+        $payload = [
+            'doctor_profile_id' => $profile->id,
+            'starts_at' => $slotStart->toIso8601String(),
+            'service_type' => 'home_visit',
+            'home_visit' => ['contact_phone' => '+249912345678', 'area' => 'Al Riyadh', 'address_details' => 'House 12', 'latitude' => 15.5000000, 'longitude' => 32.5000000],
+        ];
+
+        $this->postJson('/api/v1/patient/appointments', [...$payload, 'home_visit' => [...$payload['home_visit'], 'city' => $omdurman->code]])
+            ->assertUnprocessable();
+        $this->postJson('/api/v1/patient/appointments', [...$payload, 'home_visit' => [...$payload['home_visit'], 'city' => $khartoum->code]])
+            ->assertCreated()
+            ->assertJsonPath('data.home_visit.city.code', 'khartoum')
+            ->assertJsonMissingPath('data.home_visit.latitude')
+            ->assertJsonMissingPath('data.home_visit.longitude');
+        $this->assertDatabaseHas('home_visit_details', ['location_id' => $khartoum->id, 'area' => 'Al Riyadh']);
+    }
+
     public function test_patient_and_doctor_appointment_lists_are_scoped_to_the_authenticated_user(): void
     {
         [$doctor, $profile, $slotStart] = $this->createBookableDoctor();

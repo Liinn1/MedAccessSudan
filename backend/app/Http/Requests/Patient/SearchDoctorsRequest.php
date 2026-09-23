@@ -12,7 +12,7 @@ class SearchDoctorsRequest extends FormRequest
     {
         return [
             'specialization' => ['sometimes', 'nullable', 'string', Rule::exists('specializations', 'code')->where('is_active', true)],
-            'location' => ['sometimes', 'nullable', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
+            'location' => ['required_if:service_type,home_visit', 'nullable', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
             'availability' => ['sometimes', 'nullable', Rule::in(['today', 'week'])],
             'service_type' => ['sometimes', Rule::enum(AppointmentServiceType::class)],
         ];

@@ -20,7 +20,7 @@ class BookAppointmentRequest extends FormRequest
             'starts_at' => ['required', 'date'],
             'service_type' => ['sometimes', Rule::enum(AppointmentServiceType::class)],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'home_visit' => ['nullable', 'required_if:service_type,home_visit', 'array'],
+            'home_visit' => ['prohibited_unless:service_type,home_visit', 'required_if:service_type,home_visit', 'array'],
             'home_visit.contact_phone' => ['required_if:service_type,home_visit', 'string', 'regex:/^\+?[0-9]{7,15}$/', 'max:30'],
             'home_visit.city' => ['required_if:service_type,home_visit', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
             'home_visit.area' => ['required_if:service_type,home_visit', 'string', 'max:150'],

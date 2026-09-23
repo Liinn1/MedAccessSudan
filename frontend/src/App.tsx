@@ -7,7 +7,6 @@ import { FindDoctorPage } from './pages/patient/FindDoctorPage'
 import { PublicHomePage } from './pages/public/PublicHomePage'
 import { DoctorSearchResultsPage } from './pages/patient/DoctorSearchResultsPage'
 import { DoctorProfilePage } from './pages/patient/DoctorProfilePage'
-import { AppointmentSelectionPage } from './pages/patient/AppointmentSelectionPage'
 import { DoctorDashboardPage } from './pages/doctor/DoctorDashboardPage'
 import { DoctorRegistrationPage } from './pages/auth/DoctorRegistrationPage'
 import { SignUpModalProvider } from './contexts/SignUpModalContext'
@@ -22,11 +21,11 @@ import { PatientAppointmentDetailsPage } from './pages/patient/PatientAppointmen
 import { AppointmentConfirmationPage } from './pages/patient/AppointmentConfirmationPage'
 import { PatientReviewPage } from './pages/patient/PatientReviewPage'
 import { HomeVisitPage } from './pages/patient/HomeVisitPage'
-import { buildDoctorBookingPath, PROVIDER_LOGIN_ROUTE } from './utils/navigation'
+import { PROVIDER_LOGIN_ROUTE } from './utils/navigation'
 
 function LegacyAppointmentSelectionRedirect() {
   const { doctorId } = useParams()
-  return <Navigate replace to={buildDoctorBookingPath(doctorId ?? '')} />
+  return <Navigate replace to={`/patient/doctors/${doctorId ?? ''}`} />
 }
 
 function App() {
@@ -43,7 +42,7 @@ function App() {
       <Route path="/patient/doctors/search" element={<FindDoctorPage />} />
       <Route path="/patient/doctors/results" element={<DoctorSearchResultsPage />} />
       <Route path="/patient/doctors/:doctorId" element={<DoctorProfilePage />} />
-      <Route path="/patient/doctors/:doctorId/book" element={<AppointmentSelectionPage />} />
+      <Route path="/patient/doctors/:doctorId/book" element={<LegacyAppointmentSelectionRedirect />} />
       <Route path="/patient/doctors/:doctorId/appointments" element={<LegacyAppointmentSelectionRedirect />} />
       <Route path="/patient/appointments/confirm" element={<AppointmentConfirmationPage />} />
       <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />

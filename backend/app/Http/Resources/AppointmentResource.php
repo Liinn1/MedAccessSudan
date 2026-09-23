@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\UserRole;
 use App\Services\ProfilePhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -10,6 +11,9 @@ class AppointmentResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $viewer = $request->user();
+        $includeCoordinates = $viewer?->role === UserRole::Doctor;
+
         return [
             'id' => $this->id,
             'starts_at' => $this->starts_at->toIso8601String(),
@@ -23,8 +27,8 @@ class AppointmentResource extends JsonResource
                 'area' => $this->homeVisitDetail->area,
                 'address_details' => $this->homeVisitDetail->address_details ?: collect([$this->homeVisitDetail->street, $this->homeVisitDetail->building, $this->homeVisitDetail->floor, $this->homeVisitDetail->apartment])->filter()->join(', '),
                 'additional_directions' => $this->homeVisitDetail->additional_directions ?: collect([$this->homeVisitDetail->landmark, $this->homeVisitDetail->directions])->filter()->join(' — '),
-                'latitude' => $this->homeVisitDetail->latitude,
-                'longitude' => $this->homeVisitDetail->longitude,
+                'latitude' => $this->when($includeCoordinates, $this->homeVisitDetail->latitude),
+                'longitude' => $this->when($includeCoordinates, $this->homeVisitDetail->longitude),
             ] : null),
             'review' => $this->whenLoaded('review', fn () => $this->review ? (new DoctorReviewResource($this->review))->resolve($request) : null),
             'patient' => $this->whenLoaded('patient', fn () => ['id' => $this->patient->id, 'name' => $this->patient->name]),
@@ -34,7 +38,7 @@ class AppointmentResource extends JsonResource
                 'clinic_name' => $this->doctorProfile->clinic_name,
                 'profile_image_url' => ProfilePhotoService::publicUrl($this->doctorProfile->profile_image_path),
                 'specialization' => $this->doctorProfile->specialization->only(['code', 'name_en', 'name_ar']),
-                'location' => $this->doctorProfile->location->only(['code', 'name_en', 'name_ar']),
+                'location' => $this->doctorProfile->location?->only(['code', 'name_en', 'name_ar']),
             ]),
         ];
     }
