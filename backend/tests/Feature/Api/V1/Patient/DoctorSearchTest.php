@@ -49,7 +49,7 @@ class DoctorSearchTest extends TestCase
     {
         CarbonImmutable::setTestNow('2026-08-24 19:00:00 Africa/Khartoum');
         config()->set('medaccess.demo_auto_verify_doctors', true);
-        $doctor = $this->createDoctor('neurology', 'khartoum', 'pending');
+        $doctor = $this->createDoctor('neurology', 'khartoum', 'verified');
         $this->addSchedule($doctor, 2);
         $this->authenticatePatient();
 
@@ -101,7 +101,7 @@ class DoctorSearchTest extends TestCase
 
     public function test_production_pending_and_suspended_doctors_are_excluded(): void
     {
-        $this->createDoctor('neurology', 'khartoum', 'pending');
+        $this->createDoctor('neurology', 'khartoum', 'pending_documents');
         $this->createDoctor('neurology', 'khartoum', 'suspended');
         $this->createDoctor('neurology', 'khartoum', 'verified');
         $this->authenticatePatient();

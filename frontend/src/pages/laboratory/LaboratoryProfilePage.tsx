@@ -8,6 +8,8 @@ import { LaboratoryLayout } from '../../layouts/LaboratoryLayout'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorRegistrationOptions, type RegistrationOption } from '../../services/authService'
 import { getLaboratoryProfile, updateLaboratoryProfile, updateLaboratoryProfilePhoto, type LaboratoryProfilePayload } from '../../services/laboratoryService'
+import { getProviderVerification, type ProviderVerificationPayload } from '../../services/providerVerificationService'
+import { ProviderVerificationCard } from '../../components/verification/ProviderVerificationCard'
 import type { AuthenticatedUser } from '../../services/authService'
 
 export function LaboratoryProfilePage() {
@@ -17,6 +19,7 @@ export function LaboratoryProfilePage() {
   const [profile, setProfile] = useState<LaboratoryProfilePayload | null>(null)
   const [locations, setLocations] = useState<RegistrationOption[]>([])
   const [form, setForm] = useState({ name: '', phone: '', address: '', location: '' })
+  const [verification, setVerification] = useState<ProviderVerificationPayload | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [state, setState] = useState<'loading' | 'success' | 'error'>('loading')
   const [busy, setBusy] = useState('')
@@ -25,10 +28,11 @@ export function LaboratoryProfilePage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([getLaboratoryProfile(controller.signal), getDoctorRegistrationOptions(controller.signal)])
-      .then(([payload, options]) => {
+    Promise.all([getLaboratoryProfile(controller.signal), getDoctorRegistrationOptions(controller.signal), getProviderVerification('laboratory', controller.signal)])
+      .then(([payload, options, nextVerification]) => {
         setUser(payload.user)
         setProfile(payload.profile)
+        setVerification(nextVerification)
         setLocations(options.locations)
         setForm({ name: payload.profile.name, phone: payload.profile.phone ?? payload.user.phone ?? '', address: payload.profile.address, location: payload.profile.location?.code ?? '' })
         setState('success')
@@ -85,12 +89,7 @@ export function LaboratoryProfilePage() {
             <div className="mt-5"><ProfilePhotoField currentUrl={profile.profile_image_url} file={file} name={profile.name} onChange={setFile} required={false} /></div>
             <button className="mt-5 w-full rounded-full bg-[var(--color-primary)] px-5 py-3 font-bold text-white disabled:opacity-50" disabled={!file || busy !== ''} onClick={savePhoto} type="button">{t(busy === 'photo' ? 'laboratory.profile.saving' : 'profilePage.savePhoto')}</button>
           </section>
-          <section className="rounded-3xl border border-teal-100 bg-[var(--color-primary-surface)] p-6">
-            <h2 className="text-xl font-extrabold">{t('laboratory.profile.verification')}</h2>
-            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{t('laboratory.profile.verifiedNote')}</p>
-            <p className="mt-4 font-extrabold">{t(`admin.statuses.${profile.verification_status}`)}</p>
-            <p className="mt-2 font-semibold">{arabic ? profile.location?.name_ar : profile.location?.name_en}</p>
-          </section>
+          <ProviderVerificationCard onChange={setVerification} role="laboratory" verification={verification} />
         </div>
       </div>}
     </div>

@@ -4,17 +4,19 @@ namespace App\Http\Controllers\Api\V1\Patient;
 
 use App\Enums\DoctorVerificationStatus;
 use App\Enums\LaboratoryOrderStatus;
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Patient\StoreLaboratoryOrderRequest;
 use App\Http\Resources\LaboratoryOrderResource;
 use App\Models\LaboratoryOffering;
 use App\Models\LaboratoryOrder;
 use App\Models\LaboratoryProfile;
+use App\Services\LaboratoryResultFileService;
+use App\Services\ServicePaymentRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Services\LaboratoryResultFileService;
 
 class LaboratoryOrderController extends Controller
 {
@@ -22,7 +24,7 @@ class LaboratoryOrderController extends Controller
     {
         $orders = LaboratoryOrder::query()
             ->where('patient_id', $request->user()->id)
-            ->with(['items', 'results', 'events'])
+            ->with(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'payment'])
             ->latest('id')
             ->get();
 
@@ -32,15 +34,16 @@ class LaboratoryOrderController extends Controller
     public function show(Request $request, LaboratoryOrder $order): JsonResponse
     {
         abort_unless($order->patient_id === $request->user()->id, 404);
-        $order->load(['items', 'results', 'events']);
+        $order->load(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'payment']);
 
         return response()->json(['data' => (new LaboratoryOrderResource($order))->resolve()]);
     }
 
-    public function store(StoreLaboratoryOrderRequest $request): JsonResponse
+    public function store(StoreLaboratoryOrderRequest $request, ServicePaymentRecorder $payments): JsonResponse
     {
         $data = $request->validated();
         $laboratory = LaboratoryProfile::query()->findOrFail($data['laboratory_profile_id']);
+        $method = PaymentMethod::from($data['payment_method']);
 
         if ($laboratory->verification_status !== DoctorVerificationStatus::Verified->value) {
             return response()->json([
@@ -64,7 +67,7 @@ class LaboratoryOrderController extends Controller
             ], 422);
         }
 
-        $order = DB::transaction(function () use ($request, $laboratory, $offerings, $data): LaboratoryOrder {
+        $order = DB::transaction(function () use ($request, $laboratory, $offerings, $data, $method, $payments): LaboratoryOrder {
             $order = LaboratoryOrder::query()->create([
                 'reference' => 'TMP',
                 'patient_id' => $request->user()->id,
@@ -96,10 +99,15 @@ class LaboratoryOrderController extends Controller
                 'to_status' => LaboratoryOrderStatus::Requested->value,
             ]);
 
+            $order->load('items');
+            $amount = $order->items->reduce(fn (string $sum, $item) => bcadd($sum, (string) $item->price, 2), '0.00');
+            $currency = $order->items->first()?->currency;
+            $payments->record($request->user(), $order, $method, $amount, $currency);
+
             return $order;
         });
 
-        $order->load(['items', 'results', 'events']);
+        $order->load(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'payment']);
 
         return response()->json([
             'data' => (new LaboratoryOrderResource($order))->resolve(),

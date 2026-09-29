@@ -66,7 +66,8 @@ export function LaboratoryRequestDetailPage() {
       </dl>
       <section className="mt-4 rounded-3xl border border-[var(--color-border)] bg-white p-6">
         <h2 className="font-extrabold">{t('laboratory.detail.tests')}</h2>
-        <ul className="mt-3 space-y-2">{(order.items ?? []).map((item) => <li className="rounded-xl bg-slate-50 px-4 py-3" key={item.id}><p className="font-bold">{arabic ? item.name_ar : item.name_en}</p><p className="text-sm text-[var(--color-text-secondary)]">{item.price} {item.currency} · {t('laboratory.catalog.hours', { count: item.estimated_turnaround_hours })}</p></li>)}</ul>
+        <ul className="mt-3 space-y-2">{(order.items ?? []).map((item) => <li className="flex justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3" key={item.id}><span><p className="font-bold">{arabic ? item.name_ar : item.name_en}</p><p className="text-sm text-[var(--color-text-secondary)]">{t('laboratory.catalog.hours', { count: item.estimated_turnaround_hours })}</p></span><span className="font-semibold">{item.price} {item.currency}</span></li>)}</ul>
+        {order.total && <p className="mt-4 text-end font-extrabold">{t('laboratory.detail.total')}: {order.total} {order.currency}</p>}
       </section>
       {order.events && order.events.length > 0 && <section className="mt-4 rounded-3xl border border-[var(--color-border)] bg-white p-6"><h2 className="font-extrabold">{t('laboratory.detail.history')}</h2><ul className="mt-3 space-y-2 text-sm">{order.events.map((event) => <li key={event.id}>{event.from_status ? `${t(`laboratory.statuses.${event.from_status}`)} → ` : ''}{t(`laboratory.statuses.${event.to_status}`)}</li>)}</ul></section>}
       <div className="mt-6 flex flex-wrap gap-3">

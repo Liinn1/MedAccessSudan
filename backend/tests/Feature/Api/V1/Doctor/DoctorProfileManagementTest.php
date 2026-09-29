@@ -52,7 +52,7 @@ class DoctorProfileManagementTest extends TestCase
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['verification_status', 'specialization_id', 'location_id']);
 
-        $this->assertSame('pending', $profile->fresh()->verification_status);
+        $this->assertSame('pending_documents', $profile->fresh()->verification_status);
     }
 
     public function test_patient_cannot_update_a_doctor_profile(): void
@@ -85,13 +85,14 @@ class DoctorProfileManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.profile.biography', 'English biography.')
             ->assertJsonPath('data.profile.has_weekly_availability', true)
-            ->assertJsonPath('data.profile.verification_status', 'pending');
+            ->assertJsonPath('data.profile.verification_status', 'pending_documents');
     }
 
     public function test_public_biography_uses_cached_translation_and_safely_falls_back_to_original(): void
     {
         $profile = $this->createDoctorProfile();
         $profile->update([
+            'verification_status' => 'verified',
             'biography' => 'English biography.',
             'biography_language' => 'en',
             'bio_en' => 'English biography.',
@@ -118,7 +119,7 @@ class DoctorProfileManagementTest extends TestCase
             'user_id' => User::factory()->create(['role' => UserRole::Doctor])->id,
             'specialization_id' => Specialization::query()->firstOrFail()->id,
             'location_id' => Location::query()->firstOrFail()->id,
-            'verification_status' => 'pending',
+            'verification_status' => 'pending_documents',
         ]);
     }
 }

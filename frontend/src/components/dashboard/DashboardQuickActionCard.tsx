@@ -11,7 +11,7 @@ interface DashboardQuickActionCardProps {
 export function DashboardQuickActionCard({ accentClassName, icon, label, description, onSelect }: DashboardQuickActionCardProps) {
   return (
     <button
-      className="group flex min-h-20 min-w-0 items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-3 text-start shadow-sm transition hover:border-teal-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+      className="group flex min-h-20 min-w-0 items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] p-3 text-start transition hover:border-teal-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       onClick={onSelect}
       type="button"
     >

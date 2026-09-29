@@ -5,12 +5,11 @@ interface DashboardSectionCardProps {
   action?: ReactNode
   description?: string
   children: ReactNode
-  className?: string
 }
 
-export function DashboardSectionCard({ title, action, description, children, className = '' }: DashboardSectionCardProps) {
+export function DashboardSectionCard({ title, action, description, children }: DashboardSectionCardProps) {
   return (
-    <section className={`rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm sm:p-5 ${className}`}>
+    <section className="dashboard-home-card dashboard-home-card--compact">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-extrabold">{title}</h2>
@@ -18,11 +17,11 @@ export function DashboardSectionCard({ title, action, description, children, cla
         </div>
         {action}
       </div>
-      {children}
+      <div className="mt-4">{children}</div>
     </section>
   )
 }
 
-export function DashboardSplit({ primary = false, children }: { primary?: boolean; children: ReactNode }) {
-  return <div className={`dashboard-split ${primary ? 'dashboard-split--primary' : 'dashboard-split--secondary'}`}>{children}</div>
+export function DashboardSplit({ children }: { children: ReactNode }) {
+  return <div className="dashboard-split">{children}</div>
 }

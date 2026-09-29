@@ -12,19 +12,20 @@ use App\Models\Specialization;
 use App\Models\User;
 use App\Services\CityNameNormalizer;
 use App\Services\ProfilePhotoService;
+use App\Services\ProviderVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class RegisterDoctorController extends Controller
 {
-    public function __invoke(RegisterDoctorRequest $request, CityNameNormalizer $cityNames, ProfilePhotoService $photos): JsonResponse
+    public function __invoke(RegisterDoctorRequest $request, CityNameNormalizer $cityNames, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
     {
         $validated = $request->validated();
         $photoPath = $photos->store($request->file('profile_photo'), 'doctors');
 
         try {
-            $user = DB::transaction(function () use ($validated, $cityNames, $photoPath): User {
+            $user = DB::transaction(function () use ($validated, $cityNames, $photoPath, $verifications): User {
                 $user = User::create([
                     'name' => $validated['first_name'].' '.$validated['last_name'],
                     'first_name' => $validated['first_name'],
@@ -39,7 +40,7 @@ class RegisterDoctorController extends Controller
                     : null;
                 $initialVerificationStatus = config('medaccess.demo_auto_verify_doctors') && $locationId
                     ? DoctorVerificationStatus::Verified
-                    : DoctorVerificationStatus::Pending;
+                    : DoctorVerificationStatus::PendingDocuments;
 
                 $profile = $user->doctorProfile()->create([
                     'specialization_id' => Specialization::where('code', $validated['specialization'])->valueOrFail('id'),
@@ -59,6 +60,8 @@ class RegisterDoctorController extends Controller
                         'status' => 'pending',
                     ]);
                 }
+
+                $verifications->ensure($profile);
 
                 return $user;
             });

@@ -63,27 +63,28 @@ function AuthVisualPanel({ kind }: { kind: 'login' | 'patient' | 'doctor' }) {
 
   return (
     <aside className={`auth-visual auth-visual--${kind} relative isolate overflow-hidden bg-[#eefaf6]`}>
-      {/* Absolute stage on desktop so the PNG cannot inflate the auth card height. */}
       <div className="auth-visual-stage">
-        <span aria-hidden="true" className="auth-organic-shape" />
-        <BotanicalDecoration className="auth-botanical auth-botanical--rear" variant="auth" />
-        <div className="auth-visual-portrait">
-          <img
-            alt={t('auth.visual.imageAlt')}
-            className="auth-visual-image"
-            decoding="async"
-            fetchPriority="low"
-            loading="lazy"
-            src={healthcareProviderImage}
-          />
+        {/* Artwork is direction-locked so Arabic cannot remirror leaves or the photograph. */}
+        <div className="auth-visual-art" dir="ltr">
+          <span aria-hidden="true" className="auth-organic-shape" />
+          <BotanicalDecoration className="auth-botanical auth-botanical--rear" variant="auth" />
+          <div className="auth-visual-portrait">
+            <img
+              alt={t('auth.visual.imageAlt')}
+              className="auth-visual-image"
+              decoding="async"
+              fetchPriority="high"
+              loading="eager"
+              src={healthcareProviderImage}
+            />
+          </div>
+          <BotanicalDecoration className="auth-botanical auth-botanical--front" variant="authForeground" />
         </div>
-        <BotanicalDecoration className="auth-botanical auth-botanical--front" variant="authForeground" />
+        <AuthForegroundWave />
         <p className="auth-visual-note public-hand-note">
           {t('publicHome.hero.note')}
           <span aria-hidden="true" className="auth-visual-note__mark">♡</span>
         </p>
-        {/* Cream wave sits in front of the portrait so the PNG’s straight bottom edge is never visible. */}
-        <AuthForegroundWave />
       </div>
     </aside>
   )

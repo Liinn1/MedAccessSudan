@@ -7,6 +7,7 @@ use App\Enums\AppointmentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Appointment extends Model
 {
@@ -35,5 +36,10 @@ class Appointment extends Model
     public function homeVisitDetail(): HasOne
     {
         return $this->hasOne(HomeVisitDetail::class);
+    }
+
+    public function payment(): MorphOne
+    {
+        return $this->morphOne(Payment::class, 'payable');
     }
 }

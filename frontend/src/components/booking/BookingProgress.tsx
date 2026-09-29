@@ -12,7 +12,7 @@ interface BookingProgressProps {
 
 export function BookingProgress({ ariaLabel, currentIndex, steps }: BookingProgressProps) {
   return (
-    <ol aria-label={ariaLabel} className="mt-5 grid grid-cols-4 gap-2">
+    <ol aria-label={ariaLabel} className="mt-5 grid gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((step, index) => {
         const reached = index <= currentIndex
         const className = `w-full rounded-full px-2 py-2 text-center text-xs font-bold sm:text-sm ${reached ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-200 text-slate-500'}`

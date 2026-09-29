@@ -13,7 +13,7 @@ export interface CityProposal {
 
 export interface ProviderApplication {
   id: number
-  verification_status: 'pending' | 'verified' | 'rejected' | 'suspended'
+  verification_status: string
   user: { id: number; name: string; email: string; phone: string | null }
   specialization: DoctorFilterOption
   location: AdminLocation | null
@@ -56,7 +56,7 @@ export async function updateLocationStatus(id: number, is_active: boolean) {
   return apiClient.patch(`/api/v1/admin/locations/${id}`, { is_active })
 }
 
-export async function updateProviderVerification(id: number, status: ProviderApplication['verification_status']) {
+export async function updateProviderVerification(id: number, status: string) {
   await apiClient.initializeCsrfProtection()
   return apiClient.patch(`/api/v1/admin/providers/${id}/verification`, { status })
 }

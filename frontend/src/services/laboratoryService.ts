@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient'
 import type { AuthenticatedUser } from './authService'
+import type { ServicePayment } from './paymentTypes'
 
 export type LaboratoryOrderStatus = 'requested' | 'sample_collected' | 'in_progress' | 'result_ready'
 
@@ -24,6 +25,48 @@ export interface CatalogTest {
   name_ar: string
   short_name: string | null
   offering: LaboratoryOfferingConfig | null
+}
+
+export interface PatientCatalogTest {
+  id: number
+  name_en: string
+  name_ar: string
+  short_name: string | null
+  category: NamedOption | null
+  laboratory_count: number
+  min_price: string | null
+  currency: string
+}
+
+export interface LaboratoryMatchItem {
+  lab_test_id: number
+  name_en: string
+  name_ar: string
+  short_name: string | null
+  price: string
+  currency: string
+  estimated_turnaround_hours: number
+}
+
+export interface LaboratoryMatch {
+  laboratory_profile_id: number
+  laboratory_name: string
+  address: string
+  location: NamedOption | null
+  offers_all: boolean
+  matched_count: number
+  selected_count: number
+  missing_test_ids: number[]
+  items: LaboratoryMatchItem[]
+  total: string
+  currency: string
+}
+
+export interface PatientLaboratoryDiscovery {
+  categories: NamedOption[]
+  locations: NamedOption[]
+  tests: PatientCatalogTest[]
+  matches: { complete: LaboratoryMatch[]; partial: LaboratoryMatch[] }
 }
 
 export interface CatalogGroup {
@@ -52,10 +95,15 @@ export interface LaboratoryOrder {
   requested_at: string
   laboratory_name: string
   laboratory_profile_id: number
+  location?: NamedOption | null
+  address?: string | null
+  total?: string
+  currency?: string | null
   patient?: { id: number; name: string; phone: string | null }
   items?: LaboratoryOrderItem[]
   events?: Array<{ id: number; from_status: string | null; to_status: string; created_at: string }>
   result?: { id: number; uploaded_at: string; mime_type: string; original_filename: string; size_bytes: number } | null
+  payment?: ServicePayment | null
 }
 
 export interface LaboratoryProfilePayload {
@@ -183,27 +231,34 @@ export async function getPatientLaboratoryOrders(signal?: AbortSignal) {
   return (await apiClient.get<{ data: LaboratoryOrder[] }>('/api/v1/patient/laboratory-orders', signal)).data
 }
 
-export async function getPatientLaboratoryOfferings(query = '', signal?: AbortSignal) {
-  const suffix = query ? `?q=${encodeURIComponent(query)}` : ''
-  return (await apiClient.get<{ data: { tests: CatalogTest[]; offerings: Array<{
-    id: number
-    laboratory_profile_id: number
-    laboratory_name: string
-    address: string
-    location: NamedOption | null
-    lab_test_id: number
-    name_en: string
-    name_ar: string
-    short_name: string | null
-    price: string
-    currency: string
-    estimated_turnaround_hours: number
-  }> } }>(`/api/v1/patient/laboratory-offerings${suffix}`, signal)).data
+export function formatLaboratoryPrice(price: string | number | null | undefined, currency: string | null | undefined, locale: string) {
+  if (price === null || price === undefined || price === '') return ''
+  const formatted = new Intl.NumberFormat(locale.startsWith('ar') ? 'ar-SD' : 'en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(price))
+  return `${formatted} ${currency || 'SDG'}`
 }
 
-export async function createPatientLaboratoryOrder(laboratoryProfileId: number, labTestIds: number[]) {
+export async function getPatientLaboratoryDiscovery(input: { query?: string; categoryId?: number; locationId?: number; labTestIds?: number[] } = {}, signal?: AbortSignal) {
+  const params = new URLSearchParams()
+  if (input.query) params.set('q', input.query)
+  if (input.categoryId) params.set('category_id', String(input.categoryId))
+  if (input.locationId) params.set('location_id', String(input.locationId))
+  input.labTestIds?.forEach((id) => params.append('lab_test_ids[]', String(id)))
+  const suffix = params.toString() ? `?${params}` : ''
+  return (await apiClient.get<{ data: PatientLaboratoryDiscovery }>(`/api/v1/patient/laboratory-offerings${suffix}`, signal)).data
+}
+
+export async function getPatientLaboratoryOfferings(query = '', signal?: AbortSignal) {
+  return getPatientLaboratoryDiscovery({ query }, signal)
+}
+
+export async function getPatientLaboratoryOrder(id: number, signal?: AbortSignal) {
+  return (await apiClient.get<{ data: LaboratoryOrder }>(`/api/v1/patient/laboratory-orders/${id}`, signal)).data
+}
+
+export async function createPatientLaboratoryOrder(laboratoryProfileId: number, labTestIds: number[], paymentMethod: 'card' | 'pay_later') {
   return (await apiClient.post<{ data: LaboratoryOrder }>('/api/v1/patient/laboratory-orders', {
     laboratory_profile_id: laboratoryProfileId,
     lab_test_ids: labTestIds,
+    payment_method: paymentMethod,
   })).data
 }

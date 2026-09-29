@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Patient;
 
 use App\Enums\AppointmentServiceType;
 use App\Enums\AppointmentStatus;
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Patient\BookAppointmentRequest;
 use App\Http\Resources\AppointmentResource;
@@ -11,6 +12,7 @@ use App\Models\Appointment;
 use App\Models\Location;
 use App\Models\DoctorProfile;
 use App\Services\AvailabilityResolver;
+use App\Services\ServicePaymentRecorder;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -21,12 +23,12 @@ class AppointmentController extends Controller
 {
     public function index(Request $request)
     {
-        return AppointmentResource::collection(Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'review', 'homeVisitDetail.location'])->where('patient_id', $request->user()->id)->orderBy('starts_at')->get());
+        return AppointmentResource::collection(Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'review', 'homeVisitDetail.location', 'payment'])->where('patient_id', $request->user()->id)->orderBy('starts_at')->get());
     }
 
     public function show(Request $request, int $appointment): AppointmentResource
     {
-        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'review', 'homeVisitDetail.location'])
+        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'review', 'homeVisitDetail.location', 'payment'])
             ->where('patient_id', $request->user()->id)
             ->findOrFail($appointment);
 
@@ -35,7 +37,7 @@ class AppointmentController extends Controller
 
     public function cancel(Request $request, int $appointment): AppointmentResource
     {
-        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location'])
+        $record = Appointment::with(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'payment'])
             ->where('patient_id', $request->user()->id)
             ->findOrFail($appointment);
 
@@ -43,18 +45,19 @@ class AppointmentController extends Controller
 
         $record->update(['status' => AppointmentStatus::Cancelled]);
 
-        return new AppointmentResource($record->fresh(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location']));
+        return new AppointmentResource($record->fresh(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'payment']));
     }
 
-    public function store(BookAppointmentRequest $request, AvailabilityResolver $resolver): JsonResponse
+    public function store(BookAppointmentRequest $request, AvailabilityResolver $resolver, ServicePaymentRecorder $payments): JsonResponse
     {
         $data = $request->validated();
         $serviceType = AppointmentServiceType::tryFrom($data['service_type'] ?? '') ?? AppointmentServiceType::Clinic;
         $requested = CarbonImmutable::parse($data['starts_at'], config('app.timezone'))->startOfMinute();
+        $method = PaymentMethod::from($data['payment_method']);
         try {
             // Availability shown in the browser can become stale. Resolve it again
             // while holding the doctor row lock before creating the appointment.
-            $appointment = DB::transaction(function () use ($request, $resolver, $data, $requested, $serviceType) {
+            $appointment = DB::transaction(function () use ($request, $resolver, $data, $requested, $serviceType, $method, $payments) {
                 $doctor = DoctorProfile::query()->bookable()->lockForUpdate()->findOrFail($data['doctor_profile_id']);
                 abort_unless($doctor->offers($serviceType), 422, 'The selected doctor does not offer this appointment type.');
                 $slots = collect($resolver->resolve($doctor, $requested->startOfDay(), $requested->startOfDay(), $serviceType))->flatMap(fn ($day) => $day['slots']);
@@ -69,6 +72,8 @@ class AppointmentController extends Controller
                     unset($homeVisit['city']);
                     $appointment->homeVisitDetail()->create([...$homeVisit, 'location_id' => $city->id]);
                 }
+                $payments->record($request->user(), $appointment, $method);
+
                 return $appointment;
             }, 3);
         } catch (QueryException $error) {
@@ -80,6 +85,6 @@ class AppointmentController extends Controller
             throw $error;
         }
 
-        return (new AppointmentResource($appointment->load(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'homeVisitDetail.location'])))->response()->setStatusCode(201);
+        return (new AppointmentResource($appointment->load(['doctorProfile.user', 'doctorProfile.specialization', 'doctorProfile.location', 'homeVisitDetail.location', 'payment'])))->response()->setStatusCode(201);
     }
 }

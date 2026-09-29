@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Admin\CityProposalController;
 use App\Http\Controllers\Api\V1\Admin\DoctorVerificationController;
+use App\Http\Controllers\Api\V1\Admin\ProviderVerificationReviewController;
 use App\Http\Controllers\Api\V1\Admin\LocationController;
 use App\Http\Controllers\Api\V1\Admin\AdminAccountController;
 use App\Http\Controllers\Api\V1\Admin\AdminLoginController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\Api\V1\Patient\DoctorReviewController;
 use App\Http\Controllers\Api\V1\Patient\DoctorSearchController;
 use App\Http\Controllers\Api\V1\Patient\LaboratoryDiscoveryController;
 use App\Http\Controllers\Api\V1\Patient\LaboratoryOrderController as PatientLaboratoryOrderController;
+use App\Http\Controllers\Api\V1\ProviderVerificationController;
 use App\Http\Controllers\Api\V1\Patient\PatientHomeController;
 use App\Http\Controllers\Api\V1\Patient\ProfileController as PatientProfileController;
 use App\Http\Controllers\Api\V1\Patient\ProfilePhotoController as PatientProfilePhotoController;
@@ -100,6 +102,10 @@ Route::middleware(['auth:sanctum', 'role:doctor'])
         Route::patch('/appointments/{appointment}/complete', [DoctorAppointmentController::class, 'complete'])->whereNumber('appointment');
         Route::put('/profile', [DoctorProfessionalProfileController::class, 'update']);
         Route::post('/profile-photo', [DoctorProfilePhotoController::class, 'store']);
+        Route::get('/verification', [ProviderVerificationController::class, 'show']);
+        Route::post('/verification/documents', [ProviderVerificationController::class, 'upload']);
+        Route::post('/verification/submit', [ProviderVerificationController::class, 'submit']);
+        Route::get('/verification/documents/{document}', [ProviderVerificationController::class, 'download'])->whereNumber('document');
     });
 
 Route::middleware(['auth:sanctum', 'role:laboratory'])
@@ -117,6 +123,10 @@ Route::middleware(['auth:sanctum', 'role:laboratory'])
         Route::get('/profile', [LaboratoryProfileController::class, 'show']);
         Route::put('/profile', [LaboratoryProfileController::class, 'update']);
         Route::post('/profile-photo', [LaboratoryProfilePhotoController::class, 'store']);
+        Route::get('/verification', [ProviderVerificationController::class, 'show']);
+        Route::post('/verification/documents', [ProviderVerificationController::class, 'upload']);
+        Route::post('/verification/submit', [ProviderVerificationController::class, 'submit']);
+        Route::get('/verification/documents/{document}', [ProviderVerificationController::class, 'download'])->whereNumber('document');
     });
 
 Route::middleware(['auth:sanctum', 'role:admin,super_admin'])
@@ -128,6 +138,12 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])
         Route::get('/reviews', [MonitoringController::class, 'reviews']);
         Route::get('/providers', [DoctorVerificationController::class, 'index']);
         Route::patch('/providers/{doctor}/verification', [DoctorVerificationController::class, 'update'])->whereNumber('doctor');
+        Route::get('/verifications', [ProviderVerificationReviewController::class, 'index']);
+        Route::get('/verifications/{verification}', [ProviderVerificationReviewController::class, 'show'])->whereNumber('verification');
+        Route::post('/verifications/{verification}/approve', [ProviderVerificationReviewController::class, 'approve'])->whereNumber('verification');
+        Route::post('/verifications/{verification}/request-changes', [ProviderVerificationReviewController::class, 'requestChanges'])->whereNumber('verification');
+        Route::get('/verifications/{verification}/documents/{document}', [ProviderVerificationReviewController::class, 'download'])->whereNumber('verification')->whereNumber('document');
+        Route::patch('/verifications/{verification}/documents/{document}', [ProviderVerificationReviewController::class, 'reviewDocument'])->whereNumber('verification')->whereNumber('document');
         Route::get('/city-proposals', [CityProposalController::class, 'index']);
         Route::patch('/city-proposals/{proposal}', [CityProposalController::class, 'update'])->whereNumber('proposal');
         Route::get('/locations', [LocationController::class, 'index']);

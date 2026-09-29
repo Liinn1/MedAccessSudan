@@ -133,7 +133,7 @@ class EmailVerificationTest extends TestCase
         ])->assertCreated();
 
         $doctor = User::query()->where('email', 'sara.doctor@example.com')->firstOrFail();
-        $this->assertSame(DoctorVerificationStatus::Pending->value, $doctor->doctorProfile->verification_status);
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $doctor->doctorProfile->verification_status);
         $this->assertNull($doctor->email_verified_at);
         Notification::assertSentTo($doctor, VerifyEmail::class);
 
@@ -142,7 +142,7 @@ class EmailVerificationTest extends TestCase
 
         $doctor->refresh();
         $this->assertTrue($doctor->hasVerifiedEmail());
-        $this->assertSame(DoctorVerificationStatus::Pending->value, $doctor->doctorProfile->fresh()->verification_status);
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $doctor->doctorProfile->fresh()->verification_status);
     }
 
     private function unverifiedPatient(): User

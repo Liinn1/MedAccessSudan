@@ -23,6 +23,10 @@ class LaboratoryOrderResource extends JsonResource
             'requested_at' => $this->requested_at?->toIso8601String(),
             'laboratory_name' => $this->laboratory_name_snapshot,
             'laboratory_profile_id' => $this->laboratory_profile_id,
+            'location' => $this->whenLoaded('laboratoryProfile', fn () => $this->laboratoryProfile?->location?->only(['id', 'code', 'name_en', 'name_ar'])),
+            'address' => $this->whenLoaded('laboratoryProfile', fn () => $this->laboratoryProfile?->address),
+            'total' => $this->whenLoaded('items', fn () => $this->items->reduce(fn (string $sum, $item) => bcadd($sum, (string) $item->price, 2), '0.00')),
+            'currency' => $this->whenLoaded('items', fn () => $this->items->first()?->currency),
             'patient' => $this->whenLoaded('patient', fn () => [
                 'id' => $this->patient->id,
                 'name' => $this->patient->name,
@@ -45,6 +49,7 @@ class LaboratoryOrderResource extends JsonResource
                 'created_at' => $event->created_at?->toIso8601String(),
             ])->values()),
             'result' => $latest ? $this->resultPayload($latest) : null,
+            'payment' => $this->whenLoaded('payment', fn () => $this->payment ? (new PaymentResource($this->payment))->resolve($request) : null),
         ];
     }
 

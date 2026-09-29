@@ -6,6 +6,7 @@ use App\Enums\LaboratoryOrderStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class LaboratoryOrder extends Model
 {
@@ -47,5 +48,10 @@ class LaboratoryOrder extends Model
     public function latestResult(): ?LaboratoryResult
     {
         return $this->results()->latest('id')->first();
+    }
+
+    public function payment(): MorphOne
+    {
+        return $this->morphOne(Payment::class, 'payable');
     }
 }

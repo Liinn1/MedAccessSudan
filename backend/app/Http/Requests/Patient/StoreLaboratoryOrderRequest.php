@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Patient;
 
+use App\Http\Requests\Concerns\ValidatesServicePayment;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLaboratoryOrderRequest extends FormRequest
 {
+    use ValidatesServicePayment;
+
     public function authorize(): bool
     {
         return true;
@@ -15,6 +18,7 @@ class StoreLaboratoryOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->paymentRules(),
             'laboratory_profile_id' => ['required', 'integer', 'exists:laboratory_profiles,id'],
             'lab_test_ids' => ['required', 'array', 'min:1', 'max:20'],
             'lab_test_ids.*' => ['integer', 'distinct', 'exists:lab_tests,id'],

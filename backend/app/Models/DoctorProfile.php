@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\AppointmentServiceType;
 use App\Enums\AppointmentStatus;
+use App\Enums\DoctorVerificationStatus;
 use App\Enums\UserRole;
+use App\Models\Concerns\HasProfessionalVerification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class DoctorProfile extends Model
 {
+    use HasProfessionalVerification;
     protected $guarded = [];
 
     protected function casts(): array
@@ -86,13 +89,7 @@ class DoctorProfile extends Model
 
     public function scopeVisibleToPatients(Builder $query): Builder
     {
-        // Pending providers are visible only in the explicit demo mode used for
-        // end-to-end graduation-project testing. Production remains verified-only.
-        $visibleStatuses = config('medaccess.demo_auto_verify_doctors')
-            ? ['verified', 'pending']
-            : ['verified'];
-
-        return $query->whereIn('verification_status', $visibleStatuses)
+        return $query->where('verification_status', DoctorVerificationStatus::Verified->value)
             ->whereHas('user', fn (Builder $user) => $user->where('role', UserRole::Doctor->value))
             ->whereHas('specialization', fn (Builder $specialization) => $specialization->where('is_active', true))
             ->whereHas('location', fn (Builder $location) => $location->where('is_active', true));

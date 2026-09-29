@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { BookingHero } from '../../components/booking/BookingHero'
 import { BookingPanel } from '../../components/booking/BookingPanel'
+import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
 import { BookingProgress } from '../../components/booking/BookingProgress'
 import { BookingReviewList } from '../../components/booking/BookingReviewList'
+import { PaymentMethodSelector } from '../../components/booking/PaymentMethodSelector'
 import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
@@ -15,8 +17,10 @@ import { ApiError } from '../../services/apiClient'
 import { getPatientHome } from '../../services/authService'
 import { getDoctorFilters, getDoctorProfile, searchDoctors, type DoctorAvailabilitySlot, type DoctorFilterOption, type DoctorProfile, type DoctorSummary } from '../../services/doctorService'
 import { bookPatientAppointment } from '../../services/patientAppointmentService'
+import type { ServicePayment } from '../../services/paymentTypes'
 import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 import { buildLoginPath } from '../../utils/navigation'
+import { useBookingPayment } from '../../hooks/useBookingPayment'
 
 type Step = 'search' | 'doctors' | 'details' | 'review' | 'success'
 type Address = { contact_phone: string; area: string; address_details: string; additional_directions: string }
@@ -43,6 +47,8 @@ export function HomeVisitPage() {
   const [locating, setLocating] = useState(false)
   const [locationError, setLocationError] = useState('')
   const [appointmentId, setAppointmentId] = useState<number | null>(null)
+  const [createdPayment, setCreatedPayment] = useState<ServicePayment | null>(null)
+  const payment = useBookingPayment()
   const arabic = i18n.resolvedLanguage === 'ar'
   const locale = arabic ? 'ar-SD' : 'en'
 
@@ -111,12 +117,14 @@ export function HomeVisitPage() {
 
   async function confirm() {
     if (!doctor || !slot || !coordinates || busy) return
+    if (!payment.validate(t)) return
     setBusy(true); setError('')
     try {
       const appointment = await bookPatientAppointment({
         doctor_profile_id: doctor.id,
         starts_at: slot.starts_at,
         service_type: 'home_visit',
+        ...payment.payload(),
         home_visit: {
           contact_phone: address.contact_phone.replace(/[\s\-()]/g, ''),
           city,
@@ -127,6 +135,7 @@ export function HomeVisitPage() {
           longitude: coordinates.longitude,
         },
       })
+      setCreatedPayment(appointment.payment ?? null)
       setAppointmentId(appointment.id); setStep('success')
     } catch (cause) { setError(t(cause instanceof ApiError && cause.status === 409 ? 'patient.homeVisit.slotUnavailable' : 'patient.homeVisit.bookingError')) }
     finally { setBusy(false) }
@@ -178,9 +187,10 @@ export function HomeVisitPage() {
         { label: t('patient.homeVisit.fields.address_details'), value: address.address_details },
         ...(address.additional_directions ? [{ label: t('patient.homeVisit.fields.additional_directions'), value: address.additional_directions }] : []),
       ]} />
+      <PaymentMethodSelector card={payment.card} errors={payment.errors} method={payment.method} onCardChange={payment.setCard} onMethodChange={payment.setMethod} />
       <button className="mt-6 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white disabled:opacity-60" disabled={busy} onClick={confirm} type="button">{t(busy ? 'patient.homeVisit.confirming' : 'patient.homeVisit.confirm')}</button>
     </BookingPanel>}
-    {step === 'success' && appointmentId && <BookingPanel className="text-center"><span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</span><h2 className="mt-4 text-3xl font-extrabold">{t('patient.homeVisit.successTitle')}</h2><p className="mt-2 text-[var(--color-text-secondary)]">{t('patient.homeVisit.successDescription')}</p><button className="mt-6 rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white" onClick={() => navigate(`/patient/appointments/${appointmentId}`)} type="button">{t('patient.homeVisit.viewAppointment')}</button></BookingPanel>}
+    {step === 'success' && appointmentId && <BookingPanel className="text-center"><span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</span><h2 className="mt-4 text-3xl font-extrabold">{t('patient.homeVisit.successTitle')}</h2><p className="mt-2 text-[var(--color-text-secondary)]">{t('patient.homeVisit.successDescription')}</p><BookingPaymentSummary payment={createdPayment} /><button className="mt-6 rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white" onClick={() => navigate(`/patient/appointments/${appointmentId}`)} type="button">{t('patient.homeVisit.viewAppointment')}</button></BookingPanel>}
     <p aria-live="polite" className="mt-4 min-h-6 text-center font-semibold text-red-700">{error}</p>
   </div></PatientLayout>
 }

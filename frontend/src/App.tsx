@@ -18,6 +18,8 @@ import { LaboratoryRequestDetailPage } from './pages/laboratory/LaboratoryReques
 import { LaboratoryResultsPage } from './pages/laboratory/LaboratoryResultsPage'
 import { LaboratoryProfilePage } from './pages/laboratory/LaboratoryProfilePage'
 import { PatientLaboratoryPage } from './pages/patient/PatientLaboratoryPage'
+import { PatientLaboratoryOrderPage } from './pages/patient/PatientLaboratoryOrderPage'
+import { PatientLaboratoryResultsPage } from './pages/patient/PatientLaboratoryResultsPage'
 import { SignUpModalProvider } from './contexts/SignUpModalContext'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
@@ -57,6 +59,8 @@ function App() {
       <Route path="/laboratory/profile" element={<LaboratoryProfilePage />} />
       <Route path="/patient/home" element={<PatientHomePage />} />
       <Route path="/patient/laboratory" element={<PatientLaboratoryPage />} />
+      <Route path="/patient/laboratory/orders/:orderId" element={<PatientLaboratoryOrderPage />} />
+      <Route path="/patient/lab-results" element={<PatientLaboratoryResultsPage />} />
       <Route path="/patient/home-visits" element={<HomeVisitPage />} />
       <Route path="/patient/doctors/search" element={<FindDoctorPage />} />
       <Route path="/patient/doctors/results" element={<DoctorSearchResultsPage />} />

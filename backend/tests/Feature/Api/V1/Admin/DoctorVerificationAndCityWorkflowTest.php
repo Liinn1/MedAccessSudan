@@ -40,7 +40,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $response->assertCreated();
         $this->assertDatabaseHas('doctor_profiles', [
             'location_id' => $location->id,
-            'verification_status' => 'pending',
+            'verification_status' => 'pending_documents',
         ]);
         $this->assertDatabaseCount('city_proposals', 0);
     }
@@ -90,6 +90,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->postJson('/api/v1/patient/appointments', [
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slot,
+            'payment_method' => 'pay_later',
         ])->assertCreated();
         $this->getJson($availabilityUrl)->assertOk()->assertJsonMissing(['starts_at' => $slot]);
         $this->getJson('/api/v1/patient/appointments')->assertOk()->assertJsonCount(1, 'data');
@@ -106,7 +107,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
 
         $this->assertSame('New Halfa', $proposal->proposed_name);
         $this->assertNull($doctor->doctorProfile->location_id);
-        $this->assertSame('pending', $doctor->doctorProfile->verification_status);
+        $this->assertSame('pending_documents', $doctor->doctorProfile->verification_status);
         $this->assertDatabaseMissing('locations', ['normalized_name' => 'new halfa']);
 
         Sanctum::actingAs($doctor);
@@ -211,7 +212,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->patchJson("/api/v1/admin/providers/{$profile->id}/verification", ['status' => 'verified'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('status');
-        $this->assertSame('pending', $profile->fresh()->verification_status);
+        $this->assertSame('pending_documents', $profile->fresh()->verification_status);
     }
 
     public function test_rejected_city_remains_hidden_and_unauthorized_users_cannot_manage_reference_data(): void

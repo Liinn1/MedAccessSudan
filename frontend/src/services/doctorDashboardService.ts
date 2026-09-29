@@ -15,7 +15,7 @@ export interface DoctorDashboardProfile {
   clinic_name: string | null
   biography: string | null
   biography_language: 'en' | 'ar' | null
-  verification_status: 'pending' | 'verified' | 'rejected' | 'suspended'
+  verification_status: string
   offers_clinic_visits: boolean
   offers_home_visits: boolean
   specialization: DoctorFilterOption | null

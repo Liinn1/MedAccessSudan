@@ -19,18 +19,18 @@ interface DashboardStatCardProps {
   tone?: DashboardStatTone
 }
 
-export function DashboardStatsGrid({ columns = 4, children, label }: { columns?: 3 | 4; children: ReactNode; label: string }) {
-  return <section aria-label={label} className={`dashboard-stats ${columns === 3 ? 'dashboard-stats--3' : 'dashboard-stats--4'}`}>{children}</section>
+export function DashboardStatsGrid({ children, label }: { children: ReactNode; label: string }) {
+  return <section aria-label={label} className="dashboard-stats">{children}</section>
 }
 
 export function DashboardStatCard({ icon: Icon, label, value, hint, tone = 'accent' }: DashboardStatCardProps) {
   return (
-    <article className="rounded-2xl border border-[var(--color-border)] bg-white p-3.5 shadow-sm sm:rounded-3xl sm:p-5">
+    <article className="dashboard-stat">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-bold text-[var(--color-text-secondary)] sm:text-sm">{label}</p>
-        <span className={`grid size-8 shrink-0 place-items-center rounded-xl border sm:size-9 ${tones[tone]}`}><Icon className="size-4" /></span>
+        <p className="text-xs font-bold text-[var(--color-text-secondary)]">{label}</p>
+        <span className={`grid size-8 shrink-0 place-items-center rounded-xl border ${tones[tone]}`}><Icon className="size-4" /></span>
       </div>
-      <p className="direction-ltr mt-2 text-start text-2xl font-black tabular-nums text-[var(--color-text-primary)] sm:text-3xl">{value}</p>
+      <p className="direction-ltr mt-2 text-start text-2xl font-black tabular-nums">{value}</p>
       <p className="mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">{hint}</p>
     </article>
   )

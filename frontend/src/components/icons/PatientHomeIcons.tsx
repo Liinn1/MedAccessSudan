@@ -59,3 +59,11 @@ export function LocationIcon(props: IconProps) {
 export function ChevronIcon(props: IconProps) {
   return <svg {...defaults} {...props}><path d="m15 18-6-6 6-6" /></svg>
 }
+
+export function MailIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><rect height="14" rx="2" width="20" x="2" y="5" /><path d="m4 7 8 6 8-6" /></svg>
+}
+
+export function PhoneIcon(props: IconProps) {
+  return <svg {...defaults} {...props}><path d="M7 3h3l1.5 4-2 1.5a12 12 0 0 0 6 6L17 13l4 1.5v3c0 1-1 2-2 2C9 21 3 15 3 5c0-1 1-2 2-2Z" /></svg>
+}

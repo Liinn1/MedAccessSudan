@@ -26,4 +26,29 @@ return [
     */
     'laboratory_currency' => 'SDG',
     'laboratory_result_max_kilobytes' => 8192,
+
+    /*
+    | Professional verification documents are stored on the private local disk.
+    | Required types are configurable; they are not a permanent regulatory list.
+    */
+    'provider_verification' => [
+        'max_kilobytes' => (int) env('MEDACCESS_VERIFICATION_MAX_KILOBYTES', 8192),
+        'allowed_mime_types' => [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+        ],
+        'requirements' => [
+            'doctor' => [
+                'professional_license',
+                'practice_permit',
+                'identification',
+            ],
+            'laboratory' => [
+                'registration_certificate',
+                'operating_license',
+                'responsible_identification',
+            ],
+        ],
+    ],
 ];

@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { DashboardEmptyState } from '../../components/dashboard/DashboardEmptyState'
+import { DashboardGreeting } from '../../components/dashboard/DashboardGreeting'
+import { DashboardHomeCard, DashboardHomeGrid } from '../../components/dashboard/DashboardHomeCard'
+import { DashboardInfoCard } from '../../components/dashboard/DashboardInfoCard'
 import { DashboardPage } from '../../components/dashboard/DashboardPage'
+import { DashboardProfileCard } from '../../components/dashboard/DashboardProfileCard'
 import { DashboardQuickActionCard } from '../../components/dashboard/DashboardQuickActionCard'
 import { DashboardSectionCard, DashboardSplit } from '../../components/dashboard/DashboardSectionCard'
-import { DashboardStatCard, DashboardStatsGrid } from '../../components/dashboard/DashboardStatCard'
-import { DashboardWelcome } from '../../components/dashboard/DashboardWelcome'
+import { DashboardServices } from '../../components/dashboard/DashboardServices'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { InformationDialog } from '../../components/feedback/InformationDialog'
 import { LoadingState } from '../../components/feedback/LoadingState'
-import { CalendarIcon, LaboratoryIcon, StethoscopeIcon, VisitIcon } from '../../components/icons/PatientHomeIcons'
+import { CalendarIcon, LaboratoryIcon, MailIcon, PhoneIcon, StethoscopeIcon, VisitIcon } from '../../components/icons/PatientHomeIcons'
 import { LaboratoryStatusBadge } from '../../components/laboratory/LaboratoryStatusBadge'
 import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
@@ -76,24 +79,27 @@ export function PatientHomePage() {
   const locale = i18n.resolvedLanguage === 'ar' ? 'ar-SD' : 'en'
   const arabic = i18n.language.startsWith('ar')
   const upcomingAppointments = appointments.filter((appointment) => appointment.status === 'confirmed' && new Date(appointment.ends_at) >= new Date()).sort((first, second) => new Date(first.starts_at).getTime() - new Date(second.starts_at).getTime())
-  const completedCount = appointments.filter((appointment) => appointment.status === 'completed').length
-  const pendingLabs = labOrders.filter((order) => order.status !== 'result_ready').length
   const tipKey = healthTips[activeTip]
   const viewAll = (path: string) => <button className="shrink-0 text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate(path)} type="button">{t('patient.dashboard.viewAll')}</button>
 
   return (
     <PatientLayout isLoggingOut={isLoggingOut} onAppointments={() => navigate('/patient/appointments')} onDashboard={() => navigate('/patient/home')} onLogout={handleLogout} onProfile={() => navigate('/patient/profile')} user={user}>
       <DashboardPage>
-        <DashboardWelcome description={t('patient.dashboard.supportingText')} eyebrow={t('patient.dashboard.eyebrow')} greeting={t(`patient.dashboard.greetings.${greetingPeriod()}`)} title={`${firstName}!`} />
-        <DashboardStatsGrid columns={3} label={t('patient.dashboard.overviewLabel')}>
-          <DashboardStatCard hint={t('patient.dashboard.upcomingHint')} icon={CalendarIcon} label={t('patient.dashboard.upcomingAppointments')} tone="pending" value={upcomingAppointments.length} />
-          <DashboardStatCard hint={t('patient.dashboard.labHint')} icon={LaboratoryIcon} label={t('patient.dashboard.labActivity')} tone="info" value={pendingLabs} />
-          <DashboardStatCard hint={t('patient.dashboard.completedHint')} icon={StethoscopeIcon} label={t('patient.dashboard.completedAppointments')} tone="ready" value={completedCount} />
-        </DashboardStatsGrid>
+        <DashboardGreeting aside={t('patient.dashboard.healthMessage')} description={t('patient.dashboard.supportingText')} greeting={t(`patient.dashboard.greetings.${greetingPeriod()}`, { name: firstName })} />
 
-        <DashboardSplit primary>
-          <DashboardSectionCard action={viewAll('/patient/appointments')} title={t('patient.dashboard.upcomingAppointments')}>
-            {upcomingAppointments.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/patient/doctors/search')} type="button">{t('patient.dashboard.bookAppointment')}</button>} description={t('patient.dashboard.noUpcomingDescription')} icon={CalendarIcon} title={t('patient.dashboard.noUpcomingTitle')} /> : <ul className="mt-3 space-y-2.5">{upcomingAppointments.slice(0, 4).map((appointment) => {
+        <DashboardHomeGrid>
+          <DashboardProfileCard editLabel={t('patient.dashboard.editProfile')} imageUrl={user.profile_image_url} name={user.name} onEdit={() => navigate('/patient/profile')} role={t('roles.patient')} />
+          <DashboardInfoCard
+            editLabel={t('patient.dashboard.edit')}
+            onEdit={() => navigate('/patient/profile')}
+            rows={[
+              { icon: <MailIcon className="size-5" />, label: t('patient.dashboard.email'), value: user.email },
+              { icon: <PhoneIcon className="size-5" />, label: t('patient.dashboard.phone'), value: user.phone || '—' },
+            ]}
+            title={t('patient.dashboard.personalInformation')}
+          />
+          <DashboardHomeCard action={viewAll('/patient/appointments')} icon={<CalendarIcon className="size-5 text-[var(--color-primary)]" />} title={t('patient.dashboard.upcomingAppointments')}>
+            {upcomingAppointments.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/patient/doctors/search')} type="button">{t('patient.dashboard.bookAppointment')}</button>} description={t('patient.dashboard.noUpcomingDescription')} title={t('patient.dashboard.noUpcomingTitle')} /> : <ul className="space-y-2.5">{upcomingAppointments.slice(0, 4).map((appointment) => {
               const startsAt = new Date(appointment.starts_at)
               const specialty = arabic ? appointment.doctor.specialization.name_ar : appointment.doctor.specialization.name_en
               return <li key={appointment.id}><button className="flex w-full flex-col gap-1 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/patient/appointments/${appointment.id}`)} type="button">
@@ -102,33 +108,23 @@ export function PatientHomePage() {
                 <span className="direction-ltr text-start text-xs font-semibold text-[var(--color-text-secondary)]">{new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: SUDAN_TIME_ZONE }).format(startsAt)}</span>
               </button></li>
             })}</ul>}
-          </DashboardSectionCard>
+          </DashboardHomeCard>
+        </DashboardHomeGrid>
 
-          <DashboardSectionCard action={viewAll('/patient/laboratory')} title={t('patient.dashboard.laboratory.title')}>
-            {labOrders.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/patient/laboratory')} type="button">{t('patient.dashboard.laboratory.viewAll')}</button>} description={t('patient.dashboard.laboratory.emptyDescription')} icon={LaboratoryIcon} title={t('patient.dashboard.laboratory.emptyTitle')} /> : <ul className="mt-3 space-y-2.5">{labOrders.slice(0, 4).map((order) => <li className="rounded-2xl border border-[var(--color-border)] p-3.5" key={order.id}>
-              <div className="flex flex-wrap items-start justify-between gap-2"><p className="font-extrabold" dir="auto">{(order.items ?? []).map((item) => arabic ? item.name_ar : item.name_en).join(', ')}</p><LaboratoryStatusBadge status={order.status} /></div>
+        <DashboardServices title={t('patient.dashboard.servicesTitle')}>
+          {services.map(({ key, path, accent, icon: Icon }) => <DashboardQuickActionCard accentClassName={accent} description={t(`patient.dashboard.serviceDescriptions.${key}`)} icon={<Icon className="size-5" />} key={key} label={t(`patient.home.services.${key}`)} onSelect={() => navigate(path)} />)}
+        </DashboardServices>
+
+        <DashboardSplit>
+          <DashboardSectionCard action={viewAll('/patient/appointments')} title={t('patient.dashboard.laboratory.title')}>
+            {labOrders.length === 0 ? <DashboardEmptyState description={t('patient.dashboard.laboratory.emptyDescription')} icon={LaboratoryIcon} title={t('patient.dashboard.laboratory.emptyTitle')} /> : <ul className="space-y-2.5">{labOrders.slice(0, 4).map((order) => <li className="rounded-2xl border border-[var(--color-border)] p-3.5" key={order.id}>
+              <div className="flex flex-wrap items-start justify-between gap-2"><p className="font-extrabold" dir="auto">{(order.items ?? []).map((item) => arabic ? item.name_ar : item.name_en).join(', ')}</p><LaboratoryStatusBadge namespace="patient.laboratory.statuses" status={order.status} /></div>
               <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{order.laboratory_name}</p>
-              <p className="direction-ltr mt-1 text-start text-xs font-semibold text-[var(--color-text-secondary)]">{new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: SUDAN_TIME_ZONE }).format(new Date(order.requested_at))}</p>
               {order.status === 'result_ready' && order.result && <div className="mt-2 flex flex-wrap gap-3"><button className="text-sm font-bold text-[var(--color-primary)]" onClick={() => openLaboratoryResult(`/api/v1/patient/laboratory-orders/${order.id}/result`)} type="button">{t('patient.laboratory.view')}</button><button className="text-sm font-bold text-[var(--color-primary)]" onClick={() => downloadLaboratoryResult(`/api/v1/patient/laboratory-orders/${order.id}/result`)} type="button">{t('patient.laboratory.download')}</button></div>}
             </li>)}</ul>}
           </DashboardSectionCard>
-        </DashboardSplit>
-
-        <DashboardSectionCard className="mt-5 xl:mt-6" title={t('patient.dashboard.quickActions')}>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{services.map(({ key, path, accent, icon: Icon }) => <DashboardQuickActionCard accentClassName={accent} description={t(`patient.dashboard.serviceDescriptions.${key}`)} icon={<Icon className="size-5" />} key={key} label={t(`patient.home.services.${key}`)} onSelect={() => navigate(path)} />)}</div>
-        </DashboardSectionCard>
-
-        <DashboardSplit>
-          <DashboardSectionCard action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/patient/profile')} type="button">{t('patient.dashboard.editProfile')}</button>} title={t('patient.dashboard.profileSummary')}>
-            <p className="mt-3 font-extrabold" dir="auto">{user.name}</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">{t('roles.patient')}</p>
-            <dl className="mt-3 grid gap-3 text-sm">
-              <div><dt className="text-xs font-bold text-[var(--color-text-secondary)]">{t('patient.dashboard.email')}</dt><dd className="mt-1 break-all font-semibold">{user.email}</dd></div>
-              <div><dt className="text-xs font-bold text-[var(--color-text-secondary)]">{t('patient.dashboard.phone')}</dt><dd className="direction-ltr mt-1 text-start font-semibold">{user.phone || '—'}</dd></div>
-            </dl>
-          </DashboardSectionCard>
           <DashboardSectionCard action={<div className="flex gap-2"><button aria-label={t('patient.dashboard.healthTips.previous')} className="grid size-8 place-items-center rounded-full border border-[var(--color-border)] rtl:rotate-180" onClick={() => setActiveTip((current) => (current + healthTips.length - 1) % healthTips.length)} type="button">‹</button><button aria-label={t('patient.dashboard.healthTips.next')} className="grid size-8 place-items-center rounded-full border border-[var(--color-border)] rtl:rotate-180" onClick={() => setActiveTip((current) => (current + 1) % healthTips.length)} type="button">›</button></div>} title={t('patient.dashboard.healthTips.title')}>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">{t(`patient.dashboard.healthTips.items.${tipKey}`)}</p>
+            <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">{t(`patient.dashboard.healthTips.items.${tipKey}`)}</p>
           </DashboardSectionCard>
         </DashboardSplit>
       </DashboardPage>

@@ -57,31 +57,43 @@
 }
 
 .dashboard-page {
-  @apply mx-auto max-w-7xl px-4 py-5 sm:px-8 sm:py-8 lg:px-10;
+  @apply mx-auto max-w-[96rem] px-5 py-8 sm:px-8 lg:px-10;
+}
+
+.dashboard-home-grid {
+  @apply mt-8 grid gap-5 lg:grid-cols-3;
+}
+
+.dashboard-home-card {
+  @apply flex min-h-[17.5rem] flex-col rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6;
+}
+
+.dashboard-home-card--compact {
+  @apply min-h-0;
+}
+
+.dashboard-empty {
+  @apply flex flex-1 flex-col justify-center rounded-2xl bg-[var(--color-primary-surface)] px-4 py-8 text-center;
+}
+
+.dashboard-services {
+  @apply mt-8;
+}
+
+.dashboard-services__panel {
+  @apply mt-4 grid gap-3 rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-5 xl:grid-cols-4;
 }
 
 .dashboard-stats {
-  @apply mt-5 grid grid-cols-2 gap-3 xl:mt-6;
+  @apply mt-4 grid grid-cols-2 items-stretch gap-3 xl:grid-cols-4;
 }
 
-.dashboard-stats--4 {
-  @apply xl:grid-cols-4;
-}
-
-.dashboard-stats--3 {
-  @apply xl:grid-cols-3;
+.dashboard-stat {
+  @apply flex h-full min-h-[7rem] flex-col rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm;
 }
 
 .dashboard-split {
-  @apply mt-5 grid gap-4 xl:mt-6 xl:grid-cols-2;
-}
-
-.dashboard-split--primary {
-  @apply xl:grid-cols-[1.2fr_0.8fr];
-}
-
-.dashboard-split--secondary {
-  @apply xl:grid-cols-[1.15fr_0.85fr];
+  @apply mt-8 grid gap-5 xl:grid-cols-2;
 }
 
 @keyframes dashboard-drawer-overlay-enter {
@@ -163,6 +175,14 @@
   position: relative;
   min-height: 15.5rem;
   height: 100%;
+}
+
+.auth-visual-art {
+  position: absolute;
+  inset: 0;
+  direction: ltr;
+  overflow: hidden;
+  unicode-bidi: isolate;
 }
 
 .auth-visual-portrait {
@@ -631,15 +651,8 @@
 }
 
 @keyframes auth-visual-enter {
-  from { opacity: 0; transform: translateX(-10px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-[dir="rtl"] .auth-visual { animation-name: auth-visual-enter-rtl; }
-
-@keyframes auth-visual-enter-rtl {
-  from { opacity: 0; transform: translateX(10px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes auth-portrait-enter {
@@ -719,7 +732,7 @@
 
   .auth-form-panel {
     position: relative;
-    z-index: 2;
+    z-index: 1;
     flex: 0 0 auto;
     padding-block: 0.75rem 1.05rem;
   }
@@ -750,22 +763,20 @@
    */
   .auth-visual {
     position: relative;
-    z-index: 1;
+    z-index: 2;
+    isolation: auto;
+    overflow: hidden;
     flex: 0 0 auto;
-    height: clamp(14.5rem, 58vw, 16.25rem);
+    height: clamp(13.75rem, 48vw, 17.5rem);
     min-height: 0;
-    margin-bottom: -1.35rem;
+    margin-bottom: -1.25rem;
     background: #eefaf6;
   }
 
-  .auth-visual--patient {
-    height: clamp(12.5rem, 50vw, 14.75rem);
-    margin-bottom: -1.15rem;
-  }
-
+  .auth-visual--patient,
   .auth-visual--doctor {
-    height: clamp(12.25rem, 48vw, 14.5rem);
-    margin-bottom: -1.15rem;
+    height: clamp(13.5rem, 46vw, 16.75rem);
+    margin-bottom: -1.1rem;
   }
 
   .auth-visual-stage {
@@ -775,30 +786,34 @@
     overflow: hidden;
   }
 
+  .auth-visual-art {
+    position: absolute;
+    inset: 0;
+  }
+
   /* Backdrop behind the head and shoulders, not a full-bleed mint slab. */
   .auth-organic-shape {
-    inset: 10% 20% 40%;
+    inset: 8% 16% 26%;
   }
 
   .auth-visual-portrait {
     position: absolute;
     z-index: 10;
-    inset: 0.2rem 0 1.6rem;
+    inset: 0.5rem 5% 2.2rem;
+    display: flex;
     height: auto;
-    align-items: stretch;
+    overflow: hidden;
+    align-items: flex-end;
     justify-content: center;
   }
 
-  /*
-   * Cover (not contain) so transparent PNG padding is cropped. The person
-   * fills the portrait band; legs continue under the wave.
-   */
+  /* Same contain treatment as desktop: never cover-crop into a face-only zoom. */
   .auth-visual-image {
+    width: auto;
     height: 100%;
-    width: 100%;
-    max-width: none;
-    object-fit: cover;
-    object-position: 50% 6%;
+    max-width: min(13.25rem, 56%);
+    object-fit: contain;
+    object-position: center bottom;
   }
 
   /*
@@ -807,31 +822,33 @@
    */
   .auth-botanical {
     left: 50%;
-    width: 200%;
+    width: 150%;
     max-width: none;
     translate: -50% 0;
   }
 
   .auth-botanical--rear {
-    bottom: 8%;
-    height: 88%;
-    scale: 1.18;
+    bottom: -4%;
+    height: 74%;
+    scale: 1;
     transform-origin: 50% 100%;
   }
 
   .auth-botanical--front {
-    bottom: 10%;
-    height: 44%;
-    width: 148%;
-    scale: 1.12;
+    bottom: 6%;
+    height: 38%;
+    width: 128%;
+    scale: 1;
     transform-origin: 50% 100%;
   }
 
   .auth-foreground-wave {
+    z-index: 30;
     right: 0;
     left: 0;
     width: 100%;
-    height: 3.6rem;
+    height: clamp(3.2rem, 22%, 3.85rem);
+    bottom: -1px;
   }
 
   .auth-visual-note {
@@ -1081,6 +1098,8 @@ html[lang="ar"] .public-hand-note {
   max-width: none;
   overflow: visible;
   pointer-events: none;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .botanical-leaf__body {

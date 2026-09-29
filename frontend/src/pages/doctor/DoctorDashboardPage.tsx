@@ -3,15 +3,19 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { AppointmentOverviewChart, SlotUtilizationChart } from '../../components/charts/DoctorDashboardCharts'
 import { DashboardEmptyState } from '../../components/dashboard/DashboardEmptyState'
+import { DashboardGreeting } from '../../components/dashboard/DashboardGreeting'
+import { DashboardHomeCard, DashboardHomeGrid } from '../../components/dashboard/DashboardHomeCard'
+import { DashboardInfoCard } from '../../components/dashboard/DashboardInfoCard'
 import { DashboardPage } from '../../components/dashboard/DashboardPage'
+import { DashboardProfileCard } from '../../components/dashboard/DashboardProfileCard'
 import { DashboardQuickActionCard } from '../../components/dashboard/DashboardQuickActionCard'
 import { DashboardSectionCard, DashboardSplit } from '../../components/dashboard/DashboardSectionCard'
-import { DashboardStatCard, DashboardStatsGrid } from '../../components/dashboard/DashboardStatCard'
-import { DashboardWelcome } from '../../components/dashboard/DashboardWelcome'
+import { DashboardServices } from '../../components/dashboard/DashboardServices'
 import { DoctorPracticeTipsCarousel } from '../../components/doctor/DoctorPracticeTipsCarousel'
+import { DashboardVerificationNotice } from '../../components/verification/ProviderVerificationCard'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
-import { CalendarIcon, StethoscopeIcon, VisitIcon } from '../../components/icons/PatientHomeIcons'
+import { CalendarIcon, ProfileIcon, StethoscopeIcon, VisitIcon } from '../../components/icons/PatientHomeIcons'
 import { DoctorLayout } from '../../layouts/DoctorLayout'
 import { ApiError } from '../../services/apiClient'
 import { getCurrentUser, logout } from '../../services/authService'
@@ -56,7 +60,8 @@ export function DoctorDashboardPage() {
   const { profile, user, insights } = dashboard
   const locale = i18n.language.startsWith('ar') ? 'ar-SD' : 'en'
   const firstName = user.first_name || user.name.split(' ')[0] || user.name
-  const specialty = profile?.specialization ? (i18n.language.startsWith('ar') ? profile.specialization.name_ar : profile.specialization.name_en) : null
+  const specialty = profile?.specialization ? (i18n.language.startsWith('ar') ? profile.specialization.name_ar : profile.specialization.name_en) : t('doctor.dashboard.notProvided')
+  const location = profile?.location ? (i18n.language.startsWith('ar') ? profile.location.name_ar : profile.location.name_en) : t('doctor.dashboard.notProvided')
   const weekdayLabels = [t('doctor.availability.days.0'), t('doctor.availability.days.1'), t('doctor.availability.days.2'), t('doctor.availability.days.3'), t('doctor.availability.days.4'), t('doctor.availability.days.5'), t('doctor.availability.days.6')]
   const chartDays = (insights?.appointment_overview.days ?? []).map((day) => ({ label: weekdayLabels[day.weekday]?.slice(0, 3) ?? day.date, completed: day.completed, upcoming: day.upcoming, cancelled: day.cancelled }))
   const totals = insights?.appointment_overview.totals ?? { total: 0, completed: 0, upcoming: 0, cancelled: 0 }
@@ -65,54 +70,59 @@ export function DoctorDashboardPage() {
   const todayKey = sudanDateKey(new Date())
   const todayAppointments = (insights?.upcoming_appointments ?? []).filter((appointment) => sudanDateKey(new Date(appointment.starts_at)) === todayKey)
   const bothTypes = Boolean(profile?.offers_clinic_visits && profile?.offers_home_visits)
+  const nextSlot = formatSlot(profile?.next_available?.clinic ?? profile?.next_available?.home_visit) ?? t('doctor.dashboard.noClinicSlots')
   const viewAll = <button className="shrink-0 text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/doctor/appointments')} type="button">{t('doctor.dashboard.viewAll')}</button>
 
   return (
-    <DoctorLayout isLoggingOut={isLoggingOut} onLogout={handleLogout} roleLabel={specialty ?? t('roles.doctor')} user={{ ...user, profile_image_url: profile?.profile_image_url ?? user.profile_image_url }}>
+    <DoctorLayout isLoggingOut={isLoggingOut} onLogout={handleLogout} roleLabel={specialty} user={{ ...user, profile_image_url: profile?.profile_image_url ?? user.profile_image_url }}>
       <DashboardPage>
-        <DashboardWelcome description={t('doctor.dashboard.supportingText')} eyebrow={t('doctor.dashboard.welcome')} greeting={t(`doctor.dashboard.greetings.${greetingPeriod()}`)} title={t('doctor.dashboard.namedTitle', { name: firstName })} />
-        <DashboardStatsGrid label={t('doctor.dashboard.overviewLabel')}>
-          <DashboardStatCard hint={t('doctor.dashboard.todayHint')} icon={CalendarIcon} label={t('doctor.dashboard.todayAppointments')} tone="pending" value={todayAppointments.length} />
-          <DashboardStatCard hint={t('doctor.dashboard.upcomingHint')} icon={VisitIcon} label={t('doctor.dashboard.upcomingCount')} tone="info" value={totals.upcoming} />
-          <DashboardStatCard hint={t('doctor.dashboard.completedHint')} icon={StethoscopeIcon} label={t('doctor.dashboard.completedCount')} tone="ready" value={totals.completed} />
-          <DashboardStatCard hint={t('doctor.dashboard.slotsHint')} icon={StethoscopeIcon} label={t('doctor.dashboard.availableSlotsShort')} tone="accent" value={profile?.available_slots_count ?? 0} />
-        </DashboardStatsGrid>
+        <DashboardGreeting aside={t('doctor.dashboard.healthMessage')} description={t('doctor.dashboard.supportingText')} greeting={t(`doctor.dashboard.greetings.${greetingPeriod()}`, { name: firstName })} />
+        <DashboardVerificationNotice onOpen={() => navigate('/doctor/profile#account-verification')} role="doctor" status={profile?.verification_status} />
 
-        <DashboardSplit primary>
-          <DashboardSectionCard action={viewAll} title={t('doctor.dashboard.todaySchedule')}>
-            {todayAppointments.length === 0 ? <DashboardEmptyState description={t('doctor.dashboard.noTodayHelp')} icon={CalendarIcon} title={t('doctor.dashboard.noToday')} /> : <ul className="mt-3 space-y-2.5">{todayAppointments.map((appointment) => (
+        <DashboardHomeGrid>
+          <DashboardProfileCard editLabel={t('patient.dashboard.editProfile')} imageUrl={profile?.profile_image_url ?? user.profile_image_url} name={user.name} onEdit={() => navigate('/doctor/profile')} role={specialty} />
+          <DashboardInfoCard
+            editLabel={t('patient.dashboard.edit')}
+            onEdit={() => navigate('/doctor/profile')}
+            rows={[
+              { label: t('doctor.dashboard.practiceTitle'), value: profile?.clinic_name || t('doctor.dashboard.notProvided') },
+              { label: t('patient.doctorProfile.location'), value: location },
+              { label: t('doctor.dashboard.availabilityCardTitle'), value: nextSlot },
+            ]}
+            title={t('doctor.dashboard.infoTitle')}
+          />
+          <DashboardHomeCard action={viewAll} icon={<CalendarIcon className="size-5 text-[var(--color-primary)]" />} title={t('doctor.dashboard.todaySchedule')}>
+            {todayAppointments.length === 0 ? <DashboardEmptyState description={t('doctor.dashboard.noTodayHelp')} title={t('doctor.dashboard.noToday')} /> : <ul className="space-y-2.5">{todayAppointments.map((appointment) => (
               <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] p-3.5" key={appointment.id}>
                 <div className="min-w-0"><p className="font-extrabold">{appointment.patient_name}</p><p className="text-sm text-[var(--color-text-secondary)]">{t(`doctor.appointments.services.${appointment.service_type}`)}</p></div>
                 <div className="text-end text-sm"><p className="direction-ltr font-bold">{new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: SUDAN_TIME_ZONE }).format(new Date(appointment.starts_at))}</p><p className="text-[var(--color-text-secondary)]">{t(`doctor.appointments.statuses.${appointment.status}`)}</p></div>
               </li>
             ))}</ul>}
-          </DashboardSectionCard>
+          </DashboardHomeCard>
+        </DashboardHomeGrid>
 
-          <DashboardSectionCard action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/doctor/availability')} type="button">{t('doctor.dashboard.manageAvailability')}</button>} title={t('doctor.dashboard.availabilityCardTitle')}>
-            <div className="mt-3 grid gap-3">
-              {profile?.offers_clinic_visits && <div className="rounded-2xl bg-[var(--color-primary-surface)] p-3"><p className="text-xs font-bold text-[var(--color-text-secondary)]">{t('doctor.consultation.clinic')}</p><p className="mt-1 text-sm font-semibold">{formatSlot(profile.next_available?.clinic) ?? t('doctor.dashboard.noClinicSlots')}</p></div>}
-              {profile?.offers_home_visits && <div className="rounded-2xl bg-amber-50 p-3"><p className="text-xs font-bold text-[var(--color-text-secondary)]">{t('doctor.consultation.homeVisit')}</p><p className="mt-1 text-sm font-semibold">{formatSlot(profile.next_available?.home_visit) ?? t('doctor.dashboard.noHomeSlots')}</p></div>}
-              {!profile?.offers_clinic_visits && !profile?.offers_home_visits && <p className="text-sm text-[var(--color-text-secondary)]">{t('doctor.dashboard.notProvided')}</p>}
-            </div>
-            <div className="mt-4 grid gap-3"><DashboardQuickActionCard accentClassName="bg-[var(--color-primary-surface)] text-[var(--color-primary)]" description={t('doctor.dashboard.manageAvailability')} icon={<StethoscopeIcon className="size-5" />} label={t('doctor.navigation.availability')} onSelect={() => navigate('/doctor/availability')} /><DashboardQuickActionCard accentClassName="bg-sky-100 text-sky-700" description={t('doctor.dashboard.viewAll')} icon={<CalendarIcon className="size-5" />} label={t('doctor.navigation.appointments')} onSelect={() => navigate('/doctor/appointments')} /></div>
-          </DashboardSectionCard>
-        </DashboardSplit>
+        <DashboardServices title={t('doctor.dashboard.servicesTitle')}>
+          <DashboardQuickActionCard accentClassName="bg-[var(--color-primary-surface)] text-[var(--color-primary)]" description={t('doctor.dashboard.manageAvailability')} icon={<StethoscopeIcon className="size-5" />} label={t('doctor.navigation.availability')} onSelect={() => navigate('/doctor/availability')} />
+          <DashboardQuickActionCard accentClassName="bg-sky-100 text-sky-700" description={t('doctor.dashboard.viewAll')} icon={<CalendarIcon className="size-5" />} label={t('doctor.navigation.appointments')} onSelect={() => navigate('/doctor/appointments')} />
+          <DashboardQuickActionCard accentClassName="bg-amber-100 text-amber-700" description={t('doctor.dashboard.tips.slides.profile.description')} icon={<VisitIcon className="size-5" />} label={t('doctor.consultation.homeVisit')} onSelect={() => navigate('/doctor/availability')} />
+          <DashboardQuickActionCard accentClassName="bg-slate-100 text-slate-700" description={t('doctor.dashboard.tips.slides.profile.cta')} icon={<ProfileIcon className="size-5" />} label={t('doctor.navigation.profile')} onSelect={() => navigate('/doctor/profile')} />
+        </DashboardServices>
 
         <DashboardSplit>
           <DashboardSectionCard action={viewAll} title={t('doctor.dashboard.upcomingAppointments')}>
-            {insights?.upcoming_appointments.length ? <ul className="mt-3 space-y-2.5">{insights.upcoming_appointments.map((appointment) => (
+            {insights?.upcoming_appointments.length ? <ul className="space-y-2.5">{insights.upcoming_appointments.map((appointment) => (
               <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] p-3.5" key={appointment.id}>
                 <div><p className="font-extrabold">{appointment.patient_name}</p><p className="text-sm text-[var(--color-text-secondary)]">{t(`doctor.appointments.services.${appointment.service_type}`)}</p></div>
                 <p className="direction-ltr text-sm font-bold">{new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: SUDAN_TIME_ZONE }).format(new Date(appointment.starts_at))}</p>
               </li>
-            ))}</ul> : <DashboardEmptyState description={t('doctor.dashboard.noUpcoming')} icon={CalendarIcon} title={t('doctor.dashboard.noUpcoming')} />}
+            ))}</ul> : <DashboardEmptyState description={t('doctor.dashboard.noUpcoming')} title={t('doctor.dashboard.noUpcoming')} />}
           </DashboardSectionCard>
           <DoctorPracticeTipsCarousel />
         </DashboardSplit>
 
         <DashboardSplit>
           <DashboardSectionCard description={t('doctor.dashboard.thisWeek')} title={t('doctor.dashboard.appointmentOverview')}>
-            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div><dt className="text-xs text-[var(--color-text-secondary)]">{t('doctor.dashboard.totalAppointments')}</dt><dd className="direction-ltr text-xl font-black tabular-nums">{totals.total}</dd></div>
               <div><dt className="text-xs text-[var(--color-text-secondary)]">{t('doctor.dashboard.completedCount')}</dt><dd className="direction-ltr text-xl font-black tabular-nums text-teal-800">{totals.completed}</dd></div>
               <div><dt className="text-xs text-[var(--color-text-secondary)]">{t('doctor.dashboard.upcomingCount')}</dt><dd className="direction-ltr text-xl font-black tabular-nums text-teal-500">{totals.upcoming}</dd></div>
@@ -121,7 +131,7 @@ export function DoctorDashboardPage() {
             <div className="mt-2 overflow-x-hidden"><AppointmentOverviewChart days={chartDays} /></div>
           </DashboardSectionCard>
           <DashboardSectionCard action={bothTypes ? <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-bold">{(['all', CONSULTATION_TYPE.CLINIC, CONSULTATION_TYPE.HOME_VISIT] as const).map((key) => <button className={`rounded-lg px-2.5 py-1 ${utilizationFilter === key ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-secondary)]'}`} key={key} onClick={() => setUtilizationFilter(key)} type="button">{key === 'all' ? t('doctor.dashboard.filterAll') : t(`doctor.consultation.${key === 'clinic' ? 'clinic' : 'homeVisit'}`)}</button>)}</div> : undefined} title={t('doctor.dashboard.slotUtilization')}>
-            <div className="mt-4"><SlotUtilizationChart available={utilization?.available ?? 0} availableLabel={t('doctor.dashboard.availableSlotsShort')} booked={utilization?.booked ?? 0} bookedLabel={t('doctor.dashboard.bookedSlots')} /></div>
+            <div className="mt-2 overflow-x-hidden"><SlotUtilizationChart available={utilization?.available ?? 0} availableLabel={t('doctor.dashboard.availableSlotsShort')} booked={utilization?.booked ?? 0} bookedLabel={t('doctor.dashboard.bookedSlots')} /></div>
           </DashboardSectionCard>
         </DashboardSplit>
         <p aria-live="polite" className="mt-4 min-h-6 text-center text-sm font-semibold text-[var(--color-primary)]">{notice}</p>

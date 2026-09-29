@@ -88,6 +88,7 @@ class LaboratoryWorkflowTest extends TestCase
         $orderId = $this->postJson('/api/v1/patient/laboratory-orders', [
             'laboratory_profile_id' => $labA['profile']->id,
             'lab_test_ids' => [$cbc->id],
+            'payment_method' => 'pay_later',
         ])->assertCreated()->json('data.id');
 
         Sanctum::actingAs($labB['user']);
@@ -119,6 +120,7 @@ class LaboratoryWorkflowTest extends TestCase
         $orderId = $this->postJson('/api/v1/patient/laboratory-orders', [
             'laboratory_profile_id' => $lab['profile']->id,
             'lab_test_ids' => [$cbc->id],
+            'payment_method' => 'pay_later',
         ])->assertCreated()->json('data.id');
 
         Sanctum::actingAs($lab['user']);
@@ -162,6 +164,7 @@ class LaboratoryWorkflowTest extends TestCase
         $orderId = $this->postJson('/api/v1/patient/laboratory-orders', [
             'laboratory_profile_id' => $lab['profile']->id,
             'lab_test_ids' => [$cbc->id],
+            'payment_method' => 'pay_later',
         ])->json('data.id');
 
         Sanctum::actingAs($lab['user']);
@@ -196,7 +199,81 @@ class LaboratoryWorkflowTest extends TestCase
         $this->postJson('/api/v1/patient/laboratory-orders', [
             'laboratory_profile_id' => $lab['profile']->id,
             'lab_test_ids' => [$cbc->id],
+            'payment_method' => 'pay_later',
         ])->assertUnprocessable()->assertJsonPath('code', 'TEST_UNAVAILABLE');
+    }
+
+    public function test_patient_catalog_exposes_min_price_and_laboratory_count(): void
+    {
+        $labA = $this->laboratory('nile.lab@example.com', 'Nile Lab');
+        $labB = $this->laboratory('blue.lab@example.com', 'Blue Lab');
+        $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();
+        $this->enable($labA['user'], $cbc);
+        Sanctum::actingAs($labB['user']);
+        $this->putJson("/api/v1/laboratory/offerings/{$cbc->id}", [
+            'price' => '80.00',
+            'estimated_turnaround_hours' => 4,
+            'is_available' => true,
+        ])->assertOk();
+
+        Sanctum::actingAs($this->patient());
+        $this->getJson('/api/v1/patient/laboratory-offerings?q=CBC')
+            ->assertOk()
+            ->assertJsonPath('data.tests.0.short_name', 'CBC')
+            ->assertJsonPath('data.tests.0.laboratory_count', 2)
+            ->assertJsonPath('data.tests.0.min_price', '80.00')
+            ->assertJsonPath('data.tests.0.currency', 'SDG');
+    }
+
+    public function test_matching_prefers_laboratories_that_offer_all_selected_tests(): void
+    {
+        $labA = $this->laboratory('nile.lab@example.com', 'Nile Lab');
+        $labB = $this->laboratory('blue.lab@example.com', 'Blue Lab');
+        $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();
+        $hba1c = LabTest::query()->where('slug', 'hba1c')->firstOrFail();
+        $this->enable($labA['user'], $cbc);
+        $this->enable($labA['user'], $hba1c);
+        $this->enable($labB['user'], $cbc);
+
+        Sanctum::actingAs($this->patient());
+        $response = $this->getJson('/api/v1/patient/laboratory-offerings?'.http_build_query([
+            'lab_test_ids' => [$cbc->id, $hba1c->id],
+        ]))->assertOk();
+
+        $this->assertCount(1, $response->json('data.matches.complete'));
+        $this->assertSame($labA['profile']->id, $response->json('data.matches.complete.0.laboratory_profile_id'));
+        $this->assertTrue($response->json('data.matches.complete.0.offers_all'));
+        $this->assertCount(1, $response->json('data.matches.partial'));
+        $this->assertSame($labB['profile']->id, $response->json('data.matches.partial.0.laboratory_profile_id'));
+        $this->assertFalse($response->json('data.matches.partial.0.offers_all'));
+    }
+
+    public function test_order_item_price_is_snapshotted_when_the_offering_changes(): void
+    {
+        $lab = $this->laboratory();
+        $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();
+        $this->enable($lab['user'], $cbc);
+        $patient = $this->patient();
+        Sanctum::actingAs($patient);
+        $orderId = $this->postJson('/api/v1/patient/laboratory-orders', [
+            'laboratory_profile_id' => $lab['profile']->id,
+            'lab_test_ids' => [$cbc->id],
+            'payment_method' => 'pay_later',
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($lab['user']);
+        $this->putJson("/api/v1/laboratory/offerings/{$cbc->id}", [
+            'price' => '250.00',
+            'estimated_turnaround_hours' => 2,
+            'is_available' => true,
+        ])->assertOk();
+
+        Sanctum::actingAs($patient);
+        $this->getJson("/api/v1/patient/laboratory-orders/{$orderId}")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.price', '150.00')
+            ->assertJsonPath('data.total', '150.00');
+        $this->assertSame('250.00', LaboratoryOffering::query()->where('laboratory_profile_id', $lab['profile']->id)->where('lab_test_id', $cbc->id)->value('price'));
     }
 
     public function test_catalog_addition_request_does_not_create_a_global_test(): void

@@ -48,7 +48,7 @@ class LaboratoryRegistrationTest extends TestCase
         $lab = User::query()->where('email', $payload['email'])->firstOrFail();
         $this->assertSame(UserRole::Laboratory, $lab->role);
         $this->assertTrue(Hash::check($payload['password'], $lab->password));
-        $this->assertSame(DoctorVerificationStatus::Pending->value, $lab->laboratoryProfile->verification_status);
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $lab->laboratoryProfile->verification_status);
         $this->assertSame($location->id, $lab->laboratoryProfile->location_id);
         $this->assertSame('Near Al Riyadh, Building 12', $lab->laboratoryProfile->address);
         $this->assertNull($lab->email_verified_at);
@@ -61,7 +61,7 @@ class LaboratoryRegistrationTest extends TestCase
 
         $lab->markEmailAsVerified();
         $lab->laboratoryProfile->refresh();
-        $this->assertSame(DoctorVerificationStatus::Pending->value, $lab->laboratoryProfile->verification_status);
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $lab->laboratoryProfile->verification_status);
 
         $this->withHeader('Origin', 'http://localhost:5173')->postJson('/api/v1/auth/login', [
             'identifier' => $payload['email'],

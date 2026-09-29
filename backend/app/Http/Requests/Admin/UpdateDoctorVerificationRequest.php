@@ -16,7 +16,11 @@ class UpdateDoctorVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', Rule::enum(DoctorVerificationStatus::class)],
+            'status' => ['required', Rule::in([
+                ...array_map(fn (DoctorVerificationStatus $status) => $status->value, DoctorVerificationStatus::cases()),
+                'pending',
+                'rejected',
+            ])],
         ];
     }
 }

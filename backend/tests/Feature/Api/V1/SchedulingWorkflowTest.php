@@ -41,6 +41,7 @@ class SchedulingWorkflowTest extends TestCase
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slotStart->toIso8601String(),
             'notes' => 'First visit',
+            'payment_method' => 'pay_later',
         ])->assertCreated()
             ->assertJsonPath('data.status', 'confirmed')
             ->assertJsonPath('data.service_type', 'clinic');
@@ -52,11 +53,13 @@ class SchedulingWorkflowTest extends TestCase
         $this->postJson('/api/v1/patient/appointments', [
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slotStart->toIso8601String(),
+            'payment_method' => 'pay_later',
         ])->assertConflict();
 
         $this->postJson('/api/v1/patient/appointments', [
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slotStart->subHour()->toIso8601String(),
+            'payment_method' => 'pay_later',
         ])->assertConflict();
 
         $this->assertDatabaseHas('appointments', [
@@ -88,6 +91,7 @@ class SchedulingWorkflowTest extends TestCase
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slotStart->toIso8601String(),
             'service_type' => 'home_visit',
+            'payment_method' => 'pay_later',
             'home_visit' => ['contact_phone' => '+249912345678', 'area' => 'Al Riyadh', 'address_details' => 'House 12', 'latitude' => 15.5000000, 'longitude' => 32.5000000],
         ];
 
@@ -185,14 +189,16 @@ class SchedulingWorkflowTest extends TestCase
         $this->postJson('/api/v1/patient/appointments', [
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slotStart->toIso8601String(),
+            'payment_method' => 'pay_later',
         ])->assertConflict();
 
-        $profile->update(['verification_status' => 'pending']);
+        $profile->update(['verification_status' => 'pending_documents']);
         $this->getJson("/api/v1/patient/doctors/{$profile->id}/availability")
             ->assertNotFound();
         $this->postJson('/api/v1/patient/appointments', [
             'doctor_profile_id' => $profile->id,
             'starts_at' => $slotStart->addMinutes(30)->toIso8601String(),
+            'payment_method' => 'pay_later',
         ])->assertNotFound();
     }
 

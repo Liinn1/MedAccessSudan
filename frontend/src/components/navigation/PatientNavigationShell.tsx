@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { AuthenticatedUser } from '../../services/authService'
+import { resolvePatientNavSection } from '../../utils/patientNav'
 import { CalendarIcon, GlobeIcon, HomeIcon, LaboratoryIcon, ProfileIcon, StethoscopeIcon, VisitIcon } from '../icons/PatientHomeIcons'
 import { DashboardNavigationShell } from './DashboardNavigationShell'
 
@@ -14,9 +15,10 @@ interface PatientNavigationShellProps {
   user?: AuthenticatedUser | null
 }
 
-export function PatientNavigationShell({ activeSection = 'dashboard', isLoggingOut, onAppointments, onDashboard, onLogout, onProfile, user }: PatientNavigationShellProps) {
+export function PatientNavigationShell({ isLoggingOut, onAppointments, onDashboard, onLogout, onProfile, user }: PatientNavigationShellProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const current = resolvePatientNavSection(useLocation().pathname)
 
   return (
     <DashboardNavigationShell
@@ -26,12 +28,12 @@ export function PatientNavigationShell({ activeSection = 'dashboard', isLoggingO
       helpTitle={t('patient.navigation.helpTitle')}
       isLoggingOut={isLoggingOut}
       items={[
-        { key: 'dashboard', active: activeSection === 'dashboard', icon: HomeIcon, label: t('patient.navigation.dashboard'), onSelect: onDashboard },
-        { key: 'book', active: activeSection === 'book', icon: StethoscopeIcon, label: t('patient.navigation.book'), onSelect: () => navigate('/patient/doctors/search') },
-        { key: 'home-visit', active: activeSection === 'homeVisit', icon: VisitIcon, label: t('patient.navigation.homeVisit'), onSelect: () => navigate('/patient/home-visits') },
-        { key: 'appointments', active: activeSection === 'appointments', icon: CalendarIcon, label: t('patient.navigation.appointments'), onSelect: onAppointments },
-        { key: 'laboratory', active: activeSection === 'laboratory', icon: LaboratoryIcon, label: t('patient.navigation.laboratory'), onSelect: () => navigate('/patient/laboratory') },
-        { key: 'profile', active: activeSection === 'profile', icon: ProfileIcon, label: t('patient.navigation.profile'), onSelect: onProfile },
+        { key: 'dashboard', active: current === 'dashboard', icon: HomeIcon, label: t('patient.navigation.dashboard'), onSelect: onDashboard },
+        { key: 'book', active: current === 'book', icon: StethoscopeIcon, label: t('patient.navigation.book'), onSelect: () => navigate('/patient/doctors/search') },
+        { key: 'home-visit', active: current === 'homeVisit', icon: VisitIcon, label: t('patient.navigation.homeVisit'), onSelect: () => navigate('/patient/home-visits') },
+        { key: 'appointments', active: current === 'appointments', icon: CalendarIcon, label: t('patient.navigation.appointments'), onSelect: onAppointments },
+        { key: 'laboratory', active: current === 'laboratory', icon: LaboratoryIcon, label: t('patient.navigation.laboratory'), onSelect: () => navigate('/patient/laboratory') },
+        { key: 'profile', active: current === 'profile', icon: ProfileIcon, label: t('patient.navigation.profile'), onSelect: onProfile },
         { key: 'public-home', active: false, icon: GlobeIcon, label: t('patient.navigation.publicHome'), onSelect: () => navigate('/') },
       ]}
       loggingOutLabel={t('patient.home.loggingOut')}

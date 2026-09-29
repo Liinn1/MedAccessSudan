@@ -37,7 +37,7 @@ export function DoctorPracticeTipsCarousel() {
     <article
       aria-label={t('doctor.dashboard.tips.carouselLabel')}
       aria-roledescription={t('doctor.dashboard.tips.carousel')}
-      className="min-w-0 rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm sm:p-5"
+      className="dashboard-home-card dashboard-home-card--compact min-w-0"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false)
       }}

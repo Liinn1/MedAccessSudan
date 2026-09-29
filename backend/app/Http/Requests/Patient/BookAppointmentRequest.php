@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Patient;
 
 use App\Enums\AppointmentServiceType;
+use App\Http\Requests\Concerns\ValidatesServicePayment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class BookAppointmentRequest extends FormRequest
 {
+    use ValidatesServicePayment;
+
     public function authorize(): bool
     {
         return true;
@@ -16,6 +19,7 @@ class BookAppointmentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->paymentRules(),
             'doctor_profile_id' => ['required', 'integer', 'exists:doctor_profiles,id'],
             'starts_at' => ['required', 'date'],
             'service_type' => ['sometimes', Rule::enum(AppointmentServiceType::class)],

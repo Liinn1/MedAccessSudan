@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { BookingPanel } from '../../components/booking/BookingPanel'
+import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
 import { BookingReviewList } from '../../components/booking/BookingReviewList'
 import { ClinicVisitFrame } from '../../components/booking/ClinicVisitFrame'
+import { PaymentMethodSelector } from '../../components/booking/PaymentMethodSelector'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { PatientLayout } from '../../layouts/PatientLayout'
@@ -13,6 +15,7 @@ import { bookPatientAppointment, type PatientAppointment } from '../../services/
 import { clearAppointmentDraft, loadAppointmentDraft } from '../../utils/appointmentDraft'
 import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 import { buildLoginPath } from '../../utils/navigation'
+import { useBookingPayment } from '../../hooks/useBookingPayment'
 
 type PageState = 'loading' | 'ready' | 'error' | 'unavailable' | 'success'
 
@@ -28,6 +31,7 @@ export function AppointmentConfirmationPage() {
   const [attempt, setAttempt] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
+  const payment = useBookingPayment()
 
   useEffect(() => {
     if (!draft) return
@@ -47,10 +51,11 @@ export function AppointmentConfirmationPage() {
 
   async function confirm() {
     if (!draft || !slot || submitting) return
+    if (!payment.validate(t)) return
     setSubmitting(true)
     setMessage('')
     try {
-      const created = await bookPatientAppointment({ doctor_profile_id: draft.doctorId, starts_at: slot.starts_at, service_type: 'clinic', ...(notes.trim() ? { notes: notes.trim() } : {}) })
+      const created = await bookPatientAppointment({ doctor_profile_id: draft.doctorId, starts_at: slot.starts_at, service_type: 'clinic', ...payment.payload(), ...(notes.trim() ? { notes: notes.trim() } : {}) })
       clearAppointmentDraft()
       setAppointment(created)
       setState('success')
@@ -81,22 +86,24 @@ export function AppointmentConfirmationPage() {
             <div aria-hidden="true" className="mx-auto grid size-14 place-items-center rounded-full bg-[var(--color-success-surface)] text-2xl font-black text-emerald-700">✓</div>
             <h2 className="mt-4 text-3xl font-extrabold">{t('patient.appointmentConfirmation.successTitle')}</h2>
             <p className="mt-2 text-[var(--color-text-secondary)]">{t('patient.appointmentConfirmation.successDescription')}</p>
+            <BookingPaymentSummary payment={appointment.payment} />
             <button className="mt-6 rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white" onClick={() => navigate(`/patient/appointments/${appointment.id}`)} type="button">{t('patient.appointmentConfirmation.viewAppointment')}</button>
           </BookingPanel>
         ) : (
-          <ClinicReview doctor={doctor} locale={locale} notes={notes} onConfirm={confirm} onNotes={setNotes} slot={slot} submitting={submitting} message={message} />
+          <ClinicReview doctor={doctor} locale={locale} notes={notes} onConfirm={confirm} onNotes={setNotes} payment={payment} slot={slot} submitting={submitting} message={message} />
         )}
       </ClinicVisitFrame>
     </PatientLayout>
   )
 }
 
-function ClinicReview({ doctor, locale, notes, onConfirm, onNotes, slot, submitting, message }: {
+function ClinicReview({ doctor, locale, notes, onConfirm, onNotes, payment, slot, submitting, message }: {
   doctor: DoctorProfile
   locale: string
   notes: string
   onConfirm: () => void
   onNotes: (value: string) => void
+  payment: ReturnType<typeof useBookingPayment>
   slot: DoctorAvailabilitySlot
   submitting: boolean
   message: string
@@ -126,6 +133,7 @@ function ClinicReview({ doctor, locale, notes, onConfirm, onNotes, slot, submitt
       <label className="mt-4 block font-semibold">{t('patient.appointmentConfirmation.notes')}
         <textarea className="mt-2 block min-h-24 w-full resize-y rounded-2xl border border-[var(--color-border)] px-4 py-3 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-teal-100" maxLength={2000} onChange={(event) => onNotes(event.target.value)} placeholder={t('patient.appointmentConfirmation.notesPlaceholder')} value={notes} />
       </label>
+      <PaymentMethodSelector card={payment.card} errors={payment.errors} method={payment.method} onCardChange={payment.setCard} onMethodChange={payment.setMethod} />
       <button className="mt-5 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-6 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={submitting} onClick={onConfirm} type="button">{t(submitting ? 'patient.appointmentConfirmation.confirming' : 'patient.appointmentConfirmation.confirm')}</button>
       <p aria-live="polite" className="mt-3 min-h-6 text-center text-sm font-semibold text-red-700" role={message ? 'alert' : undefined}>{message}</p>
     </BookingPanel>

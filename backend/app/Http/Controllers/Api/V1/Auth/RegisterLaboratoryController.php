@@ -11,13 +11,14 @@ use App\Models\Location;
 use App\Models\User;
 use App\Services\CityNameNormalizer;
 use App\Services\ProfilePhotoService;
+use App\Services\ProviderVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class RegisterLaboratoryController extends Controller
 {
-    public function __invoke(RegisterLaboratoryRequest $request, CityNameNormalizer $cityNames, ProfilePhotoService $photos): JsonResponse
+    public function __invoke(RegisterLaboratoryRequest $request, CityNameNormalizer $cityNames, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
     {
         $validated = $request->validated();
         $photoPath = $request->hasFile('profile_photo')
@@ -25,14 +26,14 @@ class RegisterLaboratoryController extends Controller
             : null;
 
         try {
-            $user = DB::transaction(function () use ($validated, $cityNames, $photoPath): User {
+            $user = DB::transaction(function () use ($validated, $cityNames, $photoPath, $verifications): User {
                 $name = $validated['laboratory_name'];
                 $locationId = isset($validated['location'])
                     ? Location::where('code', $validated['location'])->valueOrFail('id')
                     : null;
                 $initialStatus = config('medaccess.demo_auto_verify_doctors') && $locationId
                     ? DoctorVerificationStatus::Verified
-                    : DoctorVerificationStatus::Pending;
+                    : DoctorVerificationStatus::PendingDocuments;
 
                 $user = User::create([
                     'name' => $name,
@@ -45,7 +46,7 @@ class RegisterLaboratoryController extends Controller
                     'password' => $validated['password'],
                 ]);
 
-                $user->laboratoryProfile()->create([
+                $profile = $user->laboratoryProfile()->create([
                     'name' => $name,
                     'location_id' => $locationId,
                     'address' => $validated['address'],
@@ -55,6 +56,7 @@ class RegisterLaboratoryController extends Controller
                     'profile_image_path' => $photoPath,
                     'verification_status' => $initialStatus->value,
                 ]);
+                $verifications->ensure($profile);
 
                 return $user;
             });

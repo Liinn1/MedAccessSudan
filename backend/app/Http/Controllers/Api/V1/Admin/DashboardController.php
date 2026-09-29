@@ -19,7 +19,7 @@ class DashboardController extends Controller
     public function __invoke(): JsonResponse
     {
         return response()->json(['data' => ['metrics' => [
-            'pending_doctors' => DoctorProfile::where('verification_status', DoctorVerificationStatus::Pending->value)->count(),
+            'pending_doctors' => DoctorProfile::whereIn('verification_status', DoctorVerificationStatus::incompleteValues())->count(),
             'verified_doctors' => DoctorProfile::where('verification_status', DoctorVerificationStatus::Verified->value)->count(),
             'suspended_doctors' => DoctorProfile::where('verification_status', DoctorVerificationStatus::Suspended->value)->count(),
             'pending_city_proposals' => CityProposal::where('status', CityProposalStatus::Pending->value)->count(),

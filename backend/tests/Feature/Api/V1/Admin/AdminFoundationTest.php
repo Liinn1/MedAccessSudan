@@ -89,7 +89,7 @@ class AdminFoundationTest extends TestCase
         $doctor = User::factory()->create(['role' => UserRole::Doctor]);
         $specialization = Specialization::create(['code' => 'test', 'name_en' => 'Test', 'name_ar' => 'اختبار', 'is_active' => true]);
         $location = Location::create(['code' => 'TST', 'name_en' => 'Test City', 'name_ar' => 'مدينة', 'normalized_name' => 'test city', 'is_active' => true]);
-        DoctorProfile::create(['user_id' => $doctor->id, 'specialization_id' => $specialization->id, 'location_id' => $location->id, 'verification_status' => DoctorVerificationStatus::Pending]);
+        DoctorProfile::create(['user_id' => $doctor->id, 'specialization_id' => $specialization->id, 'location_id' => $location->id, 'verification_status' => DoctorVerificationStatus::PendingDocuments]);
         Sanctum::actingAs($admin);
         $this->getJson('/api/v1/admin/dashboard')->assertOk()->assertJsonPath('data.metrics.registered_patients', 2)->assertJsonPath('data.metrics.pending_doctors', 1);
     }
