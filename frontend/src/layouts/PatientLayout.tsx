@@ -6,7 +6,7 @@ import { PublicFooter } from '../components/public/PublicFooter'
 import { getCurrentUser, logout, type AuthenticatedUser } from '../services/authService'
 
 interface PatientLayoutProps {
-  activeSection?: 'dashboard' | 'book' | 'homeVisit' | 'appointments' | 'profile'
+  activeSection?: 'dashboard' | 'book' | 'homeVisit' | 'appointments' | 'laboratory' | 'profile'
   children: ReactNode
   isLoggingOut?: boolean
   onAppointments?: () => void

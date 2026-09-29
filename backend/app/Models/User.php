@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'first_name', 'last_name', 'email', 'phone', 'profile_image_path', 'role', 'password', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -24,6 +24,11 @@ class User extends Authenticatable
     public function doctorProfile(): HasOne
     {
         return $this->hasOne(DoctorProfile::class);
+    }
+
+    public function laboratoryProfile(): HasOne
+    {
+        return $this->hasOne(LaboratoryProfile::class);
     }
 
     public function patientAppointments(): HasMany

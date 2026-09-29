@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import healthcareProviderImage from '../../assets/auth/healthcare-provider.png'
-import { BrandMark } from '../branding/BrandMark'
+import { HomeIcon } from '../icons/PatientHomeIcons'
 import { PageBackgroundDecorations } from '../layout/PageBackgroundDecorations'
+import { BotanicalDecoration } from '../public/BotanicalDecoration'
 
 interface AuthShellProps {
   children: ReactNode
@@ -11,39 +13,100 @@ interface AuthShellProps {
   eyebrow?: string
   spacious?: boolean
   variant?: 'login' | 'registration'
+  layout?: 'default' | 'patient'
 }
 
-export function AuthShell({ children, title, subtitle, eyebrow, spacious = false, variant = 'login' }: AuthShellProps) {
+/**
+ * Shared public authentication chrome. Form stays first in the DOM (and left on
+ * desktop). Below the lg breakpoint, CSS paints the same visual as a compact
+ * header above the form instead of hiding it or stacking the desktop column.
+ */
+export function AuthShell({ children, title, subtitle, eyebrow, spacious = false, variant = 'login', layout = 'default' }: AuthShellProps) {
+  const { t } = useTranslation()
+  const visualKind = layout === 'patient' ? 'patient' : variant === 'registration' ? 'doctor' : 'login'
+
+  return (
+    <div className={`auth-page auth-page--${variant} relative isolate overflow-clip px-4 sm:px-6 lg:px-8`}>
+      <PageBackgroundDecorations />
+
+      <section className={`auth-shell auth-shell--${variant}${layout === 'patient' ? ' auth-shell--patient' : ''} relative z-10 mx-auto grid w-full overflow-hidden border border-white/80 bg-white shadow-[0_24px_70px_rgb(15_118_110/0.12)] ${spacious ? 'max-w-[84rem]' : 'max-w-[72rem]'}`}>
+        <div className={`auth-form-panel auth-form-panel--${variant} min-w-0 bg-[#fffdf9] px-5 py-5 sm:px-8 sm:py-7 lg:px-9 lg:py-7 xl:px-11`}>
+          <header className="auth-form-enter max-w-xl text-start">
+            {eyebrow && (
+              <p className="auth-form-eyebrow text-sm font-extrabold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                {eyebrow}
+              </p>
+            )}
+            <h1 className="auth-form-title mt-1 text-3xl font-black tracking-tight text-[var(--color-text-primary)] sm:text-4xl">
+              {title}
+            </h1>
+            <p className="auth-form-subtitle mt-1.5 max-w-xl leading-relaxed text-[var(--color-text-secondary)]">{subtitle}</p>
+          </header>
+          <div className="auth-form-content mt-5">{children}</div>
+          <Link
+            className="auth-home-link mt-3 inline-flex min-h-10 items-center justify-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            to="/"
+          >
+            <HomeIcon className="size-4" />
+            {t('auth.backHome')}
+          </Link>
+        </div>
+
+        <AuthVisualPanel kind={visualKind} />
+      </section>
+    </div>
+  )
+}
+
+function AuthVisualPanel({ kind }: { kind: 'login' | 'patient' | 'doctor' }) {
   const { t } = useTranslation()
 
   return (
-    <div className={`auth-page auth-page--${variant} relative isolate overflow-hidden px-4 sm:px-6 lg:px-8`}>
-      <PageBackgroundDecorations />
-
-      <section className={`auth-shell auth-shell--${variant} relative z-10 mx-auto grid w-full overflow-clip border border-teal-100 bg-white shadow-[0_24px_70px_rgb(15_118_110/0.12)] lg:grid-cols-[minmax(20rem,0.82fr)_minmax(0,1.18fr)] ${spacious ? 'max-w-[84rem]' : 'max-w-[72rem]'}`}>
-        <aside className={`auth-visual auth-visual--${variant} relative isolate min-h-48 overflow-hidden bg-[#073B3A] px-6 pt-5 text-white sm:min-h-60 sm:px-8 sm:pt-6 lg:px-9 lg:pt-8`}>
-          <div aria-hidden="true" className="absolute -start-24 -top-24 size-72 rounded-full bg-teal-300/15 blur-3xl" />
-          <div aria-hidden="true" className="absolute -bottom-28 -end-20 size-80 rounded-full bg-emerald-300/10 blur-3xl" />
-          <div className="auth-visual-copy relative z-10 max-w-sm">
-            <BrandMark variant="auth" />
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-teal-200">{t('auth.visual.eyebrow')}</p>
-            <h2 className="mt-2 text-2xl font-black leading-tight sm:text-3xl lg:text-4xl">{t('auth.visual.title')}</h2>
-            <p className="mt-2 hidden max-w-xs text-sm leading-relaxed text-teal-50/85 sm:block">{t('auth.visual.description')}</p>
-          </div>
-          <div className="auth-visual-portrait pointer-events-none absolute inset-x-0 bottom-0 z-0 flex items-end justify-center">
-            <img alt={t('auth.visual.imageAlt')} className="auth-visual-image block h-full w-full object-contain object-bottom" decoding="async" fetchPriority="high" src={healthcareProviderImage} />
-          </div>
-        </aside>
-
-        <div className={`auth-form-panel auth-form-panel--${variant} min-w-0 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-9 xl:px-12`}>
-          <header className="auth-form-enter max-w-2xl text-start">
-            {eyebrow && <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-[var(--color-primary)]">{eyebrow}</p>}
-            <h1 className="mt-1.5 text-3xl font-black tracking-tight text-[var(--color-text-primary)] sm:text-4xl">{title}</h1>
-            <p className="mt-2 max-w-xl leading-relaxed text-[var(--color-text-secondary)]">{subtitle}</p>
-          </header>
-          <div className="auth-form-content mt-5">{children}</div>
+    <aside className={`auth-visual auth-visual--${kind} relative isolate overflow-hidden bg-[#eefaf6]`}>
+      {/* Absolute stage on desktop so the PNG cannot inflate the auth card height. */}
+      <div className="auth-visual-stage">
+        <span aria-hidden="true" className="auth-organic-shape" />
+        <BotanicalDecoration className="auth-botanical auth-botanical--rear" variant="auth" />
+        <div className="auth-visual-portrait">
+          <img
+            alt={t('auth.visual.imageAlt')}
+            className="auth-visual-image"
+            decoding="async"
+            fetchPriority="low"
+            loading="lazy"
+            src={healthcareProviderImage}
+          />
         </div>
-      </section>
-    </div>
+        <BotanicalDecoration className="auth-botanical auth-botanical--front" variant="authForeground" />
+        <p className="auth-visual-note public-hand-note">
+          {t('publicHome.hero.note')}
+          <span aria-hidden="true" className="auth-visual-note__mark">♡</span>
+        </p>
+        {/* Cream wave sits in front of the portrait so the PNG’s straight bottom edge is never visible. */}
+        <AuthForegroundWave />
+      </div>
+    </aside>
+  )
+}
+
+/** Scalable SVG: preserveAspectRatio none stretches the curves with the visual panel. */
+function AuthForegroundWave() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="auth-foreground-wave"
+      focusable="false"
+      preserveAspectRatio="none"
+      viewBox="0 0 800 140"
+    >
+      <path
+        className="auth-foreground-wave__mint"
+        d="M0 54C88 22 168 86 258 52C348 18 428 78 518 46C608 16 698 64 800 34V140H0Z"
+      />
+      <path
+        className="auth-foreground-wave__cream"
+        d="M0 72C108 44 186 98 286 68C386 38 464 96 564 66C654 40 732 82 800 58V140H0Z"
+      />
+    </svg>
   )
 }

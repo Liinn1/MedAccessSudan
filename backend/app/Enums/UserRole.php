@@ -6,6 +6,7 @@ enum UserRole: string
 {
     case Patient = 'patient';
     case Doctor = 'doctor';
+    case Laboratory = 'laboratory';
     case Admin = 'admin';
     case SuperAdmin = 'super_admin';
 

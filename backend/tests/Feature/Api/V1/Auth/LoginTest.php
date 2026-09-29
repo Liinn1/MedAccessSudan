@@ -41,6 +41,7 @@ class LoginTest extends TestCase
             'role' => UserRole::Patient,
         ]);
         $user->id = 1;
+        $user->email_verified_at = now();
 
         Auth::shouldReceive('guard')->with('web')->andReturnSelf();
         Auth::shouldReceive('attempt')
@@ -80,6 +81,7 @@ class LoginTest extends TestCase
             'is_active' => true,
         ]);
         $user->id = 2;
+        $user->email_verified_at = now();
 
         Auth::shouldReceive('guard')->with('web')->andReturnSelf();
         Auth::shouldReceive('attempt')->once()->andReturnTrue();

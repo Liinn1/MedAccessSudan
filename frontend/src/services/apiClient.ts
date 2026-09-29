@@ -113,6 +113,25 @@ export const apiClient = {
   delete<T>(path: string): Promise<T> {
     return request<T>(path, { method: 'DELETE' })
   },
+  async download(path: string): Promise<{ blob: Blob; filename: string }> {
+    const xsrfToken = getXsrfToken()
+    const response = await fetch(`${apiBaseUrl}${path}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/pdf,image/jpeg,image/png,image/webp,*/*',
+        'Accept-Language': document.documentElement.lang || 'en',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
+    })
+    if (!response.ok) {
+      throw new ApiError('Unable to download this file.', response.status)
+    }
+    const blob = await response.blob()
+    const disposition = response.headers.get('Content-Disposition') ?? ''
+    const match = /filename="?([^"]+)"?/i.exec(disposition)
+    return { blob, filename: match?.[1] ?? 'laboratory-result' }
+  },
   async initializeCsrfProtection(): Promise<void> {
     const response = await fetch(`${apiBaseUrl}/sanctum/csrf-cookie`, {
       credentials: 'include',

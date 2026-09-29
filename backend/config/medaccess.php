@@ -17,4 +17,13 @@ return [
         'FEATURED_DOCTOR_MIN_REVIEWS',
         env('APP_ENV', 'production') === 'production' ? 3 : 1
     ),
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
+    /*
+    | Laboratory offerings use Sudanese Pound. There is no existing
+    | multi-currency layer in MedAccess, so price is stored as decimal SDG.
+    */
+    'laboratory_currency' => 'SDG',
+    'laboratory_result_max_kilobytes' => 8192,
 ];

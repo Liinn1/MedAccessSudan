@@ -37,11 +37,13 @@ class RegisterPatientController extends Controller
             throw $error;
         }
 
+        $user->sendEmailVerificationNotification();
+
         return response()->json([
             'data' => [
                 'user' => new AuthenticatedUserResource($user),
             ],
-            'message' => 'Patient account created successfully.',
+            'message' => 'Patient account created successfully. Verify your email to sign in.',
         ], 201);
     }
 }

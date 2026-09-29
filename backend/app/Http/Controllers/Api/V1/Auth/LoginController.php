@@ -49,7 +49,7 @@ class LoginController extends Controller
 
         $user = Auth::guard('web')->user();
 
-        // /login is for patient and doctor accounts only. Administrators use /admin/login.
+        // /login is for patient, doctor, and laboratory accounts. Administrators use /admin/login.
         // Inactive accounts are rejected with the same generic error as bad passwords.
         if ($user?->is_active === false || $user?->role?->isAdministrative()) {
             Auth::guard('web')->logout();
@@ -61,6 +61,17 @@ class LoginController extends Controller
                 'message' => 'The provided credentials are incorrect.',
                 'code' => 'INVALID_CREDENTIALS',
             ], 422);
+        }
+
+        if ($user && ! $user->hasVerifiedEmail()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return response()->json([
+                'message' => 'Verify your email before signing in.',
+                'code' => 'EMAIL_UNVERIFIED',
+            ], 403);
         }
 
         RateLimiter::clear($throttleKey);

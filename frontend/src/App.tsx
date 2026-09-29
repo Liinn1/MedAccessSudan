@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { PatientLoginPage } from './pages/auth/PatientLoginPage'
 import { ProviderComingSoonPage } from './pages/public/ProviderComingSoonPage'
 import { PatientRegistrationPage } from './pages/auth/PatientRegistrationPage'
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
 import { PatientHomePage } from './pages/patient/PatientHomePage'
 import { FindDoctorPage } from './pages/patient/FindDoctorPage'
 import { PublicHomePage } from './pages/public/PublicHomePage'
@@ -9,6 +10,14 @@ import { DoctorSearchResultsPage } from './pages/patient/DoctorSearchResultsPage
 import { DoctorProfilePage } from './pages/patient/DoctorProfilePage'
 import { DoctorDashboardPage } from './pages/doctor/DoctorDashboardPage'
 import { DoctorRegistrationPage } from './pages/auth/DoctorRegistrationPage'
+import { LaboratoryRegistrationPage } from './pages/auth/LaboratoryRegistrationPage'
+import { LaboratoryDashboardPage } from './pages/laboratory/LaboratoryDashboardPage'
+import { LaboratoryCatalogPage } from './pages/laboratory/LaboratoryCatalogPage'
+import { LaboratoryRequestsPage } from './pages/laboratory/LaboratoryRequestsPage'
+import { LaboratoryRequestDetailPage } from './pages/laboratory/LaboratoryRequestDetailPage'
+import { LaboratoryResultsPage } from './pages/laboratory/LaboratoryResultsPage'
+import { LaboratoryProfilePage } from './pages/laboratory/LaboratoryProfilePage'
+import { PatientLaboratoryPage } from './pages/patient/PatientLaboratoryPage'
 import { SignUpModalProvider } from './contexts/SignUpModalContext'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
@@ -33,11 +42,21 @@ function App() {
     <SignUpModalProvider><Routes>
       <Route path="/" element={<PublicHomePage />} />
       <Route path="/login" element={<PatientLoginPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path={PROVIDER_LOGIN_ROUTE} element={<ProviderComingSoonPage />} />
       <Route path="/register" element={<PatientRegistrationPage />} />
       <Route path="/register/patient" element={<PatientRegistrationPage />} />
       <Route path="/register/doctor" element={<DoctorRegistrationPage />} />
+      <Route path="/register/laboratory" element={<LaboratoryRegistrationPage />} />
+      <Route path="/laboratory/application" element={<Navigate replace to="/laboratory/dashboard" />} />
+      <Route path="/laboratory/dashboard" element={<LaboratoryDashboardPage />} />
+      <Route path="/laboratory/tests" element={<LaboratoryCatalogPage />} />
+      <Route path="/laboratory/requests" element={<LaboratoryRequestsPage />} />
+      <Route path="/laboratory/requests/:orderId" element={<LaboratoryRequestDetailPage />} />
+      <Route path="/laboratory/results" element={<LaboratoryResultsPage />} />
+      <Route path="/laboratory/profile" element={<LaboratoryProfilePage />} />
       <Route path="/patient/home" element={<PatientHomePage />} />
+      <Route path="/patient/laboratory" element={<PatientLaboratoryPage />} />
       <Route path="/patient/home-visits" element={<HomeVisitPage />} />
       <Route path="/patient/doctors/search" element={<FindDoctorPage />} />
       <Route path="/patient/doctors/results" element={<DoctorSearchResultsPage />} />

@@ -12,7 +12,9 @@ use App\Http\Controllers\Api\V1\Auth\DoctorRegistrationOptionsController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RegisterDoctorController;
+use App\Http\Controllers\Api\V1\Auth\RegisterLaboratoryController;
 use App\Http\Controllers\Api\V1\Auth\RegisterPatientController;
+use App\Http\Controllers\Api\V1\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Api\V1\Doctor\AppointmentController as DoctorAppointmentController;
 use App\Http\Controllers\Api\V1\Doctor\AvailabilityExceptionController;
 use App\Http\Controllers\Api\V1\Doctor\DoctorDashboardController;
@@ -22,12 +24,22 @@ use App\Http\Controllers\Api\V1\Doctor\ResolvedAvailabilityController;
 use App\Http\Controllers\Api\V1\Doctor\ScheduleController;
 use App\Http\Controllers\Api\V1\FeaturedDoctorController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Laboratory\CatalogController as LaboratoryCatalogController;
+use App\Http\Controllers\Api\V1\Laboratory\CatalogRequestController as LaboratoryCatalogRequestController;
+use App\Http\Controllers\Api\V1\Laboratory\DashboardController as LaboratoryDashboardController;
+use App\Http\Controllers\Api\V1\Laboratory\OfferingController as LaboratoryOfferingController;
+use App\Http\Controllers\Api\V1\Laboratory\OrderController as LaboratoryOrderController;
+use App\Http\Controllers\Api\V1\Laboratory\ProfileController as LaboratoryProfileController;
+use App\Http\Controllers\Api\V1\Laboratory\ProfilePhotoController as LaboratoryProfilePhotoController;
+use App\Http\Controllers\Api\V1\Laboratory\ResultController as LaboratoryResultController;
 use App\Http\Controllers\Api\V1\Patient\AppointmentController as PatientAppointmentController;
 use App\Http\Controllers\Api\V1\Patient\DoctorAvailabilityController;
 use App\Http\Controllers\Api\V1\Patient\DoctorFilterController;
 use App\Http\Controllers\Api\V1\Patient\DoctorProfileController;
 use App\Http\Controllers\Api\V1\Patient\DoctorReviewController;
 use App\Http\Controllers\Api\V1\Patient\DoctorSearchController;
+use App\Http\Controllers\Api\V1\Patient\LaboratoryDiscoveryController;
+use App\Http\Controllers\Api\V1\Patient\LaboratoryOrderController as PatientLaboratoryOrderController;
 use App\Http\Controllers\Api\V1\Patient\PatientHomeController;
 use App\Http\Controllers\Api\V1\Patient\ProfileController as PatientProfileController;
 use App\Http\Controllers\Api\V1\Patient\ProfilePhotoController as PatientProfilePhotoController;
@@ -42,6 +54,8 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/register', RegisterPatientController::class)->middleware('throttle:5,1');
     Route::get('/doctor-registration-options', DoctorRegistrationOptionsController::class);
     Route::post('/register/doctor', RegisterDoctorController::class)->middleware('throttle:5,1');
+    Route::post('/register/laboratory', RegisterLaboratoryController::class)->middleware('throttle:5,1');
+    Route::post('/email/verification-notification', ResendEmailVerificationController::class)->middleware('throttle:6,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', CurrentUserController::class);
@@ -65,6 +79,11 @@ Route::middleware(['auth:sanctum', 'role:patient'])
         Route::put('/profile', [PatientProfileController::class, 'update']);
         Route::post('/profile-photo', [PatientProfilePhotoController::class, 'store']);
         Route::delete('/profile-photo', [PatientProfilePhotoController::class, 'destroy']);
+        Route::get('/laboratory-offerings', LaboratoryDiscoveryController::class);
+        Route::get('/laboratory-orders', [PatientLaboratoryOrderController::class, 'index']);
+        Route::post('/laboratory-orders', [PatientLaboratoryOrderController::class, 'store']);
+        Route::get('/laboratory-orders/{order}', [PatientLaboratoryOrderController::class, 'show'])->whereNumber('order');
+        Route::get('/laboratory-orders/{order}/result', [PatientLaboratoryOrderController::class, 'download'])->whereNumber('order');
     });
 
 Route::middleware(['auth:sanctum', 'role:doctor'])
@@ -81,6 +100,23 @@ Route::middleware(['auth:sanctum', 'role:doctor'])
         Route::patch('/appointments/{appointment}/complete', [DoctorAppointmentController::class, 'complete'])->whereNumber('appointment');
         Route::put('/profile', [DoctorProfessionalProfileController::class, 'update']);
         Route::post('/profile-photo', [DoctorProfilePhotoController::class, 'store']);
+    });
+
+Route::middleware(['auth:sanctum', 'role:laboratory'])
+    ->prefix('v1/laboratory')
+    ->group(function (): void {
+        Route::get('/dashboard', LaboratoryDashboardController::class);
+        Route::get('/catalog', LaboratoryCatalogController::class);
+        Route::put('/offerings/{labTest}', [LaboratoryOfferingController::class, 'upsert'])->whereNumber('labTest');
+        Route::post('/catalog-requests', [LaboratoryCatalogRequestController::class, 'store']);
+        Route::get('/orders', [LaboratoryOrderController::class, 'index']);
+        Route::get('/orders/{order}', [LaboratoryOrderController::class, 'show'])->whereNumber('order');
+        Route::patch('/orders/{order}/status', [LaboratoryOrderController::class, 'transition'])->whereNumber('order');
+        Route::post('/orders/{order}/result', [LaboratoryResultController::class, 'store'])->whereNumber('order');
+        Route::get('/orders/{order}/result', [LaboratoryResultController::class, 'download'])->whereNumber('order');
+        Route::get('/profile', [LaboratoryProfileController::class, 'show']);
+        Route::put('/profile', [LaboratoryProfileController::class, 'update']);
+        Route::post('/profile-photo', [LaboratoryProfilePhotoController::class, 'store']);
     });
 
 Route::middleware(['auth:sanctum', 'role:admin,super_admin'])

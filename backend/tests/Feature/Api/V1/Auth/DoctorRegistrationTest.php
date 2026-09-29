@@ -5,9 +5,11 @@ namespace Tests\Feature\Api\V1\Auth;
 use App\Enums\UserRole;
 use App\Models\Location;
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -22,9 +24,10 @@ class DoctorRegistrationTest extends TestCase
             ->assertJsonValidationErrors(['first_name', 'last_name', 'email', 'phone', 'password', 'specialization', 'location']);
     }
 
-    public function test_demo_doctor_registers_logged_out_is_verified_and_can_then_log_in(): void
+    public function test_demo_doctor_registers_logged_out_is_professionally_verified_and_must_confirm_email_before_login(): void
     {
         Storage::fake('public');
+        Notification::fake();
         config()->set('medaccess.demo_auto_verify_doctors', true);
         $location = Location::query()->where('code', 'khartoum')->firstOrFail();
         $payload = [
@@ -51,6 +54,15 @@ class DoctorRegistrationTest extends TestCase
         $this->assertSame(UserRole::Doctor, $doctor->role);
         $this->assertTrue(Hash::check($payload['password'], $doctor->password));
         $this->assertSame('verified', $doctor->doctorProfile->verification_status);
+        $this->assertNull($doctor->email_verified_at);
+        Notification::assertSentTo($doctor, VerifyEmail::class);
+
+        $this->withHeader('Origin', 'http://localhost:5173')->postJson('/api/v1/auth/login', [
+            'identifier' => $payload['email'],
+            'password' => $payload['password'],
+        ])->assertForbidden()->assertJsonPath('code', 'EMAIL_UNVERIFIED');
+
+        $doctor->markEmailAsVerified();
 
         $this->withHeader('Origin', 'http://localhost:5173')->postJson('/api/v1/auth/login', [
             'identifier' => $payload['email'],

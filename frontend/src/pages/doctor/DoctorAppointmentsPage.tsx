@@ -8,13 +8,7 @@ import { LocationIcon } from '../../components/icons/PatientHomeIcons'
 import { DoctorLayout } from '../../layouts/DoctorLayout'
 import { ApiError } from '../../services/apiClient'
 import { completeDoctorAppointment, getDoctorAppointments, type DoctorAppointment } from '../../services/doctorAppointmentService'
-import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
-
-function sudanDateKey(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en', { timeZone: SUDAN_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
-  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ''
-  return `${value('year')}-${value('month')}-${value('day')}`
-}
+import { sudanDateKey, SUDAN_TIME_ZONE } from '../../utils/dateTime'
 
 function AppointmentCard({ appointment, onComplete }: { appointment: DoctorAppointment; onComplete: (appointment: DoctorAppointment) => void }) {
   const { i18n, t } = useTranslation()

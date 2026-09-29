@@ -32,8 +32,8 @@ export function InputField({
         {label}
       </label>
       <div
-        className={`auth-input flex min-h-12 items-center gap-3 rounded-xl border bg-white px-3.5 transition focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-primary-surface)]/25 focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] ${
-          error ? 'border-red-500' : 'border-[var(--color-border)]'
+        className={`auth-input flex min-h-12 items-center gap-3 rounded-2xl border bg-slate-50 px-3.5 transition focus-within:border-[var(--color-primary)] focus-within:bg-white focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] ${
+          error ? 'auth-input--invalid' : 'border-[var(--color-border)]'
         }`}
       >
         <span aria-hidden="true" className="shrink-0 text-[var(--color-primary)]">
@@ -49,7 +49,7 @@ export function InputField({
         {endAdornment}
       </div>
       {error && (
-        <p className="mt-1.5 px-3.5 text-sm text-red-700" id={errorId} role="alert">
+        <p className="auth-field-error" id={errorId} role="alert">
           {error}
         </p>
       )}

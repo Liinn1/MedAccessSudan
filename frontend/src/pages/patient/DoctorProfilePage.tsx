@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ClinicVisitFrame } from '../../components/booking/ClinicVisitFrame'
 import { BookingPanel } from '../../components/booking/BookingPanel'
+import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { CalendarIcon, LocationIcon, StethoscopeIcon } from '../../components/icons/PatientHomeIcons'
@@ -84,7 +85,6 @@ function DoctorClinicSlots({ arabic, doctor, formatSlot, onContinue, selectedSlo
   const specialization = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
   const location = doctor.location ? (arabic ? doctor.location.name_ar : doctor.location.name_en) : ''
   const biography = doctor.biography || t('patient.doctorProfile.noBiography')
-  const initials = doctor.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
   const availabilityGroups = doctor.availability.reduce<Array<{ key: string; label: string; slots: typeof doctor.availability }>>((groups, slot) => {
     const key = sudanDateKey(slot.starts_at)
     const existing = groups.find((group) => group.key === key)
@@ -96,7 +96,7 @@ function DoctorClinicSlots({ arabic, doctor, formatSlot, onContinue, selectedSlo
   return (
     <BookingPanel>
       <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-start">
-        {doctor.profile_image_url ? <img alt={t('patient.doctorProfile.imageAlt', { name: doctor.name })} className="size-24 shrink-0 rounded-3xl object-cover shadow-md sm:size-28" src={doctor.profile_image_url} /> : <div aria-hidden="true" className="grid size-24 shrink-0 place-items-center rounded-3xl bg-[var(--color-primary)] text-3xl font-black text-white shadow-md sm:size-28">{initials}</div>}
+        <ProfileAvatar alt={t('patient.doctorProfile.imageAlt', { name: doctor.name })} className="size-24 shrink-0 rounded-3xl text-3xl shadow-md sm:size-28" imageUrl={doctor.profile_image_url} name={doctor.name} />
         <div className="min-w-0 flex-1">
           <span className="inline-flex rounded-full bg-[var(--color-success-surface)] px-3 py-1 text-sm font-bold text-emerald-700">{t('patient.doctorProfile.verified')}</span>
           <h2 className="mt-3 break-words text-2xl font-black sm:text-3xl">{doctor.name}</h2>

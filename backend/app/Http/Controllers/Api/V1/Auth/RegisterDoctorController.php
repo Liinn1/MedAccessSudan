@@ -67,6 +67,8 @@ class RegisterDoctorController extends Controller
             throw $error;
         }
 
-        return response()->json(['data' => ['user' => new AuthenticatedUserResource($user)], 'message' => 'Doctor application submitted successfully.'], 201);
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['data' => ['user' => new AuthenticatedUserResource($user)], 'message' => 'Doctor application submitted successfully. Verify your email to sign in.'], 201);
     }
 }

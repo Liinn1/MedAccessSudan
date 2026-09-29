@@ -1,6 +1,6 @@
 import { apiClient, ApiError } from './apiClient'
 
-export type UserRole = 'patient' | 'doctor' | 'admin' | 'super_admin'
+export type UserRole = 'patient' | 'doctor' | 'laboratory' | 'admin' | 'super_admin'
 
 export interface AuthenticatedUser {
   id: number
@@ -99,13 +99,36 @@ export async function getDoctorRegistrationOptions(signal?: AbortSignal) {
   return response.data
 }
 
+export async function resendEmailVerification(email: string): Promise<void> {
+  await apiClient.initializeCsrfProtection()
+  await apiClient.post('/api/v1/auth/email/verification-notification', { email })
+}
+
 export async function registerDoctor(input: DoctorRegistrationInput): Promise<AuthenticatedUser> {
   await apiClient.initializeCsrfProtection()
   const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register/doctor', registrationFormData(input))
   return response.data.user
 }
 
-function registrationFormData(input: PatientRegistrationInput | DoctorRegistrationInput): FormData {
+export interface LaboratoryRegistrationInput {
+  laboratory_name: string
+  email: string
+  phone: string
+  password: string
+  password_confirmation: string
+  location?: string
+  proposed_city?: string
+  address: string
+  profile_photo?: File | null
+}
+
+export async function registerLaboratory(input: LaboratoryRegistrationInput): Promise<AuthenticatedUser> {
+  await apiClient.initializeCsrfProtection()
+  const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register/laboratory', registrationFormData(input))
+  return response.data.user
+}
+
+function registrationFormData(input: PatientRegistrationInput | DoctorRegistrationInput | LaboratoryRegistrationInput): FormData {
   const form = new FormData()
   Object.entries(input).forEach(([key, value]) => {
     if (value instanceof File) form.append(key, value)

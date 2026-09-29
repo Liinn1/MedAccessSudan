@@ -36,7 +36,14 @@ export interface DoctorProfile extends Omit<DoctorSummary, 'next_available_at'> 
 }
 
 export interface FeaturedDoctor {
-  id: number; name: string; profile_image_url: string | null; specialization: DoctorFilterOption; location: DoctorFilterOption; average_rating: number; review_count: number; verification_status: string
+  id: number
+  name: string
+  profile_image_url: string | null
+  specialization: DoctorFilterOption
+  location: DoctorFilterOption
+  average_rating: number
+  review_count: number
+  verification_status: string
 }
 
 interface DoctorFiltersResponse {
@@ -66,6 +73,7 @@ export async function getDoctorProfile(doctorId: number, signal?: AbortSignal, s
   return response.data
 }
 
+/** Public homepage listing of verified doctors that meet the featured-review rule. */
 export async function getFeaturedDoctors(signal?: AbortSignal): Promise<FeaturedDoctor[]> {
   const response = await apiClient.get<{ data: FeaturedDoctor[] }>('/api/v1/doctors/featured', signal)
   return response.data

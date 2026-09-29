@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { LoadingState } from '../../components/feedback/LoadingState'
@@ -9,7 +9,8 @@ import { EyeIcon, LockIcon, MailIcon } from '../../components/icons/AuthIcons'
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { useSignUpModal } from '../../contexts/signUpModal'
 import { ApiError } from '../../services/apiClient'
-import { getCurrentUser, login } from '../../services/authService'
+import { getCurrentUser, login, resendEmailVerification } from '../../services/authService'
+import { isValidEmail } from '../../utils/authValidation'
 import { getAuthenticatedDestination } from '../../utils/navigation'
 
 interface LoginFormErrors {
@@ -20,6 +21,7 @@ interface LoginFormErrors {
 interface LoginRouteState {
   registrationSuccess?: boolean
   registrationRole?: 'patient' | 'doctor'
+  verificationEmail?: string
 }
 
 function getApiErrorCode(error: ApiError): string | undefined {
@@ -31,8 +33,14 @@ export function PatientLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const [verificationEmail] = useState(() => {
+    const state = location.state as LoginRouteState | null
+    return state?.verificationEmail?.trim() ?? ''
+  })
   const [registrationRole] = useState<'patient' | 'doctor' | null>(() => {
     const state = location.state as LoginRouteState | null
+    if (state?.verificationEmail) return state.registrationRole === 'doctor' ? 'doctor' : 'patient'
     return state?.registrationSuccess && (state.registrationRole === 'patient' || state.registrationRole === 'doctor') ? state.registrationRole : null
   })
   const openSignUpModal = useSignUpModal()
@@ -40,9 +48,10 @@ export function PatientLoginPage() {
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [errors, setErrors] = useState<LoginFormErrors>({})
-  const [statusMessageKey, setStatusMessageKey] = useState('')
+  const [statusMessageKey, setStatusMessageKey] = useState(() => searchParams.get('verified') === '1' ? 'auth.login.emailVerified' : '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCheckingSession, setIsCheckingSession] = useState(true)
+  const [isResending, setIsResending] = useState(false)
 
   useEffect(() => {
     if (!registrationRole) return
@@ -108,6 +117,13 @@ export function PatientLoginPage() {
           setStatusMessageKey('auth.login.errors.invalidCredentials')
         } else if (errorCode === 'TOO_MANY_ATTEMPTS') {
           setStatusMessageKey('auth.login.errors.tooManyAttempts')
+        } else if (errorCode === 'EMAIL_UNVERIFIED') {
+          const maybeEmail = identifier.trim()
+          if (isValidEmail(maybeEmail)) {
+            navigate('/verify-email', { replace: true, state: { email: maybeEmail } })
+            return
+          }
+          setStatusMessageKey('auth.login.errors.unverified')
         } else if (error.status === 419) {
           setStatusMessageKey('auth.login.errors.sessionExpired')
         } else {
@@ -129,8 +145,14 @@ export function PatientLoginPage() {
           <LoadingState section message={t(isSubmitting ? 'auth.login.submitting' : 'auth.login.checkingSession')} />
         ) : (
           <form className="flex flex-col" noValidate onSubmit={handleSubmit}>
-          {registrationRole && <div aria-live="polite" className="page-enter mb-4 rounded-2xl border border-emerald-200 bg-[var(--color-success-surface)] px-4 py-2.5 text-sm font-semibold text-emerald-800" role="status">{t('auth.login.registrationSuccess')}</div>}
-          <div className="space-y-3.5">
+          {(verificationEmail || registrationRole) && (
+            <div aria-live="polite" className="page-enter mb-4 rounded-2xl border border-emerald-200 bg-[var(--color-success-surface)] px-4 py-2.5 text-sm font-semibold text-emerald-800" role="status">
+              {verificationEmail
+                ? t('auth.login.verificationSent', { email: verificationEmail })
+                : t('auth.login.registrationSuccess')}
+            </div>
+          )}
+          <div className="space-y-4">
             <InputField
               autoComplete="username"
               className="direction-ltr"
@@ -139,6 +161,10 @@ export function PatientLoginPage() {
               id="login-identifier"
               inputMode="text"
               label={t('auth.login.identifierLabel')}
+              name="username"
+              onBlur={() => {
+                if (!identifier.trim()) setErrors((current) => ({ ...current, identifier: true }))
+              }}
               onChange={(event) => {
                 setIdentifier(event.target.value)
                 if (errors.identifier) setErrors((current) => ({ ...current, identifier: undefined }))
@@ -153,6 +179,10 @@ export function PatientLoginPage() {
               icon={<LockIcon />}
               id="login-password"
               label={t('auth.login.passwordLabel')}
+              name="password"
+              onBlur={() => {
+                if (!password) setErrors((current) => ({ ...current, password: true }))
+              }}
               onChange={(event) => {
                 setPassword(event.target.value)
                 if (errors.password) setErrors((current) => ({ ...current, password: undefined }))
@@ -163,7 +193,7 @@ export function PatientLoginPage() {
               endAdornment={
                 <button
                   aria-label={t(passwordVisible ? 'auth.login.hidePassword' : 'auth.login.showPassword')}
-                  className="shrink-0 rounded-full p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                  className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
                   onClick={() => setPasswordVisible((visible) => !visible)}
                   type="button"
                 >
@@ -174,26 +204,50 @@ export function PatientLoginPage() {
           </div>
 
           <button
-            className="mt-2.5 self-end rounded text-sm font-medium text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] rtl:self-start"
+            className="mt-2 min-h-11 self-end rounded-lg px-1 text-sm font-semibold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] rtl:self-start"
             onClick={() => setStatusMessageKey('auth.login.recoveryPending')}
             type="button"
           >
             {t('auth.login.forgotPassword')}
           </button>
 
-          <div className="mt-1.5 min-h-8" aria-live="polite">
+          <div className="mt-1" aria-live="polite">
             {statusMessageKey && (
-              <p className="rounded-xl bg-[var(--color-primary-surface)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+              <p className={`mb-1 rounded-xl px-3 py-2 text-sm ${statusMessageKey === 'auth.login.emailVerified' || statusMessageKey === 'auth.login.verificationResent' ? 'bg-[var(--color-success-surface)] font-semibold text-emerald-800' : 'bg-[var(--color-primary-surface)] text-[var(--color-text-secondary)]'}`}>
                 {t(statusMessageKey)}
               </p>
             )}
           </div>
+          {verificationEmail && (
+            <button
+              className="mb-2 self-start text-sm font-bold text-[var(--color-primary)] hover:underline disabled:opacity-60"
+              disabled={isResending}
+              onClick={async () => {
+                setIsResending(true)
+                try {
+                  await resendEmailVerification(verificationEmail)
+                  setStatusMessageKey('auth.login.verificationResent')
+                } catch (error) {
+                  if (error instanceof ApiError && error.status === 429) setStatusMessageKey('auth.login.errors.tooManyAttempts')
+                  else setStatusMessageKey('auth.login.errors.serviceUnavailable')
+                } finally {
+                  setIsResending(false)
+                }
+              }}
+              type="button"
+            >
+              {t(isResending ? 'auth.login.resendingVerification' : 'auth.login.resendVerification')}
+            </button>
+          )}
 
-          <div className="pt-2.5">
+          <div className="pt-1">
             <PrimaryButton type="submit">
               {t('auth.login.submit')}
             </PrimaryButton>
-            <p className="mt-2.5 text-center text-sm text-[var(--color-text-secondary)]">
+            <div className="auth-form-divider" role="separator">
+              <span>{t('auth.login.or')}</span>
+            </div>
+            <p className="text-center text-sm text-[var(--color-text-secondary)]">
               {t('auth.login.noAccount')}{' '}
               <button
                 className="font-bold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
@@ -206,7 +260,6 @@ export function PatientLoginPage() {
           </div>
         </form>
         )}
-        <Link className="mt-3.5 block text-center text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]" to="/">{t('auth.backHome')}</Link>
       </AuthShell>
     </PublicLayout>
   )

@@ -13,6 +13,7 @@ function isSupportedLanguage(language: string | null): language is SupportedLang
 }
 
 function applyDocumentLanguage(language: SupportedLanguage): void {
+  // Language switching is document-level: same React tree, different lang/dir.
   document.documentElement.lang = language
   document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'
 }
