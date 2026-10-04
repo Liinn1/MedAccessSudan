@@ -71,8 +71,8 @@ export function LaboratoryLayout({
         isLoggingOut={isLoggingOut ?? internalLoggingOut}
         items={[
           { key: 'dashboard', active: activeSection === 'dashboard', icon: HomeIcon, label: t('laboratory.navigation.dashboard'), onSelect: () => navigate('/laboratory/dashboard') },
-          { key: 'catalog', active: activeSection === 'catalog', icon: LaboratoryIcon, label: t('laboratory.navigation.catalog'), onSelect: () => navigate('/laboratory/tests') },
           { key: 'requests', active: activeSection === 'requests', icon: CalendarIcon, label: t('laboratory.navigation.requests'), onSelect: () => navigate('/laboratory/requests') },
+          { key: 'catalog', active: activeSection === 'catalog', icon: LaboratoryIcon, label: t('laboratory.navigation.catalog'), onSelect: () => navigate('/laboratory/tests') },
           { key: 'results', active: activeSection === 'results', icon: LaboratoryIcon, label: t('laboratory.navigation.results'), onSelect: () => navigate('/laboratory/results') },
           { key: 'profile', active: activeSection === 'profile', icon: ProfileIcon, label: t('laboratory.navigation.profile'), onSelect: () => navigate('/laboratory/profile') },
           { key: 'public-home', active: false, icon: GlobeIcon, label: t('laboratory.navigation.home'), onSelect: () => navigate('/') },

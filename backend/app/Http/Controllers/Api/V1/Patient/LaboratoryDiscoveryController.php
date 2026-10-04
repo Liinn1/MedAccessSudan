@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1\Patient;
 
-use App\Enums\DoctorVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\LabTest;
 use App\Models\LabTestCategory;
 use App\Models\LaboratoryOffering;
 use App\Models\LaboratoryProfile;
+use App\Models\Location;
+use App\Support\LabTestQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -25,13 +26,27 @@ class LaboratoryDiscoveryController extends Controller
             ->unique()
             ->values();
 
+        $homeCollection = $request->query('collection_method') === 'home_collection';
+        $catalogLabIds = LaboratoryProfile::query()
+            ->visibleToPatients()
+            ->pluck('id');
         $verifiedLabIds = LaboratoryProfile::query()
-            ->where('verification_status', DoctorVerificationStatus::Verified->value)
+            ->visibleToPatients()
+            ->when($homeCollection, fn ($query) => $query->where('supports_home_collection', true))
             ->pluck('id');
 
         $categories = LabTestCategory::query()
+            ->whereHas('tests', fn ($query) => $query->where('is_active', true))
             ->orderBy('sort_order')
             ->get(['id', 'slug', 'name_en', 'name_ar']);
+
+        $catalogStats = LaboratoryOffering::query()
+            ->selectRaw('lab_test_id, COUNT(DISTINCT laboratory_profile_id) as laboratory_count')
+            ->where('is_available', true)
+            ->whereIn('laboratory_profile_id', $catalogLabIds)
+            ->groupBy('lab_test_id')
+            ->get()
+            ->keyBy('lab_test_id');
 
         $stats = LaboratoryOffering::query()
             ->selectRaw('lab_test_id, COUNT(DISTINCT laboratory_profile_id) as laboratory_count, MIN(price) as min_price, MIN(currency) as currency')
@@ -44,30 +59,24 @@ class LaboratoryDiscoveryController extends Controller
         $tests = LabTest::query()
             ->with('category:id,slug,name_en,name_ar')
             ->where('is_active', true)
-            ->whereIn('id', $stats->keys())
+            ->whereIn('id', $catalogStats->keys())
             ->when($categoryId, fn ($query) => $query->where('lab_test_category_id', $categoryId))
-            ->when($search !== '', function ($query) use ($search) {
-                $like = '%'.$search.'%';
-                $query->where(function ($inner) use ($like) {
-                    $inner->where('name_en', 'like', $like)
-                        ->orWhere('name_ar', 'like', $like)
-                        ->orWhere('short_name', 'like', $like)
-                        ->orWhere('slug', 'like', $like);
-                });
-            })
+            ->when($search !== '', fn ($query) => LabTestQuery::matchesSearch($query, $search))
             ->orderBy('name_en')
             ->get();
 
-        $locations = LaboratoryProfile::query()
-            ->with('location:id,code,name_en,name_ar')
-            ->whereIn('id', $verifiedLabIds)
-            ->whereHas('offerings', fn ($query) => $query->where('is_available', true))
-            ->get()
-            ->pluck('location')
-            ->filter()
-            ->unique('id')
-            ->values()
-            ->map(fn ($location) => $location->only(['id', 'code', 'name_en', 'name_ar']));
+        $locations = $homeCollection
+            ? Location::query()->where('is_active', true)->orderBy('name_en')->get(['id', 'code', 'name_en', 'name_ar'])
+            : LaboratoryProfile::query()
+                ->with('location:id,code,name_en,name_ar')
+                ->whereIn('id', $verifiedLabIds)
+                ->whereHas('offerings', fn ($query) => $query->where('is_available', true))
+                ->get()
+                ->pluck('location')
+                ->filter()
+                ->unique('id')
+                ->values()
+                ->map(fn ($location) => $location->only(['id', 'code', 'name_en', 'name_ar']));
 
         return response()->json([
             'data' => [
@@ -105,7 +114,7 @@ class LaboratoryDiscoveryController extends Controller
 
         $offerings = LaboratoryOffering::query()
             ->with([
-                'laboratoryProfile:id,name,address,location_id,verification_status',
+                'laboratoryProfile:id,name,address,location_id,verification_status,supports_home_collection',
                 'laboratoryProfile.location:id,code,name_en,name_ar',
                 'labTest:id,name_en,name_ar,short_name',
             ])
@@ -119,6 +128,11 @@ class LaboratoryDiscoveryController extends Controller
             ->get()
             ->groupBy('laboratory_profile_id');
 
+        $ratings = LaboratoryProfile::query()
+            ->whereKey($offerings->keys())
+            ->withRatingSummary()
+            ->get()
+            ->keyBy('id');
         $complete = [];
         $partial = [];
         $selectedCount = $selectedIds->count();
@@ -151,6 +165,8 @@ class LaboratoryDiscoveryController extends Controller
                 'laboratory_name' => $profile?->name,
                 'address' => $profile?->address,
                 'location' => $profile?->location?->only(['id', 'code', 'name_en', 'name_ar']),
+                'supports_home_collection' => (bool) $profile?->supports_home_collection,
+                ...($ratings->get($profile?->id)?->ratingSummary() ?? ['average_rating' => 0.0, 'review_count' => 0]),
                 'offers_all' => $matchedIds->count() === $selectedCount,
                 'matched_count' => $matchedIds->count(),
                 'selected_count' => $selectedCount,

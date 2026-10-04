@@ -2,12 +2,10 @@
 
 return [
     /*
-    | DEVELOPMENT/DEMO ONLY. When enabled, a newly registered doctor who
-    | selects an existing approved city starts as verified so the complete
-    | scheduling and booking flow can be demonstrated. Providers with an
-    | unresolved city proposal remain pending. Keep this false in production.
+    | Retired. Registration no longer auto-verifies providers. Kept so existing
+    | environment files do not error; the value is ignored.
     */
-    'demo_auto_verify_doctors' => (bool) env('MEDACCESS_DEMO_AUTO_VERIFY_DOCTORS', false),
+    'demo_auto_verify_doctors' => false,
 
     /*
     | Demo environments can surface a provider after one legitimate review.

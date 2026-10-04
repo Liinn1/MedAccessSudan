@@ -31,9 +31,6 @@ class RegisterLaboratoryController extends Controller
                 $locationId = isset($validated['location'])
                     ? Location::where('code', $validated['location'])->valueOrFail('id')
                     : null;
-                $initialStatus = config('medaccess.demo_auto_verify_doctors') && $locationId
-                    ? DoctorVerificationStatus::Verified
-                    : DoctorVerificationStatus::PendingDocuments;
 
                 $user = User::create([
                     'name' => $name,
@@ -54,7 +51,7 @@ class RegisterLaboratoryController extends Controller
                         ? $cityNames->display($validated['proposed_city'])
                         : null,
                     'profile_image_path' => $photoPath,
-                    'verification_status' => $initialStatus->value,
+                    'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
                 ]);
                 $verifications->ensure($profile);
 

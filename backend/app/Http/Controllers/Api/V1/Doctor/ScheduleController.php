@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Doctor;
 use App\Enums\AppointmentServiceType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Doctor\ReplaceScheduleRequest;
+use App\Support\ProviderAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,7 @@ class ScheduleController extends Controller
     public function replace(ReplaceScheduleRequest $request): JsonResponse
     {
         $profile = $request->user()->doctorProfile()->firstOrFail();
+        ProviderAccess::assertVerified($profile);
         $consultationType = AppointmentServiceType::from($request->validated('consultation_type'));
         abort_unless($profile->offers($consultationType), 422, 'This consultation type is not enabled on the professional profile.');
 

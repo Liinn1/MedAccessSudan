@@ -8,6 +8,7 @@ use App\Models\DoctorProfile;
 use App\Services\AvailabilityResolver;
 use App\Services\DoctorDashboardInsights;
 use App\Services\ProfilePhotoService;
+use App\Services\ProviderVerificationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class DoctorDashboardController extends Controller
     public function __construct(
         private readonly AvailabilityResolver $availabilityResolver,
         private readonly DoctorDashboardInsights $insights,
+        private readonly ProviderVerificationService $verifications,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -25,6 +27,11 @@ class DoctorDashboardController extends Controller
             ->with(['specialization:id,code,name_en,name_ar', 'location:id,code,name_en,name_ar'])
             ->where('user_id', $request->user()->id)
             ->first();
+
+        if ($profile) {
+            $this->verifications->ensure($profile);
+            $profile->refresh()->load(['specialization:id,code,name_en,name_ar', 'location:id,code,name_en,name_ar']);
+        }
 
         $insights = $profile ? $this->insights->build($profile) : null;
         $availableSlotsCount = 0;

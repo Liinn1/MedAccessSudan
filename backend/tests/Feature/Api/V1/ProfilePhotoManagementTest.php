@@ -21,7 +21,6 @@ class ProfilePhotoManagementTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
-        config()->set('medaccess.demo_auto_verify_doctors', true);
     }
 
     public function test_patient_registration_succeeds_without_a_picture(): void

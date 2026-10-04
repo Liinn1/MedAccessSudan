@@ -15,7 +15,7 @@ class OfferingController extends Controller
 
     public function upsert(UpsertLaboratoryOfferingRequest $request, LabTest $labTest): JsonResponse
     {
-        $profile = LaboratoryAccess::profile($request->user());
+        $profile = LaboratoryAccess::verifiedProfile($request->user());
         abort_unless($labTest->is_active, 404);
 
         $data = $request->validated();

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import laboratoryTestsImage from '../../assets/public-home/laboratory-tests.jpg'
 import { LaboratoryActivityChart } from '../../components/charts/LaboratoryActivityChart'
 import { DashboardEmptyState } from '../../components/dashboard/DashboardEmptyState'
+import { DashboardFeatureCarousel } from '../../components/dashboard/DashboardFeatureCarousel'
 import { DashboardGreeting } from '../../components/dashboard/DashboardGreeting'
-import { DashboardHomeCard, DashboardHomeGrid } from '../../components/dashboard/DashboardHomeCard'
 import { DashboardInfoCard } from '../../components/dashboard/DashboardInfoCard'
 import { DashboardPage } from '../../components/dashboard/DashboardPage'
 import { DashboardProfileCard } from '../../components/dashboard/DashboardProfileCard'
@@ -15,6 +16,7 @@ import { DashboardStatCard, DashboardStatsGrid } from '../../components/dashboar
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { CalendarIcon, LaboratoryIcon, LocationIcon, MailIcon, PhoneIcon, ProfileIcon } from '../../components/icons/PatientHomeIcons'
+import { CollectionMethodBadge } from '../../components/laboratory/CollectionMethodBadge'
 import { LaboratoryStatusBadge } from '../../components/laboratory/LaboratoryStatusBadge'
 import { DashboardVerificationNotice } from '../../components/verification/ProviderVerificationCard'
 import { LaboratoryLayout } from '../../layouts/LaboratoryLayout'
@@ -75,36 +77,6 @@ export function LaboratoryDashboardPage() {
       <DashboardGreeting description={t('laboratory.dashboard.greetingSupport')} greeting={t(`laboratory.dashboard.greetings.${greetingPeriod()}`, { name: data.profile.name })} />
       <DashboardVerificationNotice onOpen={() => navigate('/laboratory/profile#account-verification')} role="laboratory" status={data.profile.verification_status} />
 
-      <DashboardHomeGrid>
-        <DashboardProfileCard editLabel={t('patient.dashboard.editProfile')} imageUrl={data.profile.profile_image_url ?? data.user.profile_image_url} name={data.profile.name} onEdit={() => navigate('/laboratory/profile')} role={t('roles.laboratory')} />
-        <DashboardInfoCard
-          editLabel={t('patient.dashboard.edit')}
-          onEdit={() => navigate('/laboratory/profile')}
-          rows={[
-            { icon: <LocationIcon className="size-5" />, label: t('laboratory.profile.location'), value: locationName },
-            { icon: <PhoneIcon className="size-5" />, label: t('laboratory.profile.phone'), value: data.profile.phone || data.user.phone || '—' },
-            { icon: <MailIcon className="size-5" />, label: t('patient.dashboard.email'), value: data.user.email },
-          ]}
-          title={t('laboratory.dashboard.infoTitle')}
-        />
-        <DashboardHomeCard action={viewAll} icon={<CalendarIcon className="size-5 text-[var(--color-primary)]" />} title={t('laboratory.dashboard.recent')}>
-          {pendingOrders.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/laboratory/requests')} type="button">{t('laboratory.dashboard.viewRequests')}</button>} description={t('laboratory.dashboard.emptyRecentHelp')} title={t('laboratory.dashboard.emptyPendingTitle')} /> : <ul className="space-y-2.5">{pendingOrders.slice(0, 4).map((order) => (
-            <li key={order.id}><button className="flex w-full flex-col gap-1 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/laboratory/requests/${order.id}`)} type="button">
-              <span className="flex flex-wrap items-start justify-between gap-2"><strong>{order.patient?.name}</strong><LaboratoryStatusBadge status={order.status} /></span>
-              <span className="truncate text-sm text-[var(--color-text-secondary)]" dir="auto">{testNames(order, arabic)}</span>
-              <span className="direction-ltr text-start text-xs font-semibold text-[var(--color-text-secondary)]">{formatRequestWhen(order.requested_at, locale)}</span>
-            </button></li>
-          ))}</ul>}
-        </DashboardHomeCard>
-      </DashboardHomeGrid>
-
-      <DashboardServices title={t('laboratory.dashboard.servicesTitle')}>
-        <DashboardQuickActionCard accentClassName="bg-[var(--color-primary-surface)] text-[var(--color-primary)]" description={t('laboratory.dashboard.serviceDescriptions.catalog')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.catalog')} onSelect={() => navigate('/laboratory/tests')} />
-        <DashboardQuickActionCard accentClassName="bg-amber-100 text-amber-700" description={t('laboratory.dashboard.serviceDescriptions.requests')} icon={<CalendarIcon className="size-5" />} label={t('laboratory.navigation.requests')} onSelect={() => navigate('/laboratory/requests')} />
-        <DashboardQuickActionCard accentClassName="bg-sky-100 text-sky-700" description={t('laboratory.dashboard.serviceDescriptions.results')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.results')} onSelect={() => navigate('/laboratory/results')} />
-        <DashboardQuickActionCard accentClassName="bg-slate-100 text-slate-700" description={t('laboratory.dashboard.serviceDescriptions.profile')} icon={<ProfileIcon className="size-5" />} label={t('laboratory.navigation.profile')} onSelect={() => navigate('/laboratory/profile')} />
-      </DashboardServices>
-
       <section className="mt-8">
         <h2 className="text-xl font-extrabold">{t('laboratory.dashboard.activity')}</h2>
         <DashboardStatsGrid label={t('laboratory.dashboard.metricsLabel')}>
@@ -116,11 +88,63 @@ export function LaboratoryDashboardPage() {
       </section>
 
       <DashboardSplit>
+        <DashboardSectionCard action={viewAll} title={t('laboratory.dashboard.recent')}>
+          {pendingOrders.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/laboratory/requests')} type="button">{t('laboratory.dashboard.viewRequests')}</button>} description={t('laboratory.dashboard.emptyRecentHelp')} title={t('laboratory.dashboard.emptyPendingTitle')} /> : <ul className="space-y-2.5">{pendingOrders.slice(0, 4).map((order) => (
+            <li key={order.id}><button className="flex w-full flex-col gap-1 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/laboratory/requests/${order.id}`)} type="button">
+              <span className="flex w-full flex-wrap items-start justify-between gap-2"><strong>{order.patient?.name}</strong><LaboratoryStatusBadge status={order.status} /></span>
+              <span className="max-w-full truncate text-sm text-[var(--color-text-secondary)]" dir="auto">{testNames(order, arabic)}</span>
+              <CollectionMethodBadge method={order.collection_method} />
+              <span className="direction-ltr text-start text-xs font-semibold text-[var(--color-text-secondary)]">{formatRequestWhen(order.collection_starts_at || order.requested_at, locale)}</span>
+            </button></li>
+          ))}</ul>}
+        </DashboardSectionCard>
+        <DashboardFeatureCarousel
+          carouselDescription={t('laboratory.dashboard.feature.carousel')}
+          carouselLabel={t('laboratory.dashboard.feature.carouselLabel')}
+          isRtl={i18n.dir() === 'rtl'}
+          nextLabel={t('laboratory.dashboard.feature.next')}
+          paginationLabel={t('laboratory.dashboard.feature.pagination')}
+          previousLabel={t('laboratory.dashboard.feature.previous')}
+          slideLabel={(number) => t('laboratory.dashboard.feature.goToSlide', { number })}
+          slides={[{
+            id: 'services', image: laboratoryTestsImage, imagePosition: 'object-center',
+            label: t('laboratory.dashboard.feature.slides.services.label'),
+            title: t('laboratory.dashboard.feature.slides.services.title'),
+            description: t('laboratory.dashboard.feature.slides.services.description'),
+            cta: t('laboratory.dashboard.feature.slides.services.cta'), to: '/laboratory/tests',
+          }]}
+          title={t('laboratory.dashboard.feature.title')}
+        />
+      </DashboardSplit>
+
+      <DashboardSplit>
+        <DashboardProfileCard editLabel={t('patient.dashboard.editProfile')} imageUrl={data.profile.profile_image_url ?? data.user.profile_image_url} name={data.profile.name} onEdit={() => navigate('/laboratory/profile')} role={t('roles.laboratory')} />
+        <DashboardInfoCard
+          editLabel={t('patient.dashboard.edit')}
+          onEdit={() => navigate('/laboratory/profile')}
+          rows={[
+            { icon: <LocationIcon className="size-5" />, label: t('laboratory.profile.location'), value: locationName },
+            { icon: <PhoneIcon className="size-5" />, label: t('laboratory.profile.phone'), value: data.profile.phone || data.user.phone || '—' },
+            { icon: <MailIcon className="size-5" />, label: t('patient.dashboard.email'), value: data.user.email },
+          ]}
+          title={t('laboratory.dashboard.infoTitle')}
+        />
+      </DashboardSplit>
+
+      <DashboardServices title={t('laboratory.dashboard.servicesTitle')}>
+        <DashboardQuickActionCard accentClassName="bg-[var(--color-primary-surface)] text-[var(--color-primary)]" description={t('laboratory.dashboard.serviceDescriptions.catalog')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.catalog')} onSelect={() => navigate('/laboratory/tests')} />
+        <DashboardQuickActionCard accentClassName="bg-amber-100 text-amber-700" description={t('laboratory.dashboard.serviceDescriptions.requests')} icon={<CalendarIcon className="size-5" />} label={t('laboratory.navigation.requests')} onSelect={() => navigate('/laboratory/requests')} />
+        <DashboardQuickActionCard accentClassName="bg-sky-100 text-sky-700" description={t('laboratory.dashboard.serviceDescriptions.results')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.results')} onSelect={() => navigate('/laboratory/results')} />
+        <DashboardQuickActionCard accentClassName="bg-slate-100 text-slate-700" description={t('laboratory.dashboard.serviceDescriptions.profile')} icon={<ProfileIcon className="size-5" />} label={t('laboratory.navigation.profile')} onSelect={() => navigate('/laboratory/profile')} />
+      </DashboardServices>
+
+      <DashboardSplit>
         <DashboardSectionCard title={t('laboratory.dashboard.awaiting')}>
           {data.awaiting_results.length === 0 ? <DashboardEmptyState description={t('laboratory.dashboard.emptyAwaitingHelp')} icon={LaboratoryIcon} title={t('laboratory.dashboard.emptyAwaiting')} /> : <ul className="space-y-2.5">{data.awaiting_results.map((order) => (
             <li key={order.id}><button className="flex w-full flex-col gap-2 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/laboratory/requests/${order.id}`)} type="button">
               <span className="flex items-start justify-between gap-2"><span className="min-w-0 truncate font-extrabold" dir="auto">{testNames(order, arabic)}</span><LaboratoryStatusBadge status={order.status} /></span>
               <span className="text-sm text-[var(--color-text-secondary)]">{order.patient?.name}</span>
+              <span><CollectionMethodBadge method={order.collection_method} /></span>
               <span className="text-sm font-bold text-[var(--color-primary)]">{t(awaitingActionKey(order.status))}</span>
             </button></li>
           ))}</ul>}

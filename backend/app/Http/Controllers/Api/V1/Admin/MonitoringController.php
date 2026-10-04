@@ -6,7 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
-use App\Models\DoctorReview;
+use App\Models\ProviderReview;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +36,7 @@ class MonitoringController extends Controller
 
     public function reviews(): JsonResponse
     {
-        $reviews = DoctorReview::query()->with(['patient:id,name', 'doctorProfile.user:id,name', 'appointment:id,starts_at,status'])->latest()->limit(100)->get();
+        $reviews = ProviderReview::query()->forDoctors()->with(['patient:id,name', 'doctorProfile.user:id,name', 'appointment:id,starts_at,status'])->latest()->limit(100)->get();
         return response()->json(['data' => ['reviews' => $reviews]]);
     }
 }

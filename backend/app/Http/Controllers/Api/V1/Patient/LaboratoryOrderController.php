@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Patient;
 
-use App\Enums\DoctorVerificationStatus;
+use App\Enums\LaboratoryCollectionMethod;
 use App\Enums\LaboratoryOrderStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
@@ -24,7 +24,7 @@ class LaboratoryOrderController extends Controller
     {
         $orders = LaboratoryOrder::query()
             ->where('patient_id', $request->user()->id)
-            ->with(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'payment'])
+            ->with(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'collectionLocation:id,code,name_en,name_ar', 'payment', 'review'])
             ->latest('id')
             ->get();
 
@@ -34,7 +34,7 @@ class LaboratoryOrderController extends Controller
     public function show(Request $request, LaboratoryOrder $order): JsonResponse
     {
         abort_unless($order->patient_id === $request->user()->id, 404);
-        $order->load(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'payment']);
+        $order->load(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'collectionLocation:id,code,name_en,name_ar', 'payment', 'review']);
 
         return response()->json(['data' => (new LaboratoryOrderResource($order))->resolve()]);
     }
@@ -45,7 +45,7 @@ class LaboratoryOrderController extends Controller
         $laboratory = LaboratoryProfile::query()->findOrFail($data['laboratory_profile_id']);
         $method = PaymentMethod::from($data['payment_method']);
 
-        if ($laboratory->verification_status !== DoctorVerificationStatus::Verified->value) {
+        if (! LaboratoryProfile::query()->visibleToPatients()->whereKey($laboratory->id)->exists()) {
             return response()->json([
                 'message' => 'This laboratory is not currently accepting test requests.',
                 'code' => 'LABORATORY_UNAVAILABLE',
@@ -67,7 +67,25 @@ class LaboratoryOrderController extends Controller
             ], 422);
         }
 
-        $order = DB::transaction(function () use ($request, $laboratory, $offerings, $data, $method, $payments): LaboratoryOrder {
+        $collectionMethod = LaboratoryCollectionMethod::from($data['collection_method']);
+
+        if ($collectionMethod === LaboratoryCollectionMethod::HomeCollection) {
+            if (! $laboratory->supports_home_collection) {
+                return response()->json([
+                    'message' => 'This laboratory does not provide home sample collection.',
+                    'code' => 'LABORATORY_HOME_COLLECTION_UNAVAILABLE',
+                ], 422);
+            }
+
+            if ($laboratory->location_id && (int) $data['collection_location_id'] !== (int) $laboratory->location_id) {
+                return response()->json([
+                    'message' => 'This laboratory does not collect samples in the selected city.',
+                    'code' => 'LABORATORY_SERVICE_AREA',
+                ], 422);
+            }
+        }
+
+        $order = DB::transaction(function () use ($request, $laboratory, $offerings, $data, $method, $payments, $collectionMethod): LaboratoryOrder {
             $order = LaboratoryOrder::query()->create([
                 'reference' => 'TMP',
                 'patient_id' => $request->user()->id,
@@ -75,6 +93,19 @@ class LaboratoryOrderController extends Controller
                 'laboratory_name_snapshot' => $laboratory->name,
                 'status' => LaboratoryOrderStatus::Requested,
                 'requested_at' => now(),
+                ...($collectionMethod === LaboratoryCollectionMethod::HomeCollection ? [
+                    'collection_method' => $collectionMethod,
+                    'collection_starts_at' => $data['collection_starts_at'],
+                    'collection_location_id' => $data['collection_location_id'],
+                    'collection_area' => $data['collection_area'],
+                    'collection_address' => $data['collection_address'],
+                    'collection_notes' => $data['collection_notes'] ?? null,
+                    'collection_latitude' => $data['collection_latitude'],
+                    'collection_longitude' => $data['collection_longitude'],
+                ] : [
+                    'collection_method' => $collectionMethod,
+                    'collection_starts_at' => $data['collection_starts_at'] ?? null,
+                ]),
             ]);
             $order->update(['reference' => 'LAB-'.str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]);
 
@@ -107,7 +138,7 @@ class LaboratoryOrderController extends Controller
             return $order;
         });
 
-        $order->load(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'payment']);
+        $order->load(['items', 'results', 'events', 'laboratoryProfile.location:id,code,name_en,name_ar', 'collectionLocation:id,code,name_en,name_ar', 'payment']);
 
         return response()->json([
             'data' => (new LaboratoryOrderResource($order))->resolve(),

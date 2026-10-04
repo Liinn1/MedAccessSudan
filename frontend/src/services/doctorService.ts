@@ -14,6 +14,8 @@ export interface DoctorSummary {
   location: DoctorFilterOption | null
   next_available_at: string | null
   profile_image_url: string | null
+  average_rating: number
+  review_count: number
 }
 
 export interface DoctorAvailabilitySlot {

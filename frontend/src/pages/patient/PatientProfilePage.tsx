@@ -6,6 +6,7 @@ import { LoadingState } from '../../components/feedback/LoadingState'
 import { ContextualFeedback, type ContextualFeedbackState } from '../../components/feedback/ContextualFeedback'
 import { ProfilePhotoField } from '../../components/forms/ProfilePhotoField'
 import { ProfileCompletion } from '../../components/profile/ProfileCompletion'
+import { SecuritySection } from '../../components/profile/SecuritySection'
 import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { getCurrentUser, logout, type AuthenticatedUser } from '../../services/authService'
@@ -65,6 +66,7 @@ export function PatientProfilePage() {
         <label className="font-semibold">{t('profilePage.phone')}<input autoComplete="tel" className="direction-ltr mt-2 block min-h-12 w-full rounded-2xl border border-[var(--color-border)] px-4 text-start focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-teal-100" onChange={(event) => updateField('phone', event.target.value)} pattern="\+?[0-9\s-]{7,20}" required type="tel" value={form.phone} /></label>
       </div><button className="mt-6 min-h-12 rounded-full bg-[var(--color-primary)] px-6 font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50" disabled={busy !== ''} type="submit">{t(busy === 'details' ? 'profilePage.saving' : 'profilePage.saveDetails')}</button><ContextualFeedback feedback={detailsFeedback} /></form></section>
       <section className="order-1 rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm lg:order-3" id="patient-photo"><h2 className="text-xl font-extrabold">{t('profilePage.photo')}</h2><p className="mt-2 text-sm text-[var(--color-text-secondary)]">{t('profilePage.patientPhotoHelp')}</p><div className="mt-5"><ProfilePhotoField currentUrl={user.profile_image_url} file={file} name={user.name} onChange={(value) => { setFile(value); setPhotoFeedback(null) }} onRemove={removePhoto} /></div><button className="mt-5 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-6 font-bold text-white disabled:opacity-50" disabled={!file || busy !== ''} onClick={savePhoto} type="button">{t(busy === 'photo' ? 'profilePage.saving' : 'profilePage.savePhoto')}</button><ContextualFeedback feedback={photoFeedback} /></section>
+      <div className="order-4 lg:col-span-2"><SecuritySection /></div>
     </div>}
   </div></PatientLayout>
 }

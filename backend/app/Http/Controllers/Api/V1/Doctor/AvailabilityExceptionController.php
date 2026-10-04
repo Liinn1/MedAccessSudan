@@ -6,6 +6,7 @@ use App\Enums\AppointmentServiceType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Doctor\StoreAvailabilityExceptionRequest;
 use App\Models\DoctorAvailabilityException;
+use App\Support\ProviderAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class AvailabilityExceptionController extends Controller
     public function store(StoreAvailabilityExceptionRequest $request): JsonResponse
     {
         $profile = $request->user()->doctorProfile()->firstOrFail();
+        ProviderAccess::assertVerified($profile);
         abort_unless($profile->offers(AppointmentServiceType::from($request->validated('consultation_type'))), 422, 'This consultation type is not enabled on the professional profile.');
         $this->ensureNoConflict($profile->exceptions(), $request->validated());
         $exception = $profile->exceptions()->create($request->validated());
@@ -25,6 +27,7 @@ class AvailabilityExceptionController extends Controller
     {
         $this->ensureOwned($request, $exception);
         $profile = $request->user()->doctorProfile()->firstOrFail();
+        ProviderAccess::assertVerified($profile);
         abort_unless($profile->offers(AppointmentServiceType::from($request->validated('consultation_type'))), 422, 'This consultation type is not enabled on the professional profile.');
         $this->ensureNoConflict($profile->exceptions()->whereKeyNot($exception->id), $request->validated());
         $exception->update($request->validated());
@@ -35,6 +38,7 @@ class AvailabilityExceptionController extends Controller
     public function destroy(Request $request, DoctorAvailabilityException $exception): JsonResponse
     {
         $this->ensureOwned($request, $exception);
+        ProviderAccess::assertVerified($request->user()->doctorProfile()->firstOrFail());
         abort_if($exception->exception_date->isPast(), 422, 'Past exceptions cannot be removed.');
         $exception->delete();
 

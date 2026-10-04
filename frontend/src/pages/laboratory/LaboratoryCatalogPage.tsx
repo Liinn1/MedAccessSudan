@@ -101,7 +101,10 @@ export function LaboratoryCatalogPage() {
             const draft = drafts[test.id] ?? { price: '', hours: '24', available: true }
             return <li className="rounded-2xl border border-[var(--color-border)] p-4" key={test.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div><p className="font-extrabold">{arabic ? test.name_ar : test.name_en}{test.short_name ? ` (${test.short_name})` : ''}</p></div>
+                <div>
+                  <p className="font-extrabold">{arabic ? test.name_ar : test.name_en}{test.short_name ? ` (${test.short_name})` : ''}</p>
+                  <p className="mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">{test.specimen_type ? t(`laboratory.specimen.${test.specimen_type}`) : ''}{test.offering ? ` · ${t('laboratory.catalog.offered')}` : ` · ${t('laboratory.catalog.notOffered')}`}</p>
+                </div>
                 <label className="flex items-center gap-2 text-sm font-bold"><input checked={draft.available} onChange={(event) => setDrafts((current) => ({ ...current, [test.id]: { ...draft, available: event.target.checked } }))} type="checkbox" />{t('laboratory.catalog.available')}</label>
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">

@@ -1,95 +1,170 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { BrandMark } from '../../components/branding/BrandMark'
-import { LanguageToggle } from '../../components/LanguageToggle'
-import { ApiError } from '../../services/apiClient'
-import { getCurrentUser, loginAdmin } from '../../services/authService'
+import { AuthShell } from '../../components/auth/AuthShell'
+import { ForgotPasswordFlow, RememberMeRow } from '../../components/auth/ForgotPasswordFlow'
+import { PrimaryButton } from '../../components/buttons/PrimaryButton'
+import { LoadingState } from '../../components/feedback/LoadingState'
+import { InputField } from '../../components/forms/InputField'
+import { EyeIcon, LockIcon, MailIcon } from '../../components/icons/AuthIcons'
+import { PublicLayout } from '../../layouts/PublicLayout'
+import { loginAdmin, restoreSession } from '../../services/authService'
+import { consumeAuthNotice, getApiErrorCode, isAbortError } from '../../services/apiClient'
+import { isValidEmail } from '../../utils/authValidation'
+
+interface LoginFormErrors {
+  email?: boolean
+  password?: boolean
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  if (typeof error === 'object' && error !== null && 'status' in error && typeof error.status === 'number') {
+    return error.status
+  }
+  return undefined
+}
 
 export function AdminLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isCheckingSession, setIsCheckingSession] = useState(true)
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [errors, setErrors] = useState<LoginFormErrors>({})
+  const [statusMessageKey, setStatusMessageKey] = useState(() => consumeAuthNotice() === 'suspended' ? 'auth.login.errors.suspended' : '')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errorKey, setErrorKey] = useState('')
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
+  const [remember, setRemember] = useState(false)
+  const [forgot, setForgot] = useState(false)
 
   useEffect(() => {
-    const controller = new AbortController()
-
-    getCurrentUser(controller.signal)
+    restoreSession()
       .then((user) => {
-        if (user.role === 'admin' || user.role === 'super_admin') {
+        if (user?.role === 'admin' || user?.role === 'super_admin') {
           navigate('/admin/dashboard', { replace: true })
+          return
         }
+        if (consumeAuthNotice() === 'suspended') setStatusMessageKey('auth.login.errors.suspended')
+        setIsCheckingSession(false)
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        if (!(error instanceof ApiError) || error.status !== 401) {
-          setErrorKey('admin.login.error')
+        if (isAbortError(error)) return
+        if (getApiErrorCode(error) === 'ACCOUNT_SUSPENDED' || consumeAuthNotice() === 'suspended') {
+          setStatusMessageKey('auth.login.errors.suspended')
         }
+        setIsCheckingSession(false)
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsCheckingSession(false)
-      })
-
-    return () => controller.abort()
   }, [navigate])
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function validateForm(): LoginFormErrors {
+    const nextErrors: LoginFormErrors = {}
+    if (!email.trim()) nextErrors.email = true
+    else if (!isValidEmail(email)) nextErrors.email = true
+    if (!password) nextErrors.password = true
+    return nextErrors
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (isCheckingSession || isSubmitting) return
+    const nextErrors = validateForm()
+    setErrors(nextErrors)
+    setStatusMessageKey('')
+    if (Object.keys(nextErrors).length > 0) return
 
     setIsSubmitting(true)
-    setErrorKey('')
-
     try {
-      const user = await loginAdmin(identifier.trim(), password)
+      const user = await loginAdmin(email.trim(), password, remember)
       if (user.role !== 'admin' && user.role !== 'super_admin') {
-        setErrorKey('admin.login.invalid')
+        setStatusMessageKey('admin.login.invalid')
+        setIsSubmitting(false)
         return
       }
-
       setPassword('')
       navigate('/admin/dashboard', { replace: true })
-    } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 422) setErrorKey('admin.login.invalid')
-        else if (error.status === 429) setErrorKey('admin.login.tooManyAttempts')
-        else if (error.status === 419) setErrorKey('admin.login.sessionExpired')
-        else setErrorKey('admin.login.error')
-      } else {
-        setErrorKey('admin.login.error')
-      }
-    } finally {
+    } catch (error: unknown) {
+      const status = getErrorStatus(error)
+      const errorCode = getApiErrorCode(error)
+      if (errorCode === 'ACCOUNT_SUSPENDED') setStatusMessageKey('auth.login.errors.suspended')
+      else if (errorCode === 'INVALID_CREDENTIALS' || status === 422) setStatusMessageKey('admin.login.invalid')
+      else if (errorCode === 'TOO_MANY_ATTEMPTS' || status === 429) setStatusMessageKey('admin.login.tooManyAttempts')
+      else if (status === 419) setStatusMessageKey('admin.login.sessionExpired')
+      else setStatusMessageKey('admin.login.error')
       setIsSubmitting(false)
     }
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--color-background)] px-5 py-10">
-      <section className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-white p-7 shadow-xl sm:p-10">
-        <div className="flex items-start justify-between gap-4"><BrandMark variant="auth" /><LanguageToggle /></div>
-        <p className="mt-8 font-bold text-[var(--color-primary)]">{t('admin.eyebrow')}</p>
-        <h1 className="mt-1 text-3xl font-extrabold">{t('admin.login.title')}</h1>
-        <p className="mt-2 text-[var(--color-text-secondary)]">{t('admin.login.description')}</p>
-
-        <form className="mt-7 space-y-5" noValidate onSubmit={submit}>
-          <div>
-            <label className="block font-bold" htmlFor="admin-identifier">{t('admin.login.identifier')}</label>
-            <input autoComplete="username" className="mt-2 w-full rounded-xl border border-[var(--color-border)] px-4 py-3 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-teal-100" id="admin-identifier" onChange={(event) => setIdentifier(event.target.value)} required value={identifier} />
-          </div>
-          <div>
-            <label className="block font-bold" htmlFor="admin-password">{t('admin.login.password')}</label>
-            <input autoComplete="current-password" className="mt-2 w-full rounded-xl border border-[var(--color-border)] px-4 py-3 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-teal-100" id="admin-password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
-          </div>
-          {errorKey && <p aria-live="polite" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700" role="alert">{t(errorKey)}</p>}
-          <button aria-busy={isSubmitting} className="min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white transition hover:bg-[#0F766E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-wait disabled:opacity-60" disabled={isCheckingSession || isSubmitting || !identifier.trim() || !password} type="submit">
-            {t(isSubmitting ? 'admin.login.signingIn' : isCheckingSession ? 'admin.login.checkingSession' : 'admin.login.submit')}
-          </button>
-        </form>
-      </section>
-    </main>
+    <PublicLayout>
+      <AuthShell eyebrow={t('admin.login.eyebrow')} subtitle={forgot ? t('auth.forgot.subtitle') : t('admin.login.description')} title={forgot ? t('auth.forgot.title') : t('admin.login.title')}>
+        {forgot ? (
+          <ForgotPasswordFlow loginPath="/admin/login" onCancel={() => setForgot(false)} />
+        ) : isCheckingSession || isSubmitting ? (
+          <LoadingState section message={t(isSubmitting ? 'admin.login.signingIn' : 'admin.login.checkingSession')} />
+        ) : (
+          <form className="flex flex-col" noValidate onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <InputField
+                autoComplete="username"
+                className="direction-ltr"
+                error={errors.email ? t(email.trim() ? 'admin.login.emailInvalid' : 'admin.login.emailRequired') : undefined}
+                icon={<MailIcon />}
+                id="admin-email"
+                inputMode="email"
+                label={t('admin.login.email')}
+                name="email"
+                onBlur={() => {
+                  if (!email.trim() || !isValidEmail(email)) setErrors((current) => ({ ...current, email: true }))
+                }}
+                onChange={(event) => {
+                  setEmail(event.target.value)
+                  if (errors.email) setErrors((current) => ({ ...current, email: undefined }))
+                }}
+                placeholder={t('admin.login.email')}
+                type="email"
+                value={email}
+              />
+              <InputField
+                autoComplete="current-password"
+                error={errors.password ? t('admin.login.passwordRequired') : undefined}
+                icon={<LockIcon />}
+                id="admin-password"
+                label={t('admin.login.password')}
+                name="password"
+                onBlur={() => {
+                  if (!password) setErrors((current) => ({ ...current, password: true }))
+                }}
+                onChange={(event) => {
+                  setPassword(event.target.value)
+                  if (errors.password) setErrors((current) => ({ ...current, password: undefined }))
+                }}
+                type={passwordVisible ? 'text' : 'password'}
+                value={password}
+                endAdornment={
+                  <button
+                    aria-label={t(passwordVisible ? 'auth.login.hidePassword' : 'auth.login.showPassword')}
+                    className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                    onClick={() => setPasswordVisible((visible) => !visible)}
+                    type="button"
+                  >
+                    <EyeIcon visible={passwordVisible} />
+                  </button>
+                }
+              />
+            </div>
+            <RememberMeRow checked={remember} onForgot={() => setForgot(true)} onToggle={setRemember} />
+            <div className="mt-3" aria-live="polite">
+              {statusMessageKey && (
+                <p className="mb-1 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700" role="alert">
+                  {t(statusMessageKey)}
+                </p>
+              )}
+            </div>
+            <div className="pt-2">
+              <PrimaryButton type="submit">{t('admin.login.submit')}</PrimaryButton>
+            </div>
+          </form>
+        )}
+      </AuthShell>
+    </PublicLayout>
   )
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\LaboratoryOrderStatus;
 use App\Models\LaboratoryOrder;
 use App\Models\LaboratoryResult;
 use Illuminate\Http\Request;
@@ -21,6 +22,16 @@ class LaboratoryOrderResource extends JsonResource
             'reference' => $this->reference,
             'status' => $this->status->value,
             'requested_at' => $this->requested_at?->toIso8601String(),
+            'collection_method' => $this->collection_method?->value ?? 'at_lab',
+            'collection_starts_at' => $this->collection_starts_at?->toIso8601String(),
+            'collection' => $this->collection_method?->value === 'home_collection' ? [
+                'location' => $this->whenLoaded('collectionLocation', fn () => $this->collectionLocation?->only(['id', 'code', 'name_en', 'name_ar'])),
+                'area' => $this->collection_area,
+                'address' => $this->collection_address,
+                'notes' => $this->collection_notes,
+                'latitude' => $this->collection_latitude,
+                'longitude' => $this->collection_longitude,
+            ] : null,
             'laboratory_name' => $this->laboratory_name_snapshot,
             'laboratory_profile_id' => $this->laboratory_profile_id,
             'location' => $this->whenLoaded('laboratoryProfile', fn () => $this->laboratoryProfile?->location?->only(['id', 'code', 'name_en', 'name_ar'])),
@@ -49,6 +60,8 @@ class LaboratoryOrderResource extends JsonResource
                 'created_at' => $event->created_at?->toIso8601String(),
             ])->values()),
             'result' => $latest ? $this->resultPayload($latest) : null,
+            'review' => $this->whenLoaded('review', fn () => $this->review ? (new ProviderReviewResource($this->review))->resolve($request) : null),
+            'can_review' => $this->when($this->relationLoaded('review'), fn () => ! $this->review && $latest !== null && $this->status === LaboratoryOrderStatus::ResultReady),
             'payment' => $this->whenLoaded('payment', fn () => $this->payment ? (new PaymentResource($this->payment))->resolve($request) : null),
         ];
     }

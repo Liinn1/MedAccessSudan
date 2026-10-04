@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\V1\Admin;
 use App\Enums\AppointmentStatus;
 use App\Enums\DoctorVerificationStatus;
 use App\Enums\UserRole;
+use App\Mail\AdminInvitationMail;
 use App\Models\AdminAuditLog;
 use App\Models\Appointment;
 use App\Models\DoctorProfile;
@@ -12,6 +13,7 @@ use App\Models\Location;
 use App\Models\Specialization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -69,17 +71,61 @@ class AdminFoundationTest extends TestCase
 
     public function test_super_admin_can_create_admin_and_action_is_audited(): void
     {
+        Mail::fake();
         $super = User::factory()->create(['role' => UserRole::SuperAdmin, 'is_active' => true]);
         Sanctum::actingAs($super);
-        $response = $this->postJson('/api/v1/admin/administrators', ['name' => 'Operations Admin', 'email' => 'operations@example.test', 'password' => 'SecurePassword123!', 'password_confirmation' => 'SecurePassword123!', 'role' => 'admin']);
+        $response = $this->postJson('/api/v1/admin/administrators', [
+            'name' => 'Operations Admin',
+            'email' => 'operations@example.test',
+            'role' => 'admin',
+        ]);
         $response->assertCreated()->assertJsonPath('data.admin.role', 'admin');
         $this->assertDatabaseHas('admin_audit_logs', ['admin_user_id' => $super->id, 'action' => 'admin.created']);
+        Mail::assertSent(AdminInvitationMail::class);
+        $this->assertDatabaseMissing('users', ['email' => 'operations@example.test', 'password' => 'SecurePassword123!']);
+
+        $url = null;
+        Mail::assertSent(AdminInvitationMail::class, function (AdminInvitationMail $mail) use (&$url) {
+            $url = $mail->setupUrl;
+            return true;
+        });
+        parse_str(parse_url($url, PHP_URL_QUERY) ?: '', $query);
+        $this->postJson('/api/v1/auth/password/setup', [
+            'email' => 'operations@example.test',
+            'token' => $query['token'] ?? '',
+            'password' => 'SecurePass1',
+            'password_confirmation' => 'SecurePass1',
+        ])->assertOk();
+        $this->postJson('/api/v1/admin/login', [
+            'identifier' => 'operations@example.test',
+            'password' => 'SecurePass1',
+        ])->assertOk();
     }
 
-    public function test_normal_admin_cannot_manage_administrators(): void
+    public function test_normal_admin_cannot_create_administrators_but_can_list_them(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]));
-        $this->postJson('/api/v1/admin/administrators', ['name' => 'Blocked', 'email' => 'blocked@example.test', 'password' => 'SecurePassword123!', 'password_confirmation' => 'SecurePassword123!', 'role' => 'super_admin'])->assertForbidden();
+        $this->getJson('/api/v1/admin/administrators')->assertOk();
+        $this->postJson('/api/v1/admin/administrators', [
+            'name' => 'Blocked',
+            'email' => 'blocked@example.test',
+            'role' => 'admin',
+        ])->assertForbidden();
+        $this->postJson('/api/v1/admin/administrators', [
+            'name' => 'Blocked',
+            'email' => 'blocked@example.test',
+            'role' => 'super_admin',
+        ])->assertForbidden();
+    }
+
+    public function test_super_admin_cannot_suspend_the_super_admin_account(): void
+    {
+        $super = User::factory()->create(['role' => UserRole::SuperAdmin, 'is_active' => true]);
+        $other = User::factory()->create(['role' => UserRole::SuperAdmin, 'is_active' => true, 'email' => 'other.super@example.test']);
+        Sanctum::actingAs($super);
+        $this->patchJson("/api/v1/admin/administrators/{$other->id}", ['is_active' => false])
+            ->assertUnprocessable();
+        $this->assertTrue($other->fresh()->is_active);
     }
 
     public function test_dashboard_metrics_are_database_backed(): void

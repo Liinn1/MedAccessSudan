@@ -30,7 +30,7 @@ class Appointment extends Model
 
     public function review(): HasOne
     {
-        return $this->hasOne(DoctorReview::class);
+        return $this->hasOne(ProviderReview::class);
     }
 
     public function homeVisitDetail(): HasOne

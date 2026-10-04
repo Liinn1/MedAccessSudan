@@ -38,9 +38,6 @@ class RegisterDoctorController extends Controller
                 $locationId = isset($validated['location'])
                     ? Location::where('code', $validated['location'])->valueOrFail('id')
                     : null;
-                $initialVerificationStatus = config('medaccess.demo_auto_verify_doctors') && $locationId
-                    ? DoctorVerificationStatus::Verified
-                    : DoctorVerificationStatus::PendingDocuments;
 
                 $profile = $user->doctorProfile()->create([
                     'specialization_id' => Specialization::where('code', $validated['specialization'])->valueOrFail('id'),
@@ -50,7 +47,7 @@ class RegisterDoctorController extends Controller
                     'offers_clinic_visits' => (bool) ($validated['offers_clinic_visits'] ?? true),
                     'offers_home_visits' => (bool) ($validated['offers_home_visits'] ?? false),
                     'profile_image_path' => $photoPath,
-                    'verification_status' => $initialVerificationStatus->value,
+                    'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
                 ]);
 
                 if (! empty($validated['proposed_city'])) {

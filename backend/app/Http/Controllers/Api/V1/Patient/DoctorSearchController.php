@@ -24,6 +24,7 @@ class DoctorSearchController extends Controller
         $query = DoctorProfile::query()
             ->with(['user:id,name', 'specialization:id,code,name_en,name_ar', 'location:id,code,name_en,name_ar', 'homeVisitLocation:id,code,name_en,name_ar'])
             ->visibleToPatients()
+            ->withRatingSummary()
             ->where($serviceType === AppointmentServiceType::HomeVisit ? 'offers_home_visits' : 'offers_clinic_visits', true)
             ->when($validated['specialization'] ?? null, fn (Builder $doctorQuery, string $code) => $doctorQuery
                 ->whereHas('specialization', fn (Builder $specialization) => $specialization->where('code', $code)))
@@ -48,6 +49,7 @@ class DoctorSearchController extends Controller
                     'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                     'home_visit_location' => $profile->homeVisitLocation?->only(['code', 'name_en', 'name_ar']),
                     'next_available_at' => $first['starts_at'] ?? null,
+                    ...$profile->ratingSummary(),
                 ];
             })->filter()->sortBy(fn (array $doctor) => $doctor['next_available_at'] ?? '9999-12-31')->values();
 

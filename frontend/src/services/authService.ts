@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from './apiClient'
+import { apiClient, ApiError, getApiErrorCode } from './apiClient'
 
 export type UserRole = 'patient' | 'doctor' | 'laboratory' | 'admin' | 'super_admin'
 
@@ -25,31 +25,67 @@ interface AuthenticationResponse {
  * identifier. The session cookie is HTTP-only and is never stored in React.
  * Callers must redirect using the returned user's stored role.
  */
-export async function login(identifier: string, password: string): Promise<AuthenticatedUser> {
+export async function login(identifier: string, password: string, remember = false): Promise<AuthenticatedUser> {
   await apiClient.initializeCsrfProtection()
   const response = await apiClient.post<AuthenticationResponse>('/api/v1/auth/login', {
     identifier,
     password,
+    remember,
   })
-  const user = response.data?.user
-
-  if (!user?.role) {
-    throw new ApiError('The login response did not include an authenticated user.', 500, response)
-  }
-
+  const user = readAuthenticatedUser(response)
+  clearSessionCache()
+  sessionRestore = Promise.resolve(user)
   return user
 }
 
-export async function loginAdmin(identifier: string, password: string): Promise<AuthenticatedUser> {
+export async function loginAdmin(identifier: string, password: string, remember = false): Promise<AuthenticatedUser> {
   await apiClient.initializeCsrfProtection()
-  const response = await apiClient.post<AuthenticationResponse>('/api/v1/admin/login', { identifier, password })
-  return response.data.user
+  const response = await apiClient.post<AuthenticationResponse>('/api/v1/admin/login', { identifier, password, remember })
+  const user = readAuthenticatedUser(response)
+  clearSessionCache()
+  sessionRestore = Promise.resolve(user)
+  return user
+}
+
+function readAuthenticatedUser(payload: AuthenticationResponse): AuthenticatedUser {
+  const user = payload.data?.user
+  if (!user?.role) {
+    throw new ApiError('The login response did not include an authenticated user.', 500, payload)
+  }
+  return user
 }
 
 /** Reads the protected identity resource to restore an existing SPA session. */
 export async function getCurrentUser(signal?: AbortSignal): Promise<AuthenticatedUser> {
-  const response = await apiClient.get<AuthenticationResponse>('/api/v1/auth/me', signal)
-  return response.data.user
+  return readAuthenticatedUser(await apiClient.get<AuthenticationResponse>('/api/v1/auth/me', signal))
+}
+
+let sessionRestore: Promise<AuthenticatedUser | null> | null = null
+
+function isUnauthenticatedSession(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false
+  return error.status === 401 || getApiErrorCode(error) === 'ACCOUNT_SUSPENDED'
+}
+
+/**
+ * Restores the Sanctum cookie session once per page load.
+ * A missing/expired/suspended session is `null`. Network errors are thrown so
+ * callers do not treat an unfinished check as a logout.
+ */
+export function restoreSession(): Promise<AuthenticatedUser | null> {
+  if (!sessionRestore) {
+    sessionRestore = getCurrentUser()
+      .catch((error: unknown) => {
+        if (isUnauthenticatedSession(error)) return null
+        sessionRestore = null
+        throw error
+      })
+  }
+  return sessionRestore
+}
+
+export function clearSessionCache(): void {
+  sessionRestore = null
 }
 
 /** Loads the patient-only home resource, enforcing the role at the API boundary. */
@@ -58,10 +94,14 @@ export async function getPatientHome(signal?: AbortSignal): Promise<Authenticate
   return response.data.user
 }
 
-/** Ends the server session; no authentication material is retained by React. */
+/** Ends the server session and remember cookie; no authentication material is retained by React. */
 export async function logout(): Promise<void> {
   await apiClient.initializeCsrfProtection()
-  await apiClient.post('/api/v1/auth/logout')
+  try {
+    await apiClient.post('/api/v1/auth/logout')
+  } finally {
+    clearSessionCache()
+  }
 }
 
 export interface PatientRegistrationInput {

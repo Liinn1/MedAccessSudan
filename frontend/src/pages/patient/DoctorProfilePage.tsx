@@ -7,6 +7,7 @@ import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { CalendarIcon, LocationIcon, StethoscopeIcon } from '../../components/icons/PatientHomeIcons'
+import { ProviderRatingSummary } from '../../components/ratings/ProviderRatingSummary'
 import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorProfile, type DoctorProfile } from '../../services/doctorService'
@@ -102,6 +103,7 @@ function DoctorClinicSlots({ arabic, doctor, formatSlot, onContinue, selectedSlo
           <h2 className="mt-3 break-words text-2xl font-black sm:text-3xl">{doctor.name}</h2>
           <p className="mt-2 flex items-center justify-center gap-2 font-bold text-[var(--color-primary)] sm:justify-start"><StethoscopeIcon className="size-5 shrink-0" />{specialization}</p>
           <p className="mt-2 flex items-center justify-center gap-2 text-[var(--color-text-secondary)] sm:justify-start"><LocationIcon className="size-5 shrink-0 text-[var(--color-primary)]" />{doctor.clinic_name || location}</p>
+          <ProviderRatingSummary className="mt-2" rating={doctor} />
         </div>
       </div>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.15fr]">

@@ -33,7 +33,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
     return () => window.cancelAnimationFrame(frame)
   }, [location.hash, location.pathname])
 
-  const isPublicAuthRoute = /^(?:\/login|\/register(?:\/patient|\/doctor)?)$/.test(location.pathname)
+  const isPublicAuthRoute = /^(?:\/login|\/register(?:\/patient|\/doctor)?|\/admin\/login)$/.test(location.pathname)
 
   return (
     <div className={isPublicAuthRoute ? 'auth-public-layout flex min-h-dvh flex-col bg-[var(--color-background)]' : 'min-h-dvh bg-[var(--color-background)]'}>

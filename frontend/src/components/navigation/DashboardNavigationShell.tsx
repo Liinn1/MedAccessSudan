@@ -71,21 +71,24 @@ export function DashboardNavigationShell({
     }
   }, [menuOpen])
 
-  const navButtons = (entries: DashboardNavItem[]) => (
+  const navButtons = (entries: DashboardNavItem[]) => entries.map(({ key, active, icon: Icon, label, onSelect }) => (
+    <button aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-start text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${active ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-primary-surface)] hover:text-[var(--color-primary)]'}`} key={key} onClick={() => { setMenuOpen(false); onSelect() }} type="button">
+      <Icon aria-hidden="true" className="size-5 shrink-0" />
+      {label}
+    </button>
+  ))
+
+  const renderNav = () => (
     <nav aria-label={navigationLabel} className="grid gap-1.5">
-      {entries.map(({ key, active, icon: Icon, label, onSelect }) => (
-        <button aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-start text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${active ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-primary-surface)] hover:text-[var(--color-primary)]'}`} key={key} onClick={() => { setMenuOpen(false); onSelect() }} type="button">
-          <Icon className="size-5 shrink-0" />
-          {label}
-        </button>
-      ))}
+      {navButtons(primaryItems)}
+      {homeItems.length > 0 && <div className="mt-3 border-t border-[var(--color-border)] pt-3 grid gap-1.5">{navButtons(homeItems)}</div>}
     </nav>
   )
 
   const support = (
     <section className="rounded-2xl bg-[var(--color-primary-surface)] p-3.5">
       <div className="flex items-center gap-2">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-[var(--color-primary)] shadow-sm"><SupportIcon className="size-4" /></span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-[var(--color-primary)] shadow-sm"><SupportIcon aria-hidden="true" className="size-4" /></span>
         <h2 className="text-sm font-extrabold text-[var(--color-text-primary)]">{helpTitle}</h2>
       </div>
       <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">{helpDescription}</p>
@@ -96,8 +99,7 @@ export function DashboardNavigationShell({
   return <>
     <aside className="fixed inset-y-0 start-0 z-40 hidden h-dvh min-h-dvh w-64 flex-col border-e border-[var(--color-border)] bg-white px-4 py-5 lg:flex">
       <Link aria-label={t('publicHome.header.logoLabel')} className="mx-auto rounded-xl focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" to="/"><BrandMark compact /></Link>
-      <div className="mt-7">{navButtons(primaryItems)}</div>
-      {homeItems.length > 0 && <div className="mt-3 border-t border-[var(--color-border)] pt-3">{navButtons(homeItems)}</div>}
+      <div className="mt-7">{renderNav()}</div>
       <div className="min-h-6 flex-1" aria-hidden="true" />
       <div>{support}</div>
     </aside>
@@ -131,8 +133,7 @@ export function DashboardNavigationShell({
           <ProfileAvatar className="size-10 shrink-0 rounded-full text-xs" imageUrl={user.profile_image_url} name={user.name} />
           <span className="min-w-0"><strong className="block truncate text-sm">{user.name}</strong><span className="block truncate text-xs text-[var(--color-text-secondary)]">{roleLabel}</span></span>
         </div>}
-        <div className="mt-5">{navButtons(primaryItems)}</div>
-        {homeItems.length > 0 && <div className="mt-3 border-t border-[var(--color-border)] pt-3">{navButtons(homeItems)}</div>}
+        <div className="mt-5">{renderNav()}</div>
         <div className="mt-5 border-t border-[var(--color-border)] pt-4">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('language.selectorLabel')}</p>
           <LanguageToggle />

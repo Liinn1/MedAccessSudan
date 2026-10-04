@@ -12,7 +12,7 @@ export function resolvePatientNavSection(pathname: string): PatientNavSection {
   if (pathname.startsWith('/patient/doctors')) return 'book'
   if (pathname === '/patient/laboratory' || pathname === '/patient/laboratory/') return 'laboratory'
   if (pathname.startsWith('/patient/laboratory/orders')) return 'appointments'
-  if (pathname.startsWith('/patient/lab-results')) return 'none'
+  if (pathname.startsWith('/patient/lab-results')) return 'appointments'
   if (pathname.startsWith('/patient/profile')) return 'profile'
   return 'dashboard'
 }

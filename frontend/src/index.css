@@ -61,11 +61,11 @@
 }
 
 .dashboard-home-grid {
-  @apply mt-8 grid gap-5 lg:grid-cols-3;
+  @apply mt-8 grid items-start gap-5 lg:grid-cols-3;
 }
 
 .dashboard-home-card {
-  @apply flex min-h-[17.5rem] flex-col rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6;
+  @apply flex flex-col rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6;
 }
 
 .dashboard-home-card--compact {
@@ -93,7 +93,7 @@
 }
 
 .dashboard-split {
-  @apply mt-8 grid gap-5 xl:grid-cols-2;
+  @apply mt-8 grid items-start gap-5 xl:grid-cols-2;
 }
 
 @keyframes dashboard-drawer-overlay-enter {

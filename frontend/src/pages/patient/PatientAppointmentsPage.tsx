@@ -13,7 +13,7 @@ import { PatientAppointmentCard } from '../../components/patient/PatientAppointm
 import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { logout } from '../../services/authService'
-import { getPatientLaboratoryOrders, openLaboratoryResult, type LaboratoryOrder } from '../../services/laboratoryService'
+import { getPatientLaboratoryOrders, isHomeCollection, laboratoryCollectionAddress, openLaboratoryResult, type LaboratoryOrder } from '../../services/laboratoryService'
 import { getPatientAppointments, type PatientAppointment } from '../../services/patientAppointmentService'
 import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 import { buildLoginPath } from '../../utils/navigation'
@@ -142,15 +142,23 @@ function LabCard({ locale, order }: { locale: string; order: LaboratoryOrder }) 
   const items = order.items ?? []
   const first = items[0] ? (items[0].short_name || (arabic ? items[0].name_ar : items[0].name_en)) : ''
   const tests = items.length > 2 ? t('patient.appointments.moreTests', { name: first, count: items.length - 1 }) : items.map((item) => item.short_name || (arabic ? item.name_ar : item.name_en)).join(' + ')
-  const location = [order.location ? (arabic ? order.location.name_ar : order.location.name_en) : '', order.address].filter(Boolean).join(' — ')
+  const home = isHomeCollection(order)
+  const scheduled = Boolean(order.collection_starts_at)
+  const when = scheduled && order.collection_starts_at ? new Date(order.collection_starts_at) : new Date(order.requested_at)
+  const location = home ? laboratoryCollectionAddress(order, arabic) : [order.location ? (arabic ? order.location.name_ar : order.location.name_en) : '', order.address].filter(Boolean).join(' — ')
   const ready = order.status === 'result_ready' && order.result
   return <PatientAppointmentCard
     actions={<>
       <button className="w-full rounded-full border border-[var(--color-primary)] px-4 py-2.5 font-bold text-[var(--color-primary)]" onClick={() => navigate(`/patient/laboratory/orders/${order.id}`)} type="button">{t('patient.appointments.viewDetails')}</button>
       {ready && <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2.5 font-bold text-white" onClick={() => openLaboratoryResult(`/api/v1/patient/laboratory-orders/${order.id}/result`)} type="button">{t('patient.laboratory.view')}</button>}
+      {(order.review || order.can_review) && <button className="w-full rounded-full border border-[var(--color-primary)] px-4 py-2.5 font-bold text-[var(--color-primary)]" onClick={() => navigate(`/patient/laboratory/orders/${order.id}/review`)} type="button">{t(order.review ? 'patient.appointments.viewReview' : 'patient.appointments.rateLaboratory')}</button>}
     </>}
     location={location}
-    meta={[{ label: t('patient.appointments.date'), value: new Date(order.requested_at).toLocaleDateString(locale) }]}
+    meta={[
+      { label: t('patient.laboratory.collection'), value: t(`patient.laboratory.collectionMethods.${order.collection_method ?? 'at_lab'}`) },
+      { label: t('patient.appointments.date'), value: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: SUDAN_TIME_ZONE }).format(when) },
+      ...(scheduled ? [{ label: t('patient.appointments.time'), value: new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: SUDAN_TIME_ZONE }).format(when), ltr: true }] : []),
+    ]}
     payment={paymentMethodLabel(order.payment, t)}
     paymentLabel={t('patient.payment.statusLabel')}
     status={<LaboratoryStatusBadge namespace="patient.laboratory.statuses" status={order.status} />}

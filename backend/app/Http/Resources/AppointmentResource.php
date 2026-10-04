@@ -30,7 +30,7 @@ class AppointmentResource extends JsonResource
                 'latitude' => $this->when($includeCoordinates, $this->homeVisitDetail->latitude),
                 'longitude' => $this->when($includeCoordinates, $this->homeVisitDetail->longitude),
             ] : null),
-            'review' => $this->whenLoaded('review', fn () => $this->review ? (new DoctorReviewResource($this->review))->resolve($request) : null),
+            'review' => $this->whenLoaded('review', fn () => $this->review ? (new ProviderReviewResource($this->review))->resolve($request) : null),
             'payment' => $this->whenLoaded('payment', fn () => $this->payment ? (new PaymentResource($this->payment))->resolve($request) : null),
             'patient' => $this->whenLoaded('patient', fn () => ['id' => $this->patient->id, 'name' => $this->patient->name]),
             'doctor' => $this->whenLoaded('doctorProfile', fn () => [

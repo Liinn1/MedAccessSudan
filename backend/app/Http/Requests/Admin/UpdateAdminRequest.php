@@ -13,7 +13,7 @@ class UpdateAdminRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['sometimes', Rule::in([UserRole::Admin->value, UserRole::SuperAdmin->value])],
+            'role' => ['sometimes', Rule::in([UserRole::Admin->value])],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

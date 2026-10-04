@@ -7,6 +7,7 @@ use App\Enums\AppointmentStatus;
 use App\Enums\DoctorVerificationStatus;
 use App\Enums\UserRole;
 use App\Models\Concerns\HasProfessionalVerification;
+use App\Models\Concerns\HasProviderRatings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class DoctorProfile extends Model
 {
     use HasProfessionalVerification;
+    use HasProviderRatings;
     protected $guarded = [];
 
     protected function casts(): array
@@ -76,10 +78,10 @@ class DoctorProfile extends Model
 
     public function reviews(): HasMany
     {
-        return $this->hasMany(DoctorReview::class)->whereHas('appointment', fn (Builder $appointment) => $appointment
+        return $this->hasMany(ProviderReview::class)->whereHas('appointment', fn (Builder $appointment) => $appointment
             ->where('status', AppointmentStatus::Completed->value)
-            ->whereColumn('appointments.patient_id', 'doctor_reviews.patient_id')
-            ->whereColumn('appointments.doctor_profile_id', 'doctor_reviews.doctor_profile_id'));
+            ->whereColumn('appointments.patient_id', 'provider_reviews.patient_id')
+            ->whereColumn('appointments.doctor_profile_id', 'provider_reviews.doctor_profile_id'));
     }
 
     public function cityProposal(): HasOne
@@ -90,7 +92,7 @@ class DoctorProfile extends Model
     public function scopeVisibleToPatients(Builder $query): Builder
     {
         return $query->where('verification_status', DoctorVerificationStatus::Verified->value)
-            ->whereHas('user', fn (Builder $user) => $user->where('role', UserRole::Doctor->value))
+            ->whereHas('user', fn (Builder $user) => $user->where('role', UserRole::Doctor->value)->where('is_active', true))
             ->whereHas('specialization', fn (Builder $specialization) => $specialization->where('is_active', true))
             ->whereHas('location', fn (Builder $location) => $location->where('is_active', true));
     }

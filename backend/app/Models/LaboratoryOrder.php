@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\LaboratoryCollectionMethod;
 use App\Enums\LaboratoryOrderStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class LaboratoryOrder extends Model
@@ -16,8 +18,17 @@ class LaboratoryOrder extends Model
     {
         return [
             'status' => LaboratoryOrderStatus::class,
+            'collection_method' => LaboratoryCollectionMethod::class,
             'requested_at' => 'datetime',
+            'collection_starts_at' => 'datetime',
+            'collection_latitude' => 'float',
+            'collection_longitude' => 'float',
         ];
+    }
+
+    public function collectionLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'collection_location_id');
     }
 
     public function patient(): BelongsTo
@@ -48,6 +59,16 @@ class LaboratoryOrder extends Model
     public function latestResult(): ?LaboratoryResult
     {
         return $this->results()->latest('id')->first();
+    }
+
+    public function review(): HasOne
+    {
+        return $this->hasOne(ProviderReview::class);
+    }
+
+    public function isRateable(): bool
+    {
+        return $this->status === LaboratoryOrderStatus::ResultReady && $this->results()->exists();
     }
 
     public function payment(): MorphOne

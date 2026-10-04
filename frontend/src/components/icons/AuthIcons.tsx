@@ -31,6 +31,14 @@ export function LockIcon() {
   )
 }
 
+export function CheckIcon() {
+  return (
+    <svg aria-hidden="true" className="size-6" fill="none" viewBox="0 0 24 24">
+      <path d="m5 12 5 5 9-9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
 export function EyeIcon({ visible }: { visible: boolean }) {
   return (
     <svg aria-hidden="true" className="size-6" fill="none" viewBox="0 0 24 24">

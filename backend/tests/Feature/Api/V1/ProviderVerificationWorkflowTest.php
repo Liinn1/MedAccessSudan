@@ -30,6 +30,30 @@ class ProviderVerificationWorkflowTest extends TestCase
         $this->seed(LabTestCatalogSeeder::class);
     }
 
+    public function test_demo_flag_cannot_auto_verify_a_new_doctor(): void
+    {
+        Storage::fake('public');
+        config()->set('medaccess.demo_auto_verify_doctors', true);
+        $this->postJson('/api/v1/auth/register/doctor', [
+            'first_name' => 'Musa',
+            'last_name' => 'Ahmed',
+            'email' => 'musa.doctor@example.com',
+            'phone' => '+249111222555',
+            'password' => 'Secure123',
+            'password_confirmation' => 'Secure123',
+            'specialization' => 'general_medicine',
+            'location' => 'khartoum',
+            'profile_photo' => UploadedFile::fake()->createWithContent(
+                'doctor.png',
+                base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=')
+            ),
+        ])->assertCreated();
+
+        $doctor = User::query()->where('email', 'musa.doctor@example.com')->firstOrFail();
+        $this->assertSame('pending_documents', $doctor->doctorProfile->verification_status);
+        $this->assertFalse($doctor->doctorProfile->isProfessionallyVerified());
+    }
+
     public function test_new_doctor_starts_unverified_can_login_and_cannot_self_verify(): void
     {
         $profile = $this->createDoctor();
@@ -47,6 +71,16 @@ class ProviderVerificationWorkflowTest extends TestCase
 
         $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $profile->fresh()->verification_status);
         $this->assertFalse($profile->fresh()->isProfessionallyVerified());
+
+        $this->putJson('/api/v1/doctor/schedule', [
+            'consultation_type' => 'clinic',
+            'periods' => [[
+                'day_of_week' => 1,
+                'start_time' => '09:00',
+                'end_time' => '11:00',
+                'slot_duration_minutes' => 30,
+            ]],
+        ])->assertForbidden()->assertJsonPath('code', 'PROVIDER_UNVERIFIED');
     }
 
     public function test_invalid_file_is_rejected_and_incomplete_submission_is_blocked(): void
@@ -93,7 +127,8 @@ class ProviderVerificationWorkflowTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
         Sanctum::actingAs($admin);
         $verificationId = $profile->fresh()->providerVerification->id;
-        $this->getJson('/api/v1/admin/verifications')->assertOk()->assertJsonPath('data.verifications.0.id', $verificationId);
+        $this->getJson('/api/v1/admin/verifications?status=under_review')->assertOk()->assertJsonPath('data.verifications.0.id', $verificationId);
+        $this->approveAllCurrentDocuments($verificationId);
         $this->postJson("/api/v1/admin/verifications/{$verificationId}/approve")
             ->assertOk()
             ->assertJsonPath('data.status', 'verified');
@@ -142,15 +177,114 @@ class ProviderVerificationWorkflowTest extends TestCase
 
         Sanctum::actingAs($profile->user);
         $this->getJson('/api/v1/doctor/verification')
-            ->assertJsonPath('data.status', 'action_required')
-            ->assertJsonPath('data.admin_note', 'The uploaded document is expired.');
+            ->assertJsonPath('data.status', 'action_required');
+        $this->assertSame(
+            'The uploaded document is expired.',
+            collect($this->getJson('/api/v1/doctor/verification')->json('data.requirements'))
+                ->firstWhere('document_type', 'practice_permit')['current']['admin_note']
+        );
+
+        $this->post('/api/v1/doctor/verification/documents', [
+            'document_type' => 'professional_license',
+            'file' => $this->pdf('license-2.pdf'),
+        ], ['Accept' => 'application/json'])->assertUnprocessable();
+
+        $this->patchJson("/api/v1/admin/verifications/{$verification->id}/documents/{$document->id}", [
+            'status' => 'rejected',
+            'admin_note' => 'Duplicate replacement request.',
+        ])->assertForbidden();
+
+        Sanctum::actingAs($admin);
+        $this->patchJson("/api/v1/admin/verifications/{$verification->id}/documents/{$document->id}", [
+            'status' => 'rejected',
+            'admin_note' => 'Duplicate replacement request.',
+        ])->assertUnprocessable();
+
+        Sanctum::actingAs($profile->user);
         $this->post('/api/v1/doctor/verification/documents', [
             'document_type' => 'practice_permit',
             'file' => $this->pdf('permit-current.pdf'),
-        ], ['Accept' => 'application/json'])->assertOk();
-        $this->postJson('/api/v1/doctor/verification/submit')
+        ], ['Accept' => 'application/json'])
             ->assertOk()
             ->assertJsonPath('data.status', 'under_review');
+
+        $this->assertDatabaseHas('verification_documents', [
+            'id' => $document->id,
+            'status' => 'replaced',
+            'admin_note' => 'The uploaded document is expired.',
+        ]);
+    }
+
+    public function test_healthcarelab_replacement_is_document_scoped_and_blocks_final_approval(): void
+    {
+        $lab = $this->createLaboratory();
+        $lab->update(['name' => 'HealthCareLab']);
+        Sanctum::actingAs($lab->user);
+        $this->uploadRequired($lab->user, 'laboratory');
+        $this->postJson('/api/v1/laboratory/verification/submit')->assertOk();
+
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
+        Sanctum::actingAs($admin);
+        $verification = $lab->fresh()->providerVerification;
+        $docs = collect($this->getJson('/api/v1/admin/verifications/'.$verification->id)->json('data.requirements'))
+            ->mapWithKeys(fn (array $item) => [$item['document_type'] => $item['current']]);
+
+        $this->patchJson("/api/v1/admin/verifications/{$verification->id}/documents/{$docs['registration_certificate']['id']}", [
+            'status' => 'approved',
+        ])->assertOk();
+        $this->patchJson("/api/v1/admin/verifications/{$verification->id}/documents/{$docs['operating_license']['id']}", [
+            'status' => 'rejected',
+            'admin_note' => 'Please upload a clearer copy of the operating license.',
+        ])->assertOk()->assertJsonPath('data.status', 'action_required');
+        $this->patchJson("/api/v1/admin/verifications/{$verification->id}/documents/{$docs['responsible_identification']['id']}", [
+            'status' => 'approved',
+        ])->assertOk();
+
+        $this->postJson("/api/v1/admin/verifications/{$verification->id}/approve")
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.status.0', 'All required verification documents must be approved before the provider can be verified.');
+
+        $shown = collect($this->getJson('/api/v1/admin/verifications/'.$verification->id)->json('data.requirements'))
+            ->mapWithKeys(fn (array $item) => [$item['document_type'] => $item['current']['status']]);
+        $this->assertSame('approved', $shown['registration_certificate']);
+        $this->assertSame('rejected', $shown['operating_license']);
+        $this->assertSame('approved', $shown['responsible_identification']);
+
+        Sanctum::actingAs($lab->user);
+        $providerView = $this->getJson('/api/v1/laboratory/verification')->assertOk()->json('data');
+        $this->assertSame('action_required', $providerView['status']);
+        $operating = collect($providerView['requirements'])->firstWhere('document_type', 'operating_license')['current'];
+        $this->assertSame('rejected', $operating['status']);
+        $this->assertSame('Please upload a clearer copy of the operating license.', $operating['admin_note']);
+
+        $this->post('/api/v1/laboratory/verification/documents', [
+            'document_type' => 'operating_license',
+            'file' => $this->pdf('operating-license-clear.pdf'),
+        ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'under_review');
+
+        $this->assertDatabaseHas('verification_documents', [
+            'id' => $docs['operating_license']['id'],
+            'status' => 'replaced',
+        ]);
+
+        Sanctum::actingAs($admin);
+        $this->postJson("/api/v1/admin/verifications/{$verification->id}/approve")->assertUnprocessable();
+        $afterReplace = collect($this->getJson('/api/v1/admin/verifications/'.$verification->id)->json('data.requirements'))
+            ->mapWithKeys(fn (array $item) => [$item['document_type'] => $item['current']['status']]);
+        $this->assertSame('approved', $afterReplace['registration_certificate']);
+        $this->assertSame('pending', $afterReplace['operating_license']);
+        $this->assertSame('approved', $afterReplace['responsible_identification']);
+
+        $replacementId = collect($this->getJson('/api/v1/admin/verifications/'.$verification->id)->json('data.requirements'))
+            ->firstWhere('document_type', 'operating_license')['current']['id'];
+        $this->patchJson("/api/v1/admin/verifications/{$verification->id}/documents/{$replacementId}", [
+            'status' => 'approved',
+        ])->assertOk();
+        $this->postJson("/api/v1/admin/verifications/{$verification->id}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'verified');
     }
 
     public function test_unverified_laboratory_is_hidden_from_patients_until_approved(): void
@@ -172,10 +306,75 @@ class ProviderVerificationWorkflowTest extends TestCase
 
         $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
         Sanctum::actingAs($admin);
-        $this->postJson('/api/v1/admin/verifications/'.$lab->fresh()->providerVerification->id.'/approve')
+        $verificationId = $lab->fresh()->providerVerification->id;
+        $this->approveAllCurrentDocuments($verificationId);
+        $this->postJson('/api/v1/admin/verifications/'.$verificationId.'/approve')
             ->assertOk()
             ->assertJsonPath('data.status', 'verified');
         $this->assertTrue($lab->fresh()->isProfessionallyVerified());
+    }
+
+    public function test_only_admins_can_approve_and_unauthenticated_users_cannot_read_documents(): void
+    {
+        $profile = $this->createDoctor();
+        Sanctum::actingAs($profile->user);
+        $this->uploadRequired($profile->user, 'doctor');
+        $this->postJson('/api/v1/doctor/verification/submit')->assertOk();
+        $verificationId = $profile->fresh()->providerVerification->id;
+        $documentId = $profile->fresh()->providerVerification->documents()->firstOrFail()->id;
+
+        $this->postJson("/api/v1/admin/verifications/{$verificationId}/approve")
+            ->assertForbidden();
+
+        $patient = User::factory()->create(['role' => UserRole::Patient]);
+        Sanctum::actingAs($patient);
+        $this->postJson("/api/v1/admin/verifications/{$verificationId}/approve")->assertForbidden();
+        $this->get("/api/v1/admin/verifications/{$verificationId}/documents/{$documentId}")->assertForbidden();
+    }
+
+    public function test_guests_cannot_download_verification_documents(): void
+    {
+        $profile = $this->createDoctor();
+        $service = app(\App\Services\ProviderVerificationService::class);
+        foreach (['professional_license', 'practice_permit', 'identification'] as $type) {
+            $service->upload($profile->user, $type, $this->pdf($type.'.pdf'));
+        }
+        $verification = $profile->fresh()->providerVerification;
+        $documentId = $verification->documents()->firstOrFail()->id;
+
+        $this->get("/api/v1/admin/verifications/{$verification->id}/documents/{$documentId}")->assertUnauthorized();
+        $this->get("/api/v1/doctor/verification/documents/{$documentId}")->assertUnauthorized();
+    }
+
+    public function test_reset_command_clears_verified_providers_without_deleting_accounts(): void
+    {
+        $doctor = $this->createDoctor();
+        $doctor->update(['verification_status' => DoctorVerificationStatus::Verified->value]);
+        $doctor->providerVerification->update([
+            'status' => DoctorVerificationStatus::Verified,
+            'submitted_at' => now(),
+            'reviewed_at' => now(),
+            'reviewed_by_user_id' => User::factory()->create(['role' => UserRole::Admin])->id,
+        ]);
+        $userId = $doctor->user_id;
+
+        $this->artisan('medaccess:reset-demo-provider-verification')->assertSuccessful();
+
+        $this->assertDatabaseHas('users', ['id' => $userId]);
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $doctor->fresh()->verification_status);
+        $this->assertNull($doctor->fresh()->providerVerification->submitted_at);
+        $this->assertNull($doctor->fresh()->providerVerification->reviewed_at);
+        $this->assertNull($doctor->fresh()->providerVerification->reviewed_by_user_id);
+    }
+
+    public function test_admin_cannot_approve_before_the_provider_submits(): void
+    {
+        $profile = $this->createDoctor();
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
+        Sanctum::actingAs($admin);
+        $this->postJson('/api/v1/admin/verifications/'.$profile->providerVerification->id.'/approve')
+            ->assertUnprocessable();
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $profile->fresh()->verification_status);
     }
 
     private function createDoctor(string $email = 'doctor.verify@example.com'): DoctorProfile
@@ -232,6 +431,20 @@ class ProviderVerificationWorkflowTest extends TestCase
             'slot_duration_minutes' => 30,
             'is_active' => true,
         ]);
+    }
+
+    private function approveAllCurrentDocuments(int $verificationId): void
+    {
+        $requirements = $this->getJson("/api/v1/admin/verifications/{$verificationId}")->assertOk()->json('data.requirements');
+        foreach ($requirements as $requirement) {
+            $current = $requirement['current'] ?? null;
+            if (! is_array($current) || ($current['status'] ?? null) === 'approved') {
+                continue;
+            }
+            $this->patchJson("/api/v1/admin/verifications/{$verificationId}/documents/{$current['id']}", [
+                'status' => 'approved',
+            ])->assertOk();
+        }
     }
 
     private function pdf(string $name): UploadedFile

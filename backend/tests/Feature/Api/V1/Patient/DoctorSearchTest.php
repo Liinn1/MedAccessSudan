@@ -48,7 +48,6 @@ class DoctorSearchTest extends TestCase
     public function test_demo_approved_neurologist_is_returned_by_canonical_specialty_without_optional_filters(): void
     {
         CarbonImmutable::setTestNow('2026-08-24 19:00:00 Africa/Khartoum');
-        config()->set('medaccess.demo_auto_verify_doctors', true);
         $doctor = $this->createDoctor('neurology', 'khartoum', 'verified');
         $this->addSchedule($doctor, 2);
         $this->authenticatePatient();

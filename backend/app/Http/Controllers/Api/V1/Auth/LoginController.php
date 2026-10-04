@@ -36,7 +36,7 @@ class LoginController extends Controller
         if (! Auth::guard('web')->attempt([
             $field => $normalizedIdentifier,
             'password' => $request->string('password')->toString(),
-        ])) {
+        ], $request->boolean('remember'))) {
             RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
             // Use one response for unknown accounts and wrong passwords to avoid
@@ -50,8 +50,7 @@ class LoginController extends Controller
         $user = Auth::guard('web')->user();
 
         // /login is for patient, doctor, and laboratory accounts. Administrators use /admin/login.
-        // Inactive accounts are rejected with the same generic error as bad passwords.
-        if ($user?->is_active === false || $user?->role?->isAdministrative()) {
+        if ($user?->role?->isAdministrative()) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -61,6 +60,17 @@ class LoginController extends Controller
                 'message' => 'The provided credentials are incorrect.',
                 'code' => 'INVALID_CREDENTIALS',
             ], 422);
+        }
+
+        if ($user?->is_active === false) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return response()->json([
+                'message' => 'Your account has been suspended. Please contact MedAccess support for assistance.',
+                'code' => 'ACCOUNT_SUSPENDED',
+            ], 403);
         }
 
         if ($user && ! $user->hasVerifiedEmail()) {

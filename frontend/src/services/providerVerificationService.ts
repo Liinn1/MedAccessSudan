@@ -38,10 +38,19 @@ export interface ProviderVerificationPayload {
   required_count: number
   submitted_count: number
   rejected_count: number
+  approved_count?: number
   can_submit: boolean
   can_upload: boolean
   documents_locked: boolean
   requirements: VerificationRequirement[]
+  profile_summary?: {
+    email?: string | null
+    phone?: string | null
+    specialization?: { code: string; name_en: string; name_ar: string } | null
+    location?: { code: string; name_en: string; name_ar: string } | null
+    clinic_name?: string | null
+    address?: string | null
+  }
 }
 
 export interface ProviderVerificationListItem {
@@ -56,8 +65,16 @@ export interface ProviderVerificationListItem {
   user: { id: number; name: string; email: string; phone: string | null } | null
 }
 
+export function canonicalVerificationStatus(status: string | null | undefined): ProviderVerificationStatus {
+  if (status === 'under_review' || status === 'verified' || status === 'action_required' || status === 'suspended') {
+    return status
+  }
+  return 'pending_documents'
+}
+
 function unwrap(payload: { data: ProviderVerificationPayload }) {
-  return payload.data
+  const data = payload.data
+  return { ...data, status: canonicalVerificationStatus(data?.status) }
 }
 
 export async function getProviderVerification(role: 'doctor' | 'laboratory', signal?: AbortSignal) {
@@ -84,8 +101,8 @@ export async function downloadVerificationDocument(role: 'doctor' | 'laboratory'
   return apiClient.download(path)
 }
 
-export async function getAdminVerifications(signal?: AbortSignal) {
-  return (await apiClient.get<{ data: { verifications: ProviderVerificationListItem[] } }>('/api/v1/admin/verifications', signal)).data.verifications
+export async function getAdminVerifications(query = '', signal?: AbortSignal) {
+  return (await apiClient.get<{ data: { verifications: ProviderVerificationListItem[] } }>(`/api/v1/admin/verifications${query}`, signal)).data.verifications
 }
 
 export async function getAdminVerification(id: number, signal?: AbortSignal) {

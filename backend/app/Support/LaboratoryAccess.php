@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\LaboratoryProfile;
 use App\Models\User;
+use App\Support\ProviderAccess;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 
@@ -18,6 +19,14 @@ class LaboratoryAccess
                 'code' => 'FORBIDDEN_ROLE',
             ], 403));
         }
+
+        return $profile;
+    }
+
+    public static function verifiedProfile(User $user): LaboratoryProfile
+    {
+        $profile = self::profile($user);
+        ProviderAccess::assertVerified($profile);
 
         return $profile;
     }

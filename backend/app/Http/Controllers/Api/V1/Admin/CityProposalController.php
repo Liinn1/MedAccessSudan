@@ -19,17 +19,18 @@ class CityProposalController extends Controller
     public function __construct(private readonly AdminAuditService $audit) {}
     public function index(Request $request): JsonResponse
     {
-        $status = $request->validate(['status' => ['nullable', 'in:pending,approved,mapped,rejected']])['status'] ?? 'pending';
+        $status = $request->validate(['status' => ['nullable', 'in:pending,approved,mapped,rejected,all']])['status'] ?? 'pending';
         $locations = Location::query()->where('is_active', true)->orderBy('name_en')->get(['id', 'code', 'name_en', 'name_ar', 'normalized_name']);
         $proposals = CityProposal::query()
             ->with(['doctorProfile.user:id,name,email', 'resolvedLocation:id,code,name_en,name_ar', 'reviewer:id,name'])
-            ->where('status', $status)
+            ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->latest()
             ->get()
             ->map(fn (CityProposal $proposal): array => [
                 'id' => $proposal->id,
                 'proposed_name' => $proposal->proposed_name,
                 'status' => $proposal->status->value,
+                'created_at' => $proposal->created_at?->toIso8601String(),
                 'doctor' => $proposal->doctorProfile->user->only(['id', 'name', 'email']),
                 'likely_matches' => $locations->filter(function (Location $location) use ($proposal): bool {
                     similar_text($proposal->normalized_name, $location->normalized_name, $percentage);
@@ -43,7 +44,7 @@ class CityProposalController extends Controller
                 'reviewed_at' => $proposal->reviewed_at?->toIso8601String(),
             ]);
 
-        return response()->json(['data' => ['proposals' => $proposals, 'locations' => $locations->map->only(['id', 'code', 'name_en', 'name_ar'])]]);
+        return response()->json(['data' => ['proposals' => $proposals, 'locations' => $locations->map->only(['id', 'code', 'name_en', 'name_ar', 'is_active'])]]);
     }
 
     public function update(ResolveCityProposalRequest $request, CityProposal $proposal, CityNameNormalizer $cityNames): JsonResponse

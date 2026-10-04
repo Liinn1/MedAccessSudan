@@ -1,9 +1,9 @@
 import { apiClient } from './apiClient'
 import type { DoctorFilterOption } from './doctorService'
 import type { ServicePayment } from './paymentTypes'
+import type { ProviderReview } from './providerReviewService'
 
 export type PatientAppointmentStatus = 'confirmed' | 'cancelled' | 'completed'
-export interface DoctorReview { id: number; rating: number; comment: string | null; created_at: string }
 export interface HomeVisitDetails { contact_phone: string; city: DoctorFilterOption | null; area: string; address_details: string; additional_directions: string | null; latitude?: string | null; longitude?: string | null }
 
 export interface PatientAppointment {
@@ -14,7 +14,7 @@ export interface PatientAppointment {
   service_type: 'clinic' | 'home_visit'
   notes: string | null
   home_visit: HomeVisitDetails | null
-  review: DoctorReview | null
+  review: ProviderReview | null
   payment?: ServicePayment | null
   doctor: {
     id: number
@@ -43,10 +43,5 @@ export async function cancelPatientAppointment(id: number): Promise<PatientAppoi
 
 export async function bookPatientAppointment(input: { doctor_profile_id: number; starts_at: string; service_type?: 'clinic' | 'home_visit'; notes?: string; payment_method: 'card' | 'pay_later'; home_visit?: Omit<HomeVisitDetails, 'latitude' | 'longitude' | 'city'> & { city: string; latitude: number; longitude: number } }): Promise<PatientAppointment> {
   const response = await apiClient.post<{ data: PatientAppointment }>('/api/v1/patient/appointments', input)
-  return response.data
-}
-
-export async function submitDoctorReview(appointmentId: number, input: { rating: number; comment?: string }): Promise<DoctorReview> {
-  const response = await apiClient.post<{ data: DoctorReview }>(`/api/v1/patient/appointments/${appointmentId}/review`, input)
   return response.data
 }

@@ -8,6 +8,7 @@ interface ConfirmationDialogProps {
   confirmLabel: string
   loadingLabel: string
   busy?: boolean
+  confirmDisabled?: boolean
   error?: string
   details?: ReactNode
   variant?: 'default' | 'danger'
@@ -15,7 +16,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void
 }
 
-export function ConfirmationDialog({ open, title, description, cancelLabel, confirmLabel, loadingLabel, busy = false, error, details, variant = 'default', onCancel, onConfirm }: ConfirmationDialogProps) {
+export function ConfirmationDialog({ open, title, description, cancelLabel, confirmLabel, loadingLabel, busy = false, confirmDisabled = false, error, details, variant = 'default', onCancel, onConfirm }: ConfirmationDialogProps) {
   const titleId = useId(); const descriptionId = useId(); const detailsId = useId(); const errorId = useId()
   const dialogRef = useRef<HTMLDivElement>(null); const cancelRef = useRef<HTMLButtonElement>(null); const confirmRef = useRef<HTMLButtonElement>(null); const returnFocusRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
@@ -57,7 +58,7 @@ export function ConfirmationDialog({ open, title, description, cancelLabel, conf
       {error && <p className="feedback-enter mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 motion-reduce:animate-none" id={errorId} role="alert">{error}</p>}
       <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button className="min-h-12 rounded-full border border-[var(--color-border)] bg-white px-6 font-bold text-[var(--color-text-primary)] transition hover:border-teal-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50" disabled={busy} onClick={onCancel} ref={cancelRef} type="button">{cancelLabel}</button>
-        <button aria-busy={busy} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-70 ${variant === 'danger' ? 'bg-red-700 hover:bg-red-800 focus-visible:outline-red-700' : 'bg-[var(--color-primary)] hover:bg-[#0F766E] focus-visible:outline-[var(--color-primary)]'}`} disabled={busy} onClick={onConfirm} ref={confirmRef} type="button">{busy && <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-white/50 border-t-white motion-reduce:animate-none" />}{busy ? loadingLabel : confirmLabel}</button>
+        <button aria-busy={busy} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${variant === 'danger' ? 'bg-red-700 hover:bg-red-800 focus-visible:outline-red-700' : 'bg-[var(--color-primary)] hover:bg-[#0F766E] focus-visible:outline-[var(--color-primary)]'}`} disabled={busy || confirmDisabled} onClick={onConfirm} ref={confirmRef} type="button">{busy && <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-white/50 border-t-white motion-reduce:animate-none" />}{busy ? loadingLabel : confirmLabel}</button>
       </div>
     </div>
   </div>

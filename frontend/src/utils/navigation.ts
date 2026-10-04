@@ -6,6 +6,14 @@ export const DOCTOR_DASHBOARD_ROUTE = '/doctor/dashboard'
 export const LABORATORY_DASHBOARD_ROUTE = '/laboratory/dashboard'
 export const LABORATORY_APPLICATION_ROUTE = '/laboratory/application'
 export const ADMIN_DASHBOARD_ROUTE = '/admin/dashboard'
+export const ADMIN_SECTION_PATHS = {
+  dashboard: '/admin/dashboard',
+  users: '/admin/account-management',
+  verification: '/admin/provider-verification',
+  inquiries: '/admin/customer-queries',
+  requests: '/admin/requests',
+  profile: '/admin/profile',
+} as const
 /** Reserved for future institutional/service-provider accounts. Not doctor login. */
 export const PROVIDER_LOGIN_ROUTE = '/login/provider'
 

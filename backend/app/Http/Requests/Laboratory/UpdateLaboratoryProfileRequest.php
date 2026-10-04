@@ -20,6 +20,7 @@ class UpdateLaboratoryProfileRequest extends FormRequest
             'phone' => ['required', 'string', 'max:20'],
             'address' => ['required', 'string', 'max:255'],
             'location' => ['nullable', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
+            'supports_home_collection' => ['sometimes', 'boolean'],
         ];
     }
 }

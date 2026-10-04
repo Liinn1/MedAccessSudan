@@ -20,7 +20,7 @@ class ReviewVerificationDocumentRequest extends FormRequest
                 VerificationDocumentStatus::Approved->value,
                 VerificationDocumentStatus::Rejected->value,
             ])],
-            'admin_note' => ['nullable', 'string', 'max:2000'],
+            'admin_note' => ['required_if:status,rejected', 'nullable', 'string', 'max:2000'],
         ];
     }
 }

@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { BookingHero } from '../../components/booking/BookingHero'
+import { BookingFlowFrame } from '../../components/booking/BookingFlowFrame'
 import { BookingPanel } from '../../components/booking/BookingPanel'
 import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
-import { BookingProgress } from '../../components/booking/BookingProgress'
 import { BookingReviewList } from '../../components/booking/BookingReviewList'
+import { BookingSlotPicker } from '../../components/booking/BookingSlotPicker'
+import { createEmptyHomeAddress, PatientHomeAddressForm, type PatientHomeAddress } from '../../components/booking/PatientHomeAddressForm'
 import { PaymentMethodSelector } from '../../components/booking/PaymentMethodSelector'
 import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
-import { LocationIcon } from '../../components/icons/PatientHomeIcons'
 import { LocationMapPreview } from '../../components/patient/LocationMapPreview'
+import { ProviderRatingSummary } from '../../components/ratings/ProviderRatingSummary'
+import { useBookingStepFocus } from '../../hooks/useBookingStepFocus'
+import { useHomeGeolocation } from '../../hooks/useHomeGeolocation'
 import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { getPatientHome } from '../../services/authService'
@@ -23,10 +26,6 @@ import { buildLoginPath } from '../../utils/navigation'
 import { useBookingPayment } from '../../hooks/useBookingPayment'
 
 type Step = 'search' | 'doctors' | 'details' | 'review' | 'success'
-type Address = { contact_phone: string; area: string; address_details: string; additional_directions: string }
-type Coordinates = { latitude: number; longitude: number; accuracy: number }
-
-const emptyAddress: Address = { contact_phone: '', area: '', address_details: '', additional_directions: '' }
 
 export function HomeVisitPage() {
   const { i18n, t } = useTranslation()
@@ -42,13 +41,12 @@ export function HomeVisitPage() {
   const [doctors, setDoctors] = useState<DoctorSummary[]>([])
   const [doctor, setDoctor] = useState<DoctorProfile | null>(null)
   const [slot, setSlot] = useState<DoctorAvailabilitySlot | null>(null)
-  const [address, setAddress] = useState<Address>(emptyAddress)
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
-  const [locating, setLocating] = useState(false)
-  const [locationError, setLocationError] = useState('')
+  const [address, setAddress] = useState<PatientHomeAddress>(createEmptyHomeAddress())
+  const { captureLocation, coordinates, locating, locationError, setLocationError } = useHomeGeolocation()
   const [appointmentId, setAppointmentId] = useState<number | null>(null)
   const [createdPayment, setCreatedPayment] = useState<ServicePayment | null>(null)
   const payment = useBookingPayment()
+  const headingRef = useBookingStepFocus(step)
   const arabic = i18n.resolvedLanguage === 'ar'
   const locale = arabic ? 'ar-SD' : 'en'
 
@@ -59,7 +57,7 @@ export function HomeVisitPage() {
         setSpecializations(filters.specializations)
         setCities(filters.locations)
         setSpecialization(filters.specializations[0]?.code ?? '')
-        setAddress((value) => ({ ...value, contact_phone: user.phone ?? '' }))
+        setAddress((value) => ({ ...value, contact_phone: user.phone ?? value.contact_phone }))
         setLoading(false)
       })
       .catch((cause: unknown) => {
@@ -92,20 +90,6 @@ export function HomeVisitPage() {
     try { setDoctor(await getDoctorProfile(summary.id, undefined, 'home_visit')); setSlot(null); setStep('details') }
     catch { setError(t('patient.homeVisit.doctorError')) }
     finally { setBusy(false) }
-  }
-
-  function captureLocation() {
-    setLocationError('')
-    if (!navigator.geolocation) { setLocationError(t('patient.homeVisit.locationErrors.unavailable')); return }
-    setLocating(true)
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => { setCoordinates({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }); setLocating(false) },
-      (cause) => {
-        const key = cause.code === cause.PERMISSION_DENIED ? 'denied' : cause.code === cause.POSITION_UNAVAILABLE ? 'unavailable' : cause.code === cause.TIMEOUT ? 'timeout' : 'generic'
-        setLocationError(t(`patient.homeVisit.locationErrors.${key}`)); setLocating(false)
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    )
   }
 
   function review(event: FormEvent) {
@@ -141,36 +125,58 @@ export function HomeVisitPage() {
     finally { setBusy(false) }
   }
 
-  const updateAddress = (key: keyof Address, value: string) => setAddress((current) => ({ ...current, [key]: value }))
   if (loading) return <PatientLayout activeSection="homeVisit"><LoadingState contained message={t('patient.homeVisit.loading')} /></PatientLayout>
   if (!specializations.length) return <PatientLayout activeSection="homeVisit"><ErrorState contained message={error || t('patient.homeVisit.loadError')} onRetry={() => window.location.reload()} retryLabel={t('patient.home.retry')} /></PatientLayout>
 
   const progressSteps = ['search', 'doctors', 'details', 'review'] as const
   const currentIndex = step === 'success' ? 3 : progressSteps.indexOf(step)
 
-  return <PatientLayout activeSection="homeVisit"><div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 lg:px-10">
-    <BookingHero description={t('patient.homeVisit.description')} eyebrow={t('patient.homeVisit.eyebrow')} title={t('patient.homeVisit.title')} />
-    <BookingProgress ariaLabel={t('patient.homeVisit.progress')} currentIndex={currentIndex} steps={progressSteps.map((item, index) => ({ id: item, label: t(`patient.homeVisit.steps.${item}`), onSelect: step !== 'success' && index < currentIndex ? () => setStep(item) : undefined }))} />
+  return <PatientLayout activeSection="homeVisit"><BookingFlowFrame
+    ariaLabel={t('patient.homeVisit.progress')}
+    currentIndex={currentIndex}
+    description={t('patient.homeVisit.description')}
+    eyebrow={t('patient.homeVisit.eyebrow')}
+    steps={progressSteps.map((item, index) => ({ id: item, label: t(`patient.homeVisit.steps.${item}`), onSelect: step !== 'success' && index < currentIndex ? () => setStep(item) : undefined }))}
+    title={t('patient.homeVisit.title')}
+  >
+    {step === 'search' && <BookingPanel onSubmit={findDoctors}><h2 className="sr-only" ref={headingRef} tabIndex={-1}>{t('patient.homeVisit.steps.search')}</h2><div className="grid gap-5 sm:grid-cols-2"><label className="font-bold">{t('patient.homeVisit.specialty')}<select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setSpecialization(event.target.value)} value={specialization}>{specializations.map((item) => <option key={item.code} value={item.code}>{optionLabel(item)}</option>)}</select></label><label className="font-bold">{t('patient.homeVisit.city')} *<select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setCity(event.target.value)} required value={city}><option value="">{t('patient.homeVisit.selectCity')}</option>{cities.map((item) => <option key={item.code} value={item.code}>{optionLabel(item)}</option>)}</select></label></div><button className="mt-6 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white disabled:opacity-60" disabled={busy} type="submit">{t(busy ? 'patient.homeVisit.searching' : 'patient.homeVisit.findDoctors')}</button></BookingPanel>}
 
-    {step === 'search' && <BookingPanel onSubmit={findDoctors}><div className="grid gap-5 sm:grid-cols-2"><label className="font-bold">{t('patient.homeVisit.specialty')}<select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setSpecialization(event.target.value)} value={specialization}>{specializations.map((item) => <option key={item.code} value={item.code}>{optionLabel(item)}</option>)}</select></label><label className="font-bold">{t('patient.homeVisit.city')} *<select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setCity(event.target.value)} required value={city}><option value="">{t('patient.homeVisit.selectCity')}</option>{cities.map((item) => <option key={item.code} value={item.code}>{optionLabel(item)}</option>)}</select></label></div><button className="mt-6 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white disabled:opacity-60" disabled={busy} type="submit">{t(busy ? 'patient.homeVisit.searching' : 'patient.homeVisit.findDoctors')}</button></BookingPanel>}
-
-    {step === 'doctors' && <section className="mt-6"><button className="mb-4 font-bold text-[var(--color-primary)]" onClick={() => setStep('search')}>← {t('patient.homeVisit.back')}</button>{doctors.length ? <div className="grid gap-4 md:grid-cols-2">{doctors.map((item) => <article className="rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm" key={item.id}><div className="flex items-center gap-3"><ProfileAvatar className="size-14 shrink-0 rounded-full text-base" imageUrl={item.profile_image_url} name={item.name} /><div><h2 className="font-extrabold">{item.name}</h2><p className="text-sm text-[var(--color-text-secondary)]">{optionLabel(item.specialization)}</p></div></div><button className="mt-4 w-full rounded-full bg-[var(--color-primary)] px-4 py-2.5 font-bold text-white" disabled={busy} onClick={() => chooseDoctor(item)}>{t('patient.homeVisit.selectDoctor')}</button></article>)}</div> : <div className="rounded-3xl border border-dashed bg-white p-8 text-center">{t('patient.homeVisit.noDoctors')}</div>}</section>}
+    {step === 'doctors' && <section className="mt-6"><button className="mb-4 font-bold text-[var(--color-primary)]" onClick={() => setStep('search')}>← {t('patient.homeVisit.back')}</button><h2 className="sr-only" ref={headingRef} tabIndex={-1}>{t('patient.homeVisit.steps.doctors')}</h2>{doctors.length ? <div className="grid gap-4 md:grid-cols-2">{doctors.map((item) => <article className="rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm" key={item.id}><div className="flex items-center gap-3"><ProfileAvatar className="size-14 shrink-0 rounded-full text-base" imageUrl={item.profile_image_url} name={item.name} /><div><h2 className="font-extrabold">{item.name}</h2><p className="text-sm text-[var(--color-text-secondary)]">{optionLabel(item.specialization)}</p><ProviderRatingSummary className="mt-1" rating={item} /></div></div><button className="mt-4 w-full rounded-full bg-[var(--color-primary)] px-4 py-2.5 font-bold text-white" disabled={busy} onClick={() => chooseDoctor(item)}>{t('patient.homeVisit.selectDoctor')}</button></article>)}</div> : <div className="rounded-3xl border border-dashed bg-white p-8 text-center">{t('patient.homeVisit.noDoctors')}</div>}</section>}
 
     {step === 'details' && doctor && <BookingPanel className="grid gap-5" onSubmit={review}>
       <button className="w-fit font-bold text-[var(--color-primary)]" onClick={() => setStep('doctors')} type="button">← {t('patient.homeVisit.back')}</button>
-      <section><h2 className="text-xl font-extrabold">{doctor.name}</h2><p className="text-sm text-[var(--color-text-secondary)]">{optionLabel(doctor.specialization)}</p><h3 className="mt-5 font-extrabold">{t('patient.homeVisit.availableTimes')}</h3><div className="mt-3 flex flex-wrap gap-2">{doctor.availability.map((item) => <button aria-pressed={slot?.id === item.id} className={`rounded-xl border px-3 py-2 text-sm font-bold ${slot?.id === item.id ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-[var(--color-border)]'}`} key={item.id} onClick={() => setSlot(item)} type="button">{new Intl.DateTimeFormat(locale, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZone:SUDAN_TIME_ZONE }).format(new Date(item.starts_at))}</button>)}</div>{!doctor.availability.length && <p className="mt-3 text-sm text-red-700">{t('patient.homeVisit.noSlots')}</p>}</section>
-      <h3 className="text-xl font-extrabold">{t('patient.homeVisit.visitAddress')}</h3>
-      <section className={`rounded-2xl border p-4 ${coordinates ? 'border-emerald-200 bg-emerald-50' : 'border-teal-100 bg-[var(--color-primary-surface)]'}`}>{coordinates && <LocationMapPreview className="mb-4" latitude={coordinates.latitude} longitude={coordinates.longitude} />}<div className="flex flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-white text-[var(--color-primary)]"><LocationIcon className="size-6" /></span><div><p className="font-extrabold">{t(coordinates ? 'patient.homeVisit.locationCaptured' : 'patient.homeVisit.useLocation')}</p>{coordinates && <p className="text-sm text-emerald-800">{t('patient.homeVisit.locationProvided')}</p>}</div></div><button className="min-h-11 rounded-full border border-[var(--color-primary)] bg-white px-5 font-bold text-[var(--color-primary)] disabled:opacity-60" disabled={locating} onClick={captureLocation} type="button">{t(locating ? 'patient.homeVisit.gettingLocation' : coordinates ? 'patient.homeVisit.updateLocation' : 'patient.homeVisit.useLocation')}</button></div><p aria-live="polite" className="mt-2 min-h-5 text-sm font-semibold text-red-700">{locationError}</p></section>
-      <div className="rounded-2xl bg-slate-50 p-4"><p className="text-sm font-bold text-[var(--color-text-secondary)]">{t('patient.homeVisit.city')}</p><p className="mt-1 font-extrabold">{selectedCity ? optionLabel(selectedCity) : ''}</p><button className="mt-2 text-sm font-bold text-[var(--color-primary)]" onClick={() => { setDoctor(null); setSlot(null); setStep('search') }} type="button">{t('patient.homeVisit.changeCity')}</button></div>
-      <div className="grid gap-4 sm:grid-cols-2"><label className="font-semibold">{t('patient.homeVisit.fields.contact_phone')} *<input className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] px-4" maxLength={30} onChange={(event) => updateAddress('contact_phone', event.target.value)} required type="tel" value={address.contact_phone}/></label><label className="font-semibold">{t('patient.homeVisit.fields.area')} *<input className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] px-4" maxLength={255} onChange={(event) => updateAddress('area', event.target.value)} placeholder={t('patient.homeVisit.placeholders.area')} required value={address.area}/></label></div>
-      <label className="font-semibold">{t('patient.homeVisit.fields.address_details')} *<textarea className="mt-2 block min-h-24 w-full rounded-xl border border-[var(--color-border)] px-4 py-3" maxLength={500} onChange={(event) => updateAddress('address_details', event.target.value)} placeholder={t('patient.homeVisit.placeholders.address_details')} required value={address.address_details}/></label>
-      <label className="font-semibold">{t('patient.homeVisit.fields.additional_directions')}<textarea className="mt-2 block min-h-20 w-full rounded-xl border border-[var(--color-border)] px-4 py-3" maxLength={2000} onChange={(event) => updateAddress('additional_directions', event.target.value)} placeholder={t('patient.homeVisit.placeholders.additional_directions')} value={address.additional_directions}/></label>
+      <section>
+        <h2 className="text-xl font-extrabold" ref={headingRef} tabIndex={-1}>{doctor.name}</h2>
+        <p className="text-sm text-[var(--color-text-secondary)]">{optionLabel(doctor.specialization)}</p>
+        <ProviderRatingSummary className="mt-1" rating={doctor} />
+      </section>
+      <BookingSlotPicker
+        emptyLabel={t('patient.homeVisit.noSlots')}
+        locale={locale}
+        onSelect={(picked) => setSlot(doctor.availability.find((item) => item.starts_at === picked.starts_at) ?? null)}
+        selectedStartsAt={slot?.starts_at}
+        slots={doctor.availability.map((item) => ({ starts_at: item.starts_at, timeZone: SUDAN_TIME_ZONE }))}
+        title={t('patient.homeVisit.availableTimes')}
+      />
+      <PatientHomeAddressForm
+        address={address}
+        cityName={selectedCity ? optionLabel(selectedCity) : ''}
+        coordinates={coordinates}
+        locating={locating}
+        locationError={locationError}
+        onCaptureLocation={captureLocation}
+        onChange={setAddress}
+        onChangeCity={() => { setDoctor(null); setSlot(null); setStep('search') }}
+        requireCoordinates
+        showContactPhone
+        title={t('patient.homeVisit.visitAddress')}
+      />
       <button className="min-h-12 rounded-full bg-[var(--color-primary)] px-5 font-bold text-white" type="submit">{t('patient.homeVisit.review')}</button>
     </BookingPanel>}
 
     {step === 'review' && doctor && slot && formattedSlot && coordinates && <BookingPanel>
       <button className="font-bold text-[var(--color-primary)]" onClick={() => setStep('details')} type="button">← {t('patient.homeVisit.edit')}</button>
-      <h2 className="mt-4 text-2xl font-extrabold">{t('patient.homeVisit.reviewTitle')}</h2>
+      <h2 className="mt-4 text-2xl font-extrabold" ref={headingRef} tabIndex={-1}>{t('patient.homeVisit.reviewTitle')}</h2>
       <BookingReviewList rows={[
         { label: t('patient.homeVisit.doctor'), value: doctor.name },
         { label: t('patient.homeVisit.specialty'), value: selectedSpecialty ? optionLabel(selectedSpecialty) : '' },
@@ -190,7 +196,7 @@ export function HomeVisitPage() {
       <PaymentMethodSelector card={payment.card} errors={payment.errors} method={payment.method} onCardChange={payment.setCard} onMethodChange={payment.setMethod} />
       <button className="mt-6 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white disabled:opacity-60" disabled={busy} onClick={confirm} type="button">{t(busy ? 'patient.homeVisit.confirming' : 'patient.homeVisit.confirm')}</button>
     </BookingPanel>}
-    {step === 'success' && appointmentId && <BookingPanel className="text-center"><span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</span><h2 className="mt-4 text-3xl font-extrabold">{t('patient.homeVisit.successTitle')}</h2><p className="mt-2 text-[var(--color-text-secondary)]">{t('patient.homeVisit.successDescription')}</p><BookingPaymentSummary payment={createdPayment} /><button className="mt-6 rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white" onClick={() => navigate(`/patient/appointments/${appointmentId}`)} type="button">{t('patient.homeVisit.viewAppointment')}</button></BookingPanel>}
+    {step === 'success' && appointmentId && <BookingPanel className="text-center"><span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</span><h2 className="mt-4 text-3xl font-extrabold" ref={headingRef} tabIndex={-1}>{t('patient.homeVisit.successTitle')}</h2><p className="mt-2 text-[var(--color-text-secondary)]">{t('patient.homeVisit.successDescription')}</p><BookingPaymentSummary payment={createdPayment} /><button className="mt-6 rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white" onClick={() => navigate(`/patient/appointments/${appointmentId}`)} type="button">{t('patient.homeVisit.viewAppointment')}</button></BookingPanel>}
     <p aria-live="polite" className="mt-4 min-h-6 text-center font-semibold text-red-700">{error}</p>
-  </div></PatientLayout>
+  </BookingFlowFrame></PatientLayout>
 }

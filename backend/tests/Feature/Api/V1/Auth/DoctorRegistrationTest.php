@@ -24,11 +24,10 @@ class DoctorRegistrationTest extends TestCase
             ->assertJsonValidationErrors(['first_name', 'last_name', 'email', 'phone', 'password', 'specialization', 'location']);
     }
 
-    public function test_demo_doctor_registers_logged_out_is_professionally_verified_and_must_confirm_email_before_login(): void
+    public function test_doctor_registers_logged_out_is_not_professionally_verified_and_must_confirm_email_before_login(): void
     {
         Storage::fake('public');
         Notification::fake();
-        config()->set('medaccess.demo_auto_verify_doctors', true);
         $location = Location::query()->where('code', 'khartoum')->firstOrFail();
         $payload = [
             'first_name' => 'Musa',
@@ -53,7 +52,7 @@ class DoctorRegistrationTest extends TestCase
         $doctor = User::query()->where('email', $payload['email'])->firstOrFail();
         $this->assertSame(UserRole::Doctor, $doctor->role);
         $this->assertTrue(Hash::check($payload['password'], $doctor->password));
-        $this->assertSame('verified', $doctor->doctorProfile->verification_status);
+        $this->assertSame('pending_documents', $doctor->doctorProfile->verification_status);
         $this->assertNull($doctor->email_verified_at);
         Notification::assertSentTo($doctor, VerifyEmail::class);
 

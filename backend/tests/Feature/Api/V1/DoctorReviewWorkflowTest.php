@@ -5,7 +5,7 @@ namespace Tests\Feature\Api\V1;
 use App\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\DoctorProfile;
-use App\Models\DoctorReview;
+use App\Models\ProviderReview;
 use App\Models\Location;
 use App\Models\Specialization;
 use App\Models\User;
@@ -52,6 +52,34 @@ class DoctorReviewWorkflowTest extends TestCase
         [, $cancelledPatient, $cancelled] = $this->scenario('cancelled');
         Sanctum::actingAs($cancelledPatient);
         $this->postJson("/api/v1/patient/appointments/{$cancelled->id}/review", ['rating' => 5])->assertConflict();
+    }
+
+    public function test_completed_home_visit_can_be_reviewed_and_updates_doctor_rating(): void
+    {
+        [$doctor, $patient, $appointment] = $this->scenario('confirmed', 'home_visit');
+        Sanctum::actingAs($patient);
+        $this->postJson("/api/v1/patient/appointments/{$appointment->id}/review", ['rating' => 4])->assertConflict();
+
+        $appointment->update(['status' => 'completed']);
+        $this->postJson("/api/v1/patient/appointments/{$appointment->id}/review", ['rating' => 4])->assertCreated();
+
+        $this->getJson("/api/v1/patient/doctors/{$doctor->id}?service_type=clinic")->assertOk()
+            ->assertJsonPath('data.average_rating', 4)
+            ->assertJsonPath('data.review_count', 1);
+        $this->getJson('/api/v1/patient/doctors')->assertOk()
+            ->assertJsonPath('data.doctors.0.average_rating', 4)
+            ->assertJsonPath('data.doctors.0.review_count', 1);
+    }
+
+    public function test_suspended_doctor_account_is_not_featured_but_keeps_reviews(): void
+    {
+        config()->set('medaccess.featured_doctor_min_reviews', 1);
+        $doctor = $this->doctor();
+        $this->reviews($doctor, [5]);
+        $doctor->user->update(['is_active' => false]);
+
+        $this->getJson('/api/v1/doctors/featured')->assertOk()->assertJsonCount(0, 'data');
+        $this->assertSame(1, ProviderReview::query()->where('doctor_profile_id', $doctor->id)->count());
     }
 
     public function test_review_rating_validation_and_optional_comment(): void
@@ -139,11 +167,11 @@ class DoctorReviewWorkflowTest extends TestCase
             ->assertJsonPath('data.0.review_count', 1);
     }
 
-    private function scenario(string $status): array
+    private function scenario(string $status, string $serviceType = 'clinic'): array
     {
         $doctor = $this->doctor();
         $patient = User::factory()->create(['role' => UserRole::Patient]);
-        $appointment = Appointment::create(['patient_id' => $patient->id, 'doctor_profile_id' => $doctor->id, 'starts_at' => CarbonImmutable::now()->subHour(), 'ends_at' => CarbonImmutable::now()->subMinutes(30), 'status' => $status, 'service_type' => 'clinic']);
+        $appointment = Appointment::create(['patient_id' => $patient->id, 'doctor_profile_id' => $doctor->id, 'starts_at' => CarbonImmutable::now()->subHour(), 'ends_at' => CarbonImmutable::now()->subMinutes(30), 'status' => $status, 'service_type' => $serviceType]);
 
         return [$doctor, $patient, $appointment];
     }
@@ -159,7 +187,7 @@ class DoctorReviewWorkflowTest extends TestCase
             $patient = User::factory()->create(['role' => UserRole::Patient]);
             $start = CarbonImmutable::now()->subDays(count($ratings) + 1)->addHours($index);
             $appointment = Appointment::create(['patient_id' => $patient->id, 'doctor_profile_id' => $doctor->id, 'starts_at' => $start, 'ends_at' => $start->addMinutes(30), 'status' => 'completed', 'service_type' => 'clinic']);
-            DoctorReview::create(['appointment_id' => $appointment->id, 'patient_id' => $patient->id, 'doctor_profile_id' => $doctor->id, 'rating' => $rating]);
+            ProviderReview::create(['appointment_id' => $appointment->id, 'patient_id' => $patient->id, 'doctor_profile_id' => $doctor->id, 'rating' => $rating]);
         }
     }
 }

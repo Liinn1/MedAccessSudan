@@ -23,6 +23,7 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
+        Storage::fake('local');
         config()->set('medaccess.demo_auto_verify_doctors', false);
     }
 
@@ -45,30 +46,39 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->assertDatabaseCount('city_proposals', 0);
     }
 
-    public function test_demo_mode_auto_verifies_only_a_doctor_with_an_approved_city(): void
-    {
-        config()->set('medaccess.demo_auto_verify_doctors', true);
-        $location = Location::query()->where('code', 'khartoum')->firstOrFail();
-
-        $this->postJson('/api/v1/auth/register/doctor', $this->registrationPayload(['location' => $location->code]))
-            ->assertCreated();
-
-        $this->assertDatabaseHas('doctor_profiles', [
-            'location_id' => $location->id,
-            'verification_status' => 'verified',
-        ]);
-    }
-
-    public function test_demo_mode_supports_registration_schedule_search_booking_and_both_appointment_views(): void
+    public function test_registered_doctor_cannot_publish_schedule_or_appear_in_search_until_admin_approves_documents(): void
     {
         CarbonImmutable::setTestNow('2026-08-24 08:00:00 Africa/Khartoum');
-        config()->set('medaccess.demo_auto_verify_doctors', true);
-
+        Storage::fake('local');
         $this->postJson('/api/v1/auth/register/doctor', $this->registrationPayload(['location' => 'khartoum']))
             ->assertCreated();
         $doctor = User::query()->where('email', 'new.doctor@example.com')->firstOrFail();
         $profile = $doctor->doctorProfile;
-        $this->assertSame('verified', $profile->verification_status);
+        $this->assertSame('pending_documents', $profile->verification_status);
+
+        Sanctum::actingAs($doctor);
+        $this->putJson('/api/v1/doctor/schedule', ['consultation_type' => 'clinic', 'periods' => [[
+            'day_of_week' => 1,
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'slot_duration_minutes' => 30,
+        ]]])->assertForbidden()->assertJsonPath('code', 'PROVIDER_UNVERIFIED');
+
+        foreach (['professional_license', 'practice_permit', 'identification'] as $type) {
+            $this->post('/api/v1/doctor/verification/documents', [
+                'document_type' => $type,
+                'file' => UploadedFile::fake()->createWithContent($type.'.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n"),
+            ], ['Accept' => 'application/json'])->assertOk();
+        }
+        $this->postJson('/api/v1/doctor/verification/submit')->assertOk()->assertJsonPath('data.status', 'under_review');
+
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
+        Sanctum::actingAs($admin);
+        $verificationId = $profile->fresh()->providerVerification->id;
+        $this->approveAllCurrentDocuments($verificationId);
+        $this->postJson('/api/v1/admin/verifications/'.$verificationId.'/approve')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'verified');
 
         Sanctum::actingAs($doctor);
         $this->putJson('/api/v1/doctor/schedule', ['consultation_type' => 'clinic', 'periods' => [[
@@ -136,9 +146,20 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $location = Location::query()->where('normalized_name', 'port sudan')->firstOrFail();
         $this->assertSame($location->id, $profile->fresh()->location_id);
 
-        $this->patchJson("/api/v1/admin/providers/{$profile->id}/verification", ['status' => 'verified'])
+        Sanctum::actingAs($profile->user);
+        foreach (['professional_license', 'practice_permit', 'identification'] as $type) {
+            $this->post('/api/v1/doctor/verification/documents', [
+                'document_type' => $type,
+                'file' => UploadedFile::fake()->createWithContent($type.'.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n"),
+            ], ['Accept' => 'application/json'])->assertOk();
+        }
+        $this->postJson('/api/v1/doctor/verification/submit')->assertOk();
+        Sanctum::actingAs($admin);
+        $verificationId = $profile->fresh()->providerVerification->id;
+        $this->approveAllCurrentDocuments($verificationId);
+        $this->postJson('/api/v1/admin/verifications/'.$verificationId.'/approve')
             ->assertOk()
-            ->assertJsonPath('data.provider.verification_status', 'verified');
+            ->assertJsonPath('data.status', 'verified');
 
         DoctorAvailabilitySchedule::create([
             'doctor_profile_id' => $profile->id,
@@ -229,6 +250,20 @@ class DoctorVerificationAndCityWorkflowTest extends TestCase
         $this->getJson('/api/v1/patient/doctor-filters')->assertJsonMissing(['name_en' => 'Invalid City']);
         $this->getJson('/api/v1/admin/providers')->assertForbidden();
         $this->patchJson('/api/v1/admin/locations/1', ['is_active' => false])->assertForbidden();
+    }
+
+    private function approveAllCurrentDocuments(int $verificationId): void
+    {
+        $requirements = $this->getJson("/api/v1/admin/verifications/{$verificationId}")->assertOk()->json('data.requirements');
+        foreach ($requirements as $requirement) {
+            $current = $requirement['current'] ?? null;
+            if (! is_array($current) || ($current['status'] ?? null) === 'approved') {
+                continue;
+            }
+            $this->patchJson("/api/v1/admin/verifications/{$verificationId}/documents/{$current['id']}", [
+                'status' => 'approved',
+            ])->assertOk();
+        }
     }
 
     private function registrationPayload(array $locationChoice): array

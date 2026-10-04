@@ -26,7 +26,7 @@ class ResultController extends Controller
 
     public function store(UploadLaboratoryResultRequest $request, LaboratoryOrder $order): JsonResponse
     {
-        $profile = LaboratoryAccess::profile($request->user());
+        $profile = LaboratoryAccess::verifiedProfile($request->user());
         abort_unless($order->laboratory_profile_id === $profile->id, 404);
 
         if (! in_array($order->status, [LaboratoryOrderStatus::InProgress, LaboratoryOrderStatus::ResultReady], true)) {
@@ -53,7 +53,7 @@ class ResultController extends Controller
             $this->workflow->transition($order, LaboratoryOrderStatus::ResultReady, $request->user());
         }
 
-        $order->refresh()->load(['patient:id,name,phone', 'items', 'results', 'events']);
+        $order->refresh()->load(['patient:id,name,phone', 'items', 'results', 'events', 'collectionLocation:id,code,name_en,name_ar']);
 
         return response()->json([
             'data' => (new LaboratoryOrderResource($order))->resolve(),
@@ -63,7 +63,7 @@ class ResultController extends Controller
 
     public function download(Request $request, LaboratoryOrder $order): StreamedResponse
     {
-        $profile = LaboratoryAccess::profile($request->user());
+        $profile = LaboratoryAccess::verifiedProfile($request->user());
         abort_unless($order->laboratory_profile_id === $profile->id, 404);
 
         $result = $order->latestResult();

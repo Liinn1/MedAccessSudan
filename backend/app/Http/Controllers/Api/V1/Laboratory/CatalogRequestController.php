@@ -12,7 +12,7 @@ class CatalogRequestController extends Controller
 {
     public function store(StoreLaboratoryCatalogRequestRequest $request): JsonResponse
     {
-        $profile = LaboratoryAccess::profile($request->user());
+        $profile = LaboratoryAccess::verifiedProfile($request->user());
         $data = $request->validated();
 
         $record = $profile->catalogRequests()->create([

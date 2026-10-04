@@ -26,11 +26,36 @@ class ProviderVerificationService
 
     public function ensure(DoctorProfile|LaboratoryProfile $profile): ProviderVerification
     {
-        $status = DoctorVerificationStatus::fromAdminInput((string) $profile->verification_status);
+        $verification = $profile->providerVerification()->first();
 
-        return $profile->providerVerification()->firstOrCreate([], [
-            'status' => $status,
-        ]);
+        if (! $verification) {
+            $initial = DoctorVerificationStatus::fromAdminInput((string) ($profile->verification_status ?: 'pending_documents'));
+            if ($initial === DoctorVerificationStatus::Verified) {
+                $initial = DoctorVerificationStatus::PendingDocuments;
+            }
+            $verification = $profile->providerVerification()->create([
+                'status' => $initial,
+            ]);
+        }
+
+        $status = $this->status($verification);
+        if ($status === DoctorVerificationStatus::Verified && $verification->reviewed_by_user_id === null) {
+            $this->applyStatus($verification, DoctorVerificationStatus::PendingDocuments, [
+                'submitted_at' => null,
+                'reviewed_at' => null,
+                'reviewed_by_user_id' => null,
+                'admin_note' => null,
+            ]);
+            $verification = $verification->fresh(['documents', 'reviewer:id,name']) ?? $verification;
+            $status = DoctorVerificationStatus::PendingDocuments;
+        }
+
+        if ((string) $profile->verification_status !== $status->value) {
+            $profile->update(['verification_status' => $status->value]);
+            $profile->verification_status = $status->value;
+        }
+
+        return $verification;
     }
 
     public function forUser(User $user): ProviderVerification
@@ -63,6 +88,7 @@ class ProviderVerificationService
 
         $submittedCount = collect($requirements)->filter(fn (array $item) => $item['current'] && $item['current']['status'] !== VerificationDocumentStatus::Rejected->value)->count();
         $rejectedCount = collect($requirements)->filter(fn (array $item) => ($item['current']['status'] ?? null) === VerificationDocumentStatus::Rejected->value)->count();
+        $approvedCount = collect($requirements)->filter(fn (array $item) => ($item['current']['status'] ?? null) === VerificationDocumentStatus::Approved->value)->count();
 
         return [
             'id' => $verification->id,
@@ -75,11 +101,13 @@ class ProviderVerificationService
             'reviewed_by' => $verification->reviewer?->only(['id', 'name']),
             'required_count' => count($required),
             'submitted_count' => $submittedCount,
+            'approved_count' => $approvedCount,
             'rejected_count' => $rejectedCount,
             'can_submit' => $status->allowsDocumentUpload() && $submittedCount === count($required) && $rejectedCount === 0,
             'can_upload' => $status->allowsDocumentUpload(),
             'documents_locked' => $status->documentsAreLocked(),
             'requirements' => $requirements,
+            'profile_summary' => $this->profileSummary($profile),
         ];
     }
 
@@ -98,16 +126,15 @@ class ProviderVerificationService
         }
 
         $current = $this->currentDocuments($verification)->get($documentType);
-        if ($status === DoctorVerificationStatus::ActionRequired && $current && $current->status !== VerificationDocumentStatus::Rejected) {
-            $hasRejected = $this->currentDocuments($verification)->contains(fn (VerificationDocument $document) => $document->status === VerificationDocumentStatus::Rejected);
-            if ($hasRejected) {
-                throw ValidationException::withMessages(['document_type' => 'Replace the documents that require attention.']);
+        if ($status === DoctorVerificationStatus::ActionRequired) {
+            if (! $current || $current->status !== VerificationDocumentStatus::Rejected) {
+                throw ValidationException::withMessages(['document_type' => 'Only documents that require replacement can be changed.']);
             }
         }
 
         $stored = $this->storeFile($verification, $file);
 
-        return DB::transaction(function () use ($verification, $documentType, $stored, $current) {
+        return DB::transaction(function () use ($verification, $documentType, $stored, $current, $status) {
             if ($current) {
                 $current->update(['status' => VerificationDocumentStatus::Replaced]);
             }
@@ -124,7 +151,18 @@ class ProviderVerificationService
                 'uploaded_at' => now(),
             ]);
 
-            return $verification->fresh(['documents', 'reviewer:id,name']);
+            $fresh = $verification->fresh(['documents', 'reviewer:id,name']);
+            if ($status === DoctorVerificationStatus::ActionRequired && $fresh) {
+                $snapshot = $this->snapshot($fresh);
+                if ($snapshot['rejected_count'] === 0 && $snapshot['submitted_count'] === $snapshot['required_count']) {
+                    $this->applyStatus($fresh, DoctorVerificationStatus::UnderReview, [
+                        'submitted_at' => now(),
+                    ]);
+                    $fresh = $fresh->fresh(['documents', 'reviewer:id,name']);
+                }
+            }
+
+            return $fresh ?? $verification;
         });
     }
 
@@ -170,16 +208,23 @@ class ProviderVerificationService
     }
 
     /**
+     * @param  array{provider_type?: string, status?: string}  $filters
      * @return list<array<string, mixed>>
      */
-    public function listForAdmin(): array
+    public function listForAdmin(array $filters = []): array
     {
-        return ProviderVerification::query()
+        $query = ProviderVerification::query()
             ->with(['verifiable.user:id,name,email,phone', 'reviewer:id,name'])
-            ->latest('updated_at')
-            ->get()
-            ->map(function (ProviderVerification $verification) {
+            ->when(($filters['status'] ?? null), fn ($builder, $status) => $builder->where('status', $status))
+            ->orderByRaw('submitted_at is null')
+            ->latest('submitted_at');
+
+        return $query->get()
+            ->map(function (ProviderVerification $verification) use ($filters) {
                 $snapshot = $this->snapshot($verification);
+                if (($filters['provider_type'] ?? null) && $snapshot['provider_type'] !== $filters['provider_type']) {
+                    return null;
+                }
                 $user = $verification->verifiable?->user;
 
                 return [
@@ -194,6 +239,8 @@ class ProviderVerificationService
                     'user' => $user ? $user->only(['id', 'name', 'email', 'phone']) : null,
                 ];
             })
+            ->filter()
+            ->values()
             ->all();
     }
 
@@ -210,6 +257,10 @@ class ProviderVerificationService
             throw ValidationException::withMessages(['admin_note' => 'Provide a reason when requesting a document replacement.']);
         }
 
+        if ($status === VerificationDocumentStatus::Rejected && $document->status === VerificationDocumentStatus::Rejected) {
+            throw ValidationException::withMessages(['status' => 'A replacement has already been requested for this document.']);
+        }
+
         $document->update([
             'status' => $status,
             'admin_note' => $status === VerificationDocumentStatus::Rejected ? trim((string) $note) : null,
@@ -219,7 +270,6 @@ class ProviderVerificationService
             $this->applyStatus($verification, DoctorVerificationStatus::ActionRequired, [
                 'reviewed_at' => now(),
                 'reviewed_by_user_id' => $admin->id,
-                'admin_note' => trim((string) $note),
             ], $admin, 'provider.verification.document_rejected', [
                 'document_id' => $document->id,
                 'document_type' => $document->document_type,
@@ -231,13 +281,28 @@ class ProviderVerificationService
             ]);
         }
 
-        return $verification->fresh(['documents', 'reviewer:id,name', 'verifiable']);
+        $verification = $verification->fresh(['documents', 'reviewer:id,name', 'verifiable']) ?? $verification;
+        $snapshot = $this->snapshot($verification);
+        if (
+            $this->status($verification) === DoctorVerificationStatus::ActionRequired
+            && $snapshot['rejected_count'] === 0
+            && $snapshot['submitted_count'] === $snapshot['required_count']
+        ) {
+            $this->applyStatus($verification, DoctorVerificationStatus::UnderReview);
+            $verification = $verification->fresh(['documents', 'reviewer:id,name', 'verifiable']) ?? $verification;
+        }
+
+        return $verification;
     }
 
     public function requestChanges(ProviderVerification $verification, User $admin, string $note): ProviderVerification
     {
         if (blank($note)) {
             throw ValidationException::withMessages(['admin_note' => 'Provide a reason when requesting changes.']);
+        }
+
+        if ($this->status($verification) !== DoctorVerificationStatus::UnderReview) {
+            throw ValidationException::withMessages(['status' => 'Only submitted verification requests can be rejected.']);
         }
 
         $this->applyStatus($verification, DoctorVerificationStatus::ActionRequired, [
@@ -256,16 +321,20 @@ class ProviderVerificationService
             $this->assertDoctorCanBeVerified($profile);
         }
 
-        $snapshot = $this->snapshot($verification);
-        if ($snapshot['submitted_count'] !== $snapshot['required_count'] || $snapshot['rejected_count'] > 0) {
-            throw ValidationException::withMessages(['status' => 'Every required document must be present and not rejected before approval.']);
+        $current = $this->currentDocuments($verification);
+        $required = $this->requiredTypes($this->providerType($profile));
+        $allApproved = $current->count() === count($required)
+            && $current->every(fn (VerificationDocument $document) => $document->status === VerificationDocumentStatus::Approved);
+
+        if (! $allApproved) {
+            throw ValidationException::withMessages([
+                'status' => 'All required verification documents must be approved before the provider can be verified.',
+            ]);
         }
 
-        $this->currentDocuments($verification)->each(function (VerificationDocument $document) {
-            if ($document->status === VerificationDocumentStatus::Pending) {
-                $document->update(['status' => VerificationDocumentStatus::Approved, 'admin_note' => null]);
-            }
-        });
+        if ($this->status($verification) !== DoctorVerificationStatus::UnderReview) {
+            throw ValidationException::withMessages(['status' => 'Only submitted verification requests can be approved.']);
+        }
 
         $this->applyStatus($verification, DoctorVerificationStatus::Verified, [
             'reviewed_at' => now(),
@@ -458,6 +527,36 @@ class ProviderVerificationService
         }
 
         return '';
+    }
+
+    private function profileSummary(mixed $profile): array
+    {
+        if ($profile instanceof DoctorProfile) {
+            $profile->loadMissing(['specialization:id,code,name_en,name_ar', 'location:id,code,name_en,name_ar', 'user:id,name,email,phone']);
+
+            return [
+                'email' => $profile->user?->email,
+                'phone' => $profile->user?->phone,
+                'specialization' => $profile->specialization?->only(['code', 'name_en', 'name_ar']),
+                'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
+                'clinic_name' => $profile->clinic_name,
+                'address' => null,
+            ];
+        }
+        if ($profile instanceof LaboratoryProfile) {
+            $profile->loadMissing(['location:id,code,name_en,name_ar', 'user:id,name,email,phone']);
+
+            return [
+                'email' => $profile->user?->email,
+                'phone' => $profile->user?->phone,
+                'specialization' => null,
+                'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
+                'clinic_name' => null,
+                'address' => $profile->address,
+            ];
+        }
+
+        return [];
     }
 
     /**

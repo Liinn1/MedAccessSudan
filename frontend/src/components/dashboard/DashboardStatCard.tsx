@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react'
+import { ActionButton } from '../buttons/ActionButton'
 
 type DashboardIcon = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -17,21 +18,28 @@ interface DashboardStatCardProps {
   value: number | string
   hint: string
   tone?: DashboardStatTone
+  onSelect?: () => void
+  actionLabel?: string
 }
 
 export function DashboardStatsGrid({ children, label }: { children: ReactNode; label: string }) {
   return <section aria-label={label} className="dashboard-stats">{children}</section>
 }
 
-export function DashboardStatCard({ icon: Icon, label, value, hint, tone = 'accent' }: DashboardStatCardProps) {
-  return (
-    <article className="dashboard-stat">
+export function DashboardStatCard({ icon: Icon, label, value, hint, tone = 'accent', onSelect, actionLabel }: DashboardStatCardProps) {
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-bold text-[var(--color-text-secondary)]">{label}</p>
         <span className={`grid size-8 shrink-0 place-items-center rounded-xl border ${tones[tone]}`}><Icon className="size-4" /></span>
       </div>
       <p className="direction-ltr mt-2 text-start text-2xl font-black tabular-nums">{value}</p>
       <p className="mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">{hint}</p>
-    </article>
+      {onSelect && actionLabel ? <span className="mt-3 inline-flex"><ActionButton as="span" size="sm" variant="secondary">{actionLabel}</ActionButton></span> : null}
+    </>
   )
+  if (onSelect) {
+    return <button className="dashboard-stat w-full text-start" onClick={onSelect} type="button">{body}</button>
+  }
+  return <article className="dashboard-stat">{body}</article>
 }

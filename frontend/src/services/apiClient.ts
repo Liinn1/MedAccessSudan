@@ -52,10 +52,50 @@ export class ApiError extends Error {
  * Responses must be JSON. Non-success responses become ApiError instances so
  * pages can show friendly messages without depending on Laravel internals.
  */
+export const AUTH_NOTICE_KEY = 'medaccess.authNotice'
+
+export function getApiErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('details' in error)) return undefined
+  const details = error.details
+  if (typeof details !== 'object' || details === null || !('code' in details)) return undefined
+  return typeof details.code === 'string' ? details.code : undefined
+}
+
+export function consumeAuthNotice(): string | null {
+  try {
+    const value = sessionStorage.getItem(AUTH_NOTICE_KEY)
+    if (value) sessionStorage.removeItem(AUTH_NOTICE_KEY)
+    return value
+  } catch {
+    return null
+  }
+}
+
+function rememberAuthNotice(code: string): void {
+  try {
+    sessionStorage.setItem(AUTH_NOTICE_KEY, code)
+  } catch {
+    // Ignore storage failures; the API response still blocks the request.
+  }
+}
+
+function responseErrorCode(body: unknown): string | undefined {
+  if (typeof body !== 'object' || body === null || !('code' in body)) return undefined
+  return typeof body.code === 'string' ? body.code : undefined
+}
+
+export function isAbortError(error: unknown): boolean {
+  return (error instanceof DOMException && error.name === 'AbortError')
+    || (error instanceof Error && error.name === 'AbortError')
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const xsrfToken = getXsrfToken()
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  let response: Response
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
+    cache: 'no-store',
     credentials: 'include',
     headers: {
       Accept: 'application/json',
@@ -64,13 +104,24 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
       ...options.headers,
     },
-  })
+    })
+  } catch (error) {
+    if (isAbortError(error)) throw error
+    throw error
+  }
 
-  const responseBody: unknown = response.status === 204
-    ? null
-    : await response.json().catch(() => null)
+  let responseBody: unknown
+  try {
+    responseBody = response.status === 204 ? null : await response.json()
+  } catch (error) {
+    if (isAbortError(error)) throw error
+    responseBody = null
+  }
 
   if (!response.ok) {
+    if (responseErrorCode(responseBody) === 'ACCOUNT_SUSPENDED') {
+      rememberAuthNotice('suspended')
+    }
     const apiMessage =
       typeof responseBody === 'object' &&
       responseBody !== null &&

@@ -16,9 +16,14 @@ class ProviderVerificationReviewController extends Controller
 {
     public function __construct(private readonly ProviderVerificationService $verifications) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => ['verifications' => $this->verifications->listForAdmin()]]);
+        $filters = $request->validate([
+            'provider_type' => ['nullable', 'in:doctor,laboratory'],
+            'status' => ['nullable', 'in:pending_documents,under_review,action_required,verified,suspended'],
+        ]);
+
+        return response()->json(['data' => ['verifications' => $this->verifications->listForAdmin($filters)]]);
     }
 
     public function show(ProviderVerification $verification): JsonResponse

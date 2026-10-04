@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { BookingHero } from '../../components/booking/BookingHero'
+import { BookingFlowFrame } from '../../components/booking/BookingFlowFrame'
 import { BookingPanel } from '../../components/booking/BookingPanel'
 import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
-import { BookingProgress } from '../../components/booking/BookingProgress'
 import { BookingReviewList } from '../../components/booking/BookingReviewList'
+import { BookingSlotPicker } from '../../components/booking/BookingSlotPicker'
+import { CollectionMethodSelector } from '../../components/booking/CollectionMethodSelector'
+import { createEmptyHomeAddress, PatientHomeAddressForm, type PatientHomeAddress } from '../../components/booking/PatientHomeAddressForm'
 import { PaymentMethodSelector } from '../../components/booking/PaymentMethodSelector'
+import { useBookingStepFocus } from '../../hooks/useBookingStepFocus'
+import { useHomeGeolocation } from '../../hooks/useHomeGeolocation'
+import { LocationMapPreview } from '../../components/patient/LocationMapPreview'
+import { ProviderRatingSummary } from '../../components/ratings/ProviderRatingSummary'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { PatientLayout } from '../../layouts/PatientLayout'
@@ -18,11 +24,14 @@ import {
   createPatientLaboratoryOrder,
   formatLaboratoryPrice,
   getPatientLaboratoryDiscovery,
+  type LaboratoryCollectionMethod,
   type LaboratoryMatch,
   type PatientLaboratoryDiscovery,
 } from '../../services/laboratoryService'
+import { generateHomeCollectionSlots, type CollectionSlot } from '../../utils/collectionSlots'
+import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 
-type Step = 'tests' | 'laboratory' | 'review' | 'success'
+type Step = 'tests' | 'laboratory' | 'details' | 'review' | 'success'
 
 export function PatientLaboratoryPage() {
   const { i18n, t } = useTranslation()
@@ -33,7 +42,11 @@ export function PatientLaboratoryPage() {
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [categoryId, setCategoryId] = useState<number | null>(null)
-  const [locationId, setLocationId] = useState<number | null>(null)
+  const [filterLocationId, setFilterLocationId] = useState<number | null>(null)
+  const [collectionMethod, setCollectionMethod] = useState<LaboratoryCollectionMethod>('at_lab')
+  const [collectionLocationId, setCollectionLocationId] = useState<number | null>(null)
+  const [homeAddress, setHomeAddress] = useState<PatientHomeAddress>(createEmptyHomeAddress())
+  const [collectionSlot, setCollectionSlot] = useState<CollectionSlot | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [chosenLab, setChosenLab] = useState<LaboratoryMatch | null>(null)
   const [showPartial, setShowPartial] = useState(false)
@@ -43,7 +56,11 @@ export function PatientLaboratoryPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [createdPayment, setCreatedPayment] = useState<ServicePayment | null>(null)
+  const [createdMethod, setCreatedMethod] = useState<LaboratoryCollectionMethod>('at_lab')
   const payment = useBookingPayment()
+  const headingRef = useBookingStepFocus(step)
+  const { captureLocation, coordinates, locating, locationError, setLocationError } = useHomeGeolocation()
+  const home = collectionMethod === 'home_collection'
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 250)
@@ -55,8 +72,9 @@ export function PatientLaboratoryPage() {
     getPatientLaboratoryDiscovery({
       query: debouncedQuery,
       categoryId: categoryId ?? undefined,
-      locationId: locationId ?? undefined,
+      locationId: home ? undefined : (filterLocationId ?? undefined),
       labTestIds: selectedIds,
+      collectionMethod,
     }, controller.signal).then((catalog) => {
       setDiscovery(catalog)
       setState('success')
@@ -66,7 +84,7 @@ export function PatientLaboratoryPage() {
       else setState('error')
     })
     return () => controller.abort()
-  }, [categoryId, debouncedQuery, locationId, navigate, selectedIds.join(',')])
+  }, [categoryId, collectionMethod, debouncedQuery, filterLocationId, home, navigate, selectedIds.join(',')])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -77,9 +95,20 @@ export function PatientLaboratoryPage() {
   const complete = discovery?.matches.complete ?? []
   const partial = discovery?.matches.partial ?? []
   const labsToShow = complete.length > 0 || !showPartial ? complete : partial
-  const progressSteps = ['tests', 'laboratory', 'review'] as const
-  const currentIndex = step === 'success' ? 2 : progressSteps.indexOf(step)
+  const progressSteps = ['tests', 'laboratory', 'details', 'review'] as const
+  const currentIndex = step === 'success' ? 3 : progressSteps.indexOf(step)
   const selectedNames = (discovery?.tests ?? []).filter((test) => selectedIds.includes(test.id))
+  const selectedCity = (discovery?.locations ?? []).find((location) => location.id === collectionLocationId)
+    ?? chosenLab?.location
+  const formattedSlot = collectionSlot ? {
+    date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: SUDAN_TIME_ZONE }).format(new Date(collectionSlot.starts_at)),
+    time: new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: SUDAN_TIME_ZONE }).format(new Date(collectionSlot.starts_at)),
+  } : null
+
+  function stepLabel(item: (typeof progressSteps)[number]) {
+    if (item === 'details') return t(home ? 'patient.laboratory.steps.details' : 'patient.laboratory.steps.appointment')
+    return t(`patient.laboratory.steps.${item}`)
+  }
 
   function toggleTest(id: number) {
     setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
@@ -87,14 +116,74 @@ export function PatientLaboratoryPage() {
     setShowPartial(false)
   }
 
+  function changeCollectionMethod(next: LaboratoryCollectionMethod) {
+    setCollectionMethod(next)
+    setChosenLab(null)
+    setShowPartial(false)
+    setError('')
+  }
+
+  function homeReady() {
+    return Boolean(collectionLocationId && homeAddress.area.trim() && homeAddress.address_details.trim() && collectionSlot && coordinates)
+  }
+
+  function goToLaboratories() {
+    setError('')
+    setShowPartial(false)
+    setStep('laboratory')
+  }
+
+  function chooseLaboratory(lab: LaboratoryMatch) {
+    setChosenLab(lab)
+    if (home && lab.location?.id) setCollectionLocationId(lab.location.id)
+    setError('')
+    setStep('details')
+  }
+
+  function goToReview(event: FormEvent) {
+    event.preventDefault()
+    if (!collectionSlot) {
+      setError(t('patient.laboratory.slotRequired'))
+      return
+    }
+    if (home && !homeReady()) {
+      if (!coordinates) setLocationError(t('patient.homeVisit.locationRequired'))
+      setError(t('patient.laboratory.collectionRequired'))
+      return
+    }
+    setError('')
+    setStep('review')
+  }
+
   async function confirm() {
     if (!chosenLab?.offers_all || busy) return
+    if (!collectionSlot) {
+      setError(t('patient.laboratory.slotRequired'))
+      return
+    }
+    if (home && (!homeReady() || !coordinates)) {
+      setError(t('patient.laboratory.collectionRequired'))
+      return
+    }
     if (!payment.validate(t)) return
     setBusy(true)
     setError('')
     try {
-      const order = await createPatientLaboratoryOrder(chosenLab.laboratory_profile_id, selectedIds, payment.payload().payment_method)
+      const order = await createPatientLaboratoryOrder(chosenLab.laboratory_profile_id, selectedIds, payment.payload().payment_method, home && collectionLocationId && coordinates ? {
+        collection_method: 'home_collection',
+        collection_location_id: collectionLocationId,
+        collection_area: homeAddress.area.trim(),
+        collection_address: homeAddress.address_details.trim(),
+        collection_notes: homeAddress.additional_directions.trim() || null,
+        collection_starts_at: collectionSlot.starts_at,
+        collection_latitude: coordinates.latitude,
+        collection_longitude: coordinates.longitude,
+      } : {
+        collection_method: 'at_lab',
+        collection_starts_at: collectionSlot.starts_at,
+      })
       setCreatedPayment(order.payment ?? null)
+      setCreatedMethod(order.collection_method ?? collectionMethod)
       setStep('success')
     } catch {
       setError(t('patient.laboratory.submitError'))
@@ -106,19 +195,21 @@ export function PatientLaboratoryPage() {
   if (state === 'loading' && !discovery) return <PatientLayout activeSection="laboratory"><LoadingState contained message={t('patient.laboratory.loading')} /></PatientLayout>
   if (state === 'error' && !discovery) return <PatientLayout activeSection="laboratory"><ErrorState contained message={t('patient.laboratory.error')} onRetry={() => { setState('loading'); setSelectedIds((current) => [...current]) }} retryLabel={t('laboratory.dashboard.retry')} /></PatientLayout>
 
-  return <PatientLayout activeSection="laboratory"><div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 lg:px-10">
-    <BookingHero description={t('patient.laboratory.description')} eyebrow={t('patient.laboratory.eyebrow')} title={t('patient.laboratory.title')} />
-    <BookingProgress
-      ariaLabel={t('patient.laboratory.progress')}
-      currentIndex={currentIndex}
-      steps={progressSteps.map((item, index) => ({
-        id: item,
-        label: t(`patient.laboratory.steps.${item}`),
-        onSelect: step !== 'success' && index < currentIndex ? () => setStep(item) : undefined,
-      }))}
-    />
-
+  return <PatientLayout activeSection="laboratory"><BookingFlowFrame
+    ariaLabel={t('patient.laboratory.progress')}
+    currentIndex={currentIndex}
+    description={t('patient.laboratory.description')}
+    eyebrow={t('patient.laboratory.eyebrow')}
+    steps={progressSteps.map((item, index) => ({
+      id: item,
+      label: stepLabel(item),
+      onSelect: step !== 'success' && index < currentIndex ? () => setStep(item) : undefined,
+    }))}
+    title={t('patient.laboratory.title')}
+  >
     {step === 'tests' && <BookingPanel>
+      <h2 className="sr-only" ref={headingRef} tabIndex={-1}>{t('patient.laboratory.steps.tests')}</h2>
+      <CollectionMethodSelector onChange={changeCollectionMethod} value={collectionMethod} />
       <input className="min-h-12 w-full rounded-xl border border-[var(--color-border)] px-4 font-semibold" onChange={(event) => setQuery(event.target.value)} placeholder={t('patient.laboratory.search')} value={query} />
       <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
         <button className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold ${categoryId === null ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-border)] bg-white'}`} onClick={() => setCategoryId(null)} type="button">{t('patient.laboratory.allCategories')}</button>
@@ -142,48 +233,100 @@ export function PatientLaboratoryPage() {
       {selectedIds.length > 0 && <div className="mt-6 rounded-2xl bg-slate-50 p-4">
         <p className="font-extrabold">{t('patient.laboratory.selectedCount', { count: selectedIds.length })}</p>
         <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{selectedNames.map((test) => test.short_name || (arabic ? test.name_ar : test.name_en)).join(' · ')}</p>
-        <button className="mt-4 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white" onClick={() => { setShowPartial(false); setStep('laboratory') }} type="button">{t('patient.laboratory.findLaboratories')}</button>
+        <button className="mt-4 min-h-12 w-full rounded-full bg-[var(--color-primary)] px-5 font-bold text-white" onClick={goToLaboratories} type="button">{t('patient.laboratory.findLaboratories')}</button>
       </div>}
     </BookingPanel>}
 
     {step === 'laboratory' && <BookingPanel>
       <button className="w-fit font-bold text-[var(--color-primary)]" onClick={() => setStep('tests')} type="button">← {t('patient.laboratory.backToTests')}</button>
-      <h2 className="mt-4 text-xl font-extrabold">{t('patient.laboratory.labsTitle')}</h2>
-      <label className="mt-4 block font-bold">{t('patient.laboratory.locationFilter')}
-        <select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setLocationId(event.target.value ? Number(event.target.value) : null)} value={locationId ?? ''}>
+      <h2 className="mt-4 text-xl font-extrabold" ref={headingRef} tabIndex={-1}>{t('patient.laboratory.labsTitle')}</h2>
+      <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">{t(`patient.laboratory.collectionMethods.${collectionMethod}`)}</p>
+      {!home && <label className="mt-4 block font-bold">{t('patient.laboratory.locationFilter')}
+        <select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setFilterLocationId(event.target.value ? Number(event.target.value) : null)} value={filterLocationId ?? ''}>
           <option value="">{t('patient.laboratory.allLocations')}</option>
           {(discovery?.locations ?? []).map((location) => <option key={location.id ?? location.code} value={location.id}>{arabic ? location.name_ar : location.name_en}</option>)}
         </select>
-      </label>
+      </label>}
       {complete.length === 0 && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
         <p className="font-bold">{t('patient.laboratory.noComplete')}</p>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{t('patient.laboratory.noCompleteHelp')}</p>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{home ? t('patient.laboratory.noHomeLabs') : t('patient.laboratory.noCompleteHelp')}</p>
         {!showPartial && partial.length > 0 && <button className="mt-3 font-bold text-[var(--color-primary)]" onClick={() => setShowPartial(true)} type="button">{t('patient.laboratory.viewPartial')}</button>}
       </div>}
-      {labsToShow.length === 0 ? <p className="mt-6 rounded-2xl border border-dashed p-8 text-center text-[var(--color-text-secondary)]">{t('patient.laboratory.emptyLabs')}</p> : <ul className="mt-4 grid gap-4">{labsToShow.map((lab) => (
+      {labsToShow.length === 0 ? <p className="mt-6 rounded-2xl border border-dashed p-8 text-center text-[var(--color-text-secondary)]">{home ? t('patient.laboratory.emptyHomeLabs') : t('patient.laboratory.emptyLabs')}</p> : <ul className="mt-4 grid gap-4">{labsToShow.map((lab) => (
         <li className="rounded-2xl border border-[var(--color-border)] p-4" key={lab.laboratory_profile_id}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="font-extrabold">{lab.laboratory_name}</h3>
               <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{[arabic ? lab.location?.name_ar : lab.location?.name_en, lab.address].filter(Boolean).join(' — ')}</p>
+              <ProviderRatingSummary className="mt-1" rating={lab} />
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${lab.offers_all ? 'bg-[var(--color-success-surface)] text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{lab.offers_all ? t('patient.laboratory.offersAll') : t('patient.laboratory.offersSome', { count: lab.matched_count, total: lab.selected_count })}</span>
           </div>
           <ul className="mt-3 space-y-1 text-sm">{lab.items.map((item) => <li className="flex justify-between gap-3" key={item.lab_test_id}><span>{arabic ? item.name_ar : item.name_en}</span><span className="font-semibold">{formatLaboratoryPrice(item.price, item.currency, locale)}</span></li>)}</ul>
           <p className="mt-3 text-end font-extrabold">{t('patient.laboratory.total')}: {formatLaboratoryPrice(lab.total, lab.currency, locale)}</p>
-          {lab.offers_all && <button className="mt-3 min-h-11 w-full rounded-full bg-[var(--color-primary)] px-4 font-bold text-white" onClick={() => { setChosenLab(lab); setStep('review') }} type="button">{t('patient.laboratory.selectLaboratory')}</button>}
+          {lab.offers_all && <button className="mt-3 min-h-11 w-full rounded-full bg-[var(--color-primary)] px-4 font-bold text-white" onClick={() => chooseLaboratory(lab)} type="button">{t('patient.laboratory.selectLaboratory')}</button>}
         </li>
       ))}</ul>}
     </BookingPanel>}
 
+    {step === 'details' && chosenLab && <BookingPanel className="grid gap-5" onSubmit={goToReview}>
+      <button className="w-fit font-bold text-[var(--color-primary)]" onClick={() => setStep('laboratory')} type="button">← {t('patient.laboratory.backToLabs')}</button>
+      <section>
+        <h2 className="text-xl font-extrabold" ref={headingRef} tabIndex={-1}>{chosenLab.laboratory_name}</h2>
+        <p className="text-sm text-[var(--color-text-secondary)]">{[arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ')}</p>
+        <ProviderRatingSummary className="mt-1" rating={chosenLab} />
+        <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">{t(`patient.laboratory.collectionMethods.${collectionMethod}`)}</p>
+      </section>
+      <BookingSlotPicker
+        emptyLabel={t('patient.laboratory.noSlots')}
+        locale={locale}
+        onSelect={setCollectionSlot}
+        selectedStartsAt={collectionSlot?.starts_at}
+        slots={generateHomeCollectionSlots()}
+        title={t(home ? 'patient.laboratory.availableCollectionTimes' : 'patient.laboratory.availableAppointmentTimes')}
+      />
+      {home && (
+        <PatientHomeAddressForm
+          address={homeAddress}
+          cityName={selectedCity ? (arabic ? selectedCity.name_ar : selectedCity.name_en) : ''}
+          coordinates={coordinates}
+          locating={locating}
+          locationError={locationError}
+          onCaptureLocation={captureLocation}
+          onChange={setHomeAddress}
+          requireCoordinates
+          title={t('patient.laboratory.collectionWhere')}
+        />
+      )}
+      <button className="min-h-12 rounded-full bg-[var(--color-primary)] px-5 font-bold text-white" type="submit">{t('patient.laboratory.continueReview')}</button>
+    </BookingPanel>}
+
     {step === 'review' && chosenLab && <BookingPanel>
-      <button className="font-bold text-[var(--color-primary)]" onClick={() => setStep('laboratory')} type="button">← {t('patient.laboratory.backToLabs')}</button>
-      <h2 className="mt-4 text-2xl font-extrabold">{t('patient.laboratory.confirmTitle')}</h2>
+      <button className="font-bold text-[var(--color-primary)]" onClick={() => setStep('details')} type="button">← {t('patient.laboratory.backToDetails')}</button>
+      <h2 className="mt-4 text-2xl font-extrabold" ref={headingRef} tabIndex={-1}>{t('patient.laboratory.confirmTitle')}</h2>
       <BookingReviewList rows={[
+        { label: t('patient.laboratory.tests'), value: selectedNames.map((test) => test.short_name || (arabic ? test.name_ar : test.name_en)).join(' · ') },
         { label: t('patient.laboratory.laboratory'), value: chosenLab.laboratory_name },
-        { label: t('patient.laboratory.location'), value: [arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ') },
+        { label: t('patient.laboratory.collection'), value: t(`patient.laboratory.collectionMethods.${collectionMethod}`) },
+        ...(home ? [] : [{ label: t('patient.laboratory.location'), value: [arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ') }]),
+        ...(formattedSlot ? [
+          { label: t('patient.laboratory.collectionDate'), value: formattedSlot.date },
+          { label: t('patient.laboratory.collectionTime'), value: formattedSlot.time, ltr: true },
+        ] : []),
         ...(user ? [{ label: t('patient.laboratory.patient'), value: user.name }] : []),
       ]} />
+      {home && (
+        <>
+          <h3 className="mt-5 text-lg font-extrabold">{t('patient.laboratory.collectionWhere')}</h3>
+          {coordinates && <LocationMapPreview className="mt-3" latitude={coordinates.latitude} longitude={coordinates.longitude} />}
+          <BookingReviewList rows={[
+            { label: t('patient.homeVisit.city'), value: selectedCity ? (arabic ? selectedCity.name_ar : selectedCity.name_en) : '' },
+            { label: t('patient.homeVisit.fields.area'), value: homeAddress.area },
+            { label: t('patient.homeVisit.fields.address_details'), value: homeAddress.address_details },
+            ...(homeAddress.additional_directions.trim() ? [{ label: t('patient.homeVisit.fields.additional_directions'), value: homeAddress.additional_directions.trim() }] : []),
+          ]} />
+        </>
+      )}
       <ul className="mt-2 space-y-2">{chosenLab.items.map((item) => <li className="flex justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3" key={item.lab_test_id}><span className="font-bold">{arabic ? item.name_ar : item.name_en}</span><span className="font-semibold">{formatLaboratoryPrice(item.price, item.currency, locale)}</span></li>)}</ul>
       <p className="mt-4 text-end text-lg font-extrabold">{t('patient.laboratory.total')}: {formatLaboratoryPrice(chosenLab.total, chosenLab.currency, locale)}</p>
       <PaymentMethodSelector card={payment.card} errors={payment.errors} method={payment.method} onCardChange={payment.setCard} onMethodChange={payment.setMethod} />
@@ -192,8 +335,21 @@ export function PatientLaboratoryPage() {
 
     {step === 'success' && <BookingPanel className="text-center">
       <span className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</span>
-      <h2 className="mt-4 text-3xl font-extrabold">{t('patient.laboratory.successTitle')}</h2>
+      <h2 className="mt-4 text-3xl font-extrabold" ref={headingRef} tabIndex={-1}>{t('patient.laboratory.successTitle')}</h2>
       <p className="mt-2 text-[var(--color-text-secondary)]">{t('patient.laboratory.successDescription')}</p>
+      <div className="mx-auto mt-5 max-w-md text-start">
+        <BookingReviewList rows={[
+          { label: t('patient.laboratory.collection'), value: t(`patient.laboratory.collectionMethods.${createdMethod}`) },
+          ...(chosenLab ? [{ label: t('patient.laboratory.laboratory'), value: chosenLab.laboratory_name }] : []),
+          ...(formattedSlot ? [
+            { label: t('patient.laboratory.collectionDate'), value: formattedSlot.date },
+            { label: t('patient.laboratory.collectionTime'), value: formattedSlot.time, ltr: true },
+          ] : []),
+          ...(createdMethod === 'home_collection'
+            ? [{ label: t('patient.laboratory.collectionAddress'), value: [selectedCity ? (arabic ? selectedCity.name_ar : selectedCity.name_en) : '', homeAddress.area, homeAddress.address_details].filter(Boolean).join(' — ') }]
+            : chosenLab ? [{ label: t('patient.laboratory.location'), value: [arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ') }] : []),
+        ]} />
+      </div>
       <BookingPaymentSummary payment={createdPayment} />
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <button className="rounded-full bg-[var(--color-primary)] px-6 py-3 font-bold text-white" onClick={() => navigate('/patient/appointments')} type="button">{t('patient.laboratory.viewAppointments')}</button>
@@ -201,5 +357,5 @@ export function PatientLaboratoryPage() {
       </div>
     </BookingPanel>}
     <p aria-live="polite" className="mt-4 min-h-6 text-center font-semibold text-red-700">{error}</p>
-  </div></PatientLayout>
+  </BookingFlowFrame></PatientLayout>
 }

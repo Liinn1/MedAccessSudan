@@ -1,14 +1,20 @@
 <?php
 
-use App\Http\Controllers\Api\V1\Admin\CityProposalController;
+use App\Http\Controllers\Api\V1\Admin\CatalogRequestReviewController;
+use App\Http\Controllers\Api\V1\Admin\CustomerInquiryController;
+use App\Http\Controllers\Api\V1\Admin\AdminUserController;
 use App\Http\Controllers\Api\V1\Admin\DoctorVerificationController;
 use App\Http\Controllers\Api\V1\Admin\ProviderVerificationReviewController;
+use App\Http\Controllers\Api\V1\Admin\CityProposalController;
 use App\Http\Controllers\Api\V1\Admin\LocationController;
 use App\Http\Controllers\Api\V1\Admin\AdminAccountController;
 use App\Http\Controllers\Api\V1\Admin\AdminLoginController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\MonitoringController;
+use App\Http\Controllers\Api\V1\Auth\CompletePasswordSetupController;
 use App\Http\Controllers\Api\V1\Auth\CurrentUserController;
+use App\Http\Controllers\Api\V1\Auth\PasswordChangeController;
+use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\DoctorRegistrationOptionsController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
@@ -25,6 +31,7 @@ use App\Http\Controllers\Api\V1\Doctor\ResolvedAvailabilityController;
 use App\Http\Controllers\Api\V1\Doctor\ScheduleController;
 use App\Http\Controllers\Api\V1\FeaturedDoctorController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\PublicContactController;
 use App\Http\Controllers\Api\V1\Laboratory\CatalogController as LaboratoryCatalogController;
 use App\Http\Controllers\Api\V1\Laboratory\CatalogRequestController as LaboratoryCatalogRequestController;
 use App\Http\Controllers\Api\V1\Laboratory\DashboardController as LaboratoryDashboardController;
@@ -37,7 +44,7 @@ use App\Http\Controllers\Api\V1\Patient\AppointmentController as PatientAppointm
 use App\Http\Controllers\Api\V1\Patient\DoctorAvailabilityController;
 use App\Http\Controllers\Api\V1\Patient\DoctorFilterController;
 use App\Http\Controllers\Api\V1\Patient\DoctorProfileController;
-use App\Http\Controllers\Api\V1\Patient\DoctorReviewController;
+use App\Http\Controllers\Api\V1\Patient\ProviderReviewController;
 use App\Http\Controllers\Api\V1\Patient\DoctorSearchController;
 use App\Http\Controllers\Api\V1\Patient\LaboratoryDiscoveryController;
 use App\Http\Controllers\Api\V1\Patient\LaboratoryOrderController as PatientLaboratoryOrderController;
@@ -48,6 +55,7 @@ use App\Http\Controllers\Api\V1\Patient\ProfilePhotoController as PatientProfile
 use Illuminate\Support\Facades\Route;
 
 Route::get('/v1/health', HealthController::class);
+Route::post('/v1/contact', PublicContactController::class)->middleware('throttle:8,1');
 Route::get('/v1/doctors/featured', FeaturedDoctorController::class);
 Route::post('/v1/admin/login', AdminLoginController::class)->middleware('throttle:5,1');
 
@@ -59,9 +67,17 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/register/laboratory', RegisterLaboratoryController::class)->middleware('throttle:5,1');
     Route::post('/email/verification-notification', ResendEmailVerificationController::class)->middleware('throttle:6,1');
 
+    Route::post('/password/setup', CompletePasswordSetupController::class)->middleware('throttle:8,1');
+    Route::post('/password/forgot', [PasswordResetController::class, 'start'])->middleware('throttle:5,1');
+    Route::post('/password/forgot/resend', [PasswordResetController::class, 'resend'])->middleware('throttle:6,1');
+    Route::post('/password/reset', [PasswordResetController::class, 'reset'])->middleware('throttle:8,1');
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', CurrentUserController::class);
         Route::post('/logout', LogoutController::class);
+        Route::post('/password/change', [PasswordChangeController::class, 'start'])->middleware('throttle:8,1');
+        Route::post('/password/change/resend', [PasswordChangeController::class, 'resend'])->middleware('throttle:12,1');
+        Route::post('/password/change/confirm', [PasswordChangeController::class, 'confirm'])->middleware('throttle:12,1');
     });
 });
 
@@ -77,7 +93,7 @@ Route::middleware(['auth:sanctum', 'role:patient'])
         Route::post('/appointments', [PatientAppointmentController::class, 'store']);
         Route::get('/appointments/{appointment}', [PatientAppointmentController::class, 'show'])->whereNumber('appointment');
         Route::patch('/appointments/{appointment}/cancel', [PatientAppointmentController::class, 'cancel'])->whereNumber('appointment');
-        Route::post('/appointments/{appointment}/review', [DoctorReviewController::class, 'store'])->whereNumber('appointment');
+        Route::post('/appointments/{appointment}/review', [ProviderReviewController::class, 'storeForAppointment'])->whereNumber('appointment');
         Route::put('/profile', [PatientProfileController::class, 'update']);
         Route::post('/profile-photo', [PatientProfilePhotoController::class, 'store']);
         Route::delete('/profile-photo', [PatientProfilePhotoController::class, 'destroy']);
@@ -86,6 +102,7 @@ Route::middleware(['auth:sanctum', 'role:patient'])
         Route::post('/laboratory-orders', [PatientLaboratoryOrderController::class, 'store']);
         Route::get('/laboratory-orders/{order}', [PatientLaboratoryOrderController::class, 'show'])->whereNumber('order');
         Route::get('/laboratory-orders/{order}/result', [PatientLaboratoryOrderController::class, 'download'])->whereNumber('order');
+        Route::post('/laboratory-orders/{order}/review', [ProviderReviewController::class, 'storeForLaboratoryOrder'])->whereNumber('order');
     });
 
 Route::middleware(['auth:sanctum', 'role:doctor'])
@@ -133,7 +150,14 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])
     ->prefix('v1/admin')
     ->group(function (): void {
         Route::get('/dashboard', AdminDashboardController::class);
-        Route::get('/users', [MonitoringController::class, 'users']);
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::post('/users', [AdminUserController::class, 'store']);
+        Route::get('/users/{user}', [AdminUserController::class, 'show'])->whereNumber('user');
+        Route::patch('/users/{user}', [AdminUserController::class, 'update'])->whereNumber('user');
+        Route::put('/profile', [AdminUserController::class, 'profile']);
+        Route::post('/profile-photo', [AdminUserController::class, 'storePhoto']);
+        Route::delete('/profile-photo', [AdminUserController::class, 'destroyPhoto']);
+        Route::get('/administrators', [AdminAccountController::class, 'index']);
         Route::get('/appointments', [MonitoringController::class, 'appointments']);
         Route::get('/reviews', [MonitoringController::class, 'reviews']);
         Route::get('/providers', [DoctorVerificationController::class, 'index']);
@@ -146,10 +170,16 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])
         Route::patch('/verifications/{verification}/documents/{document}', [ProviderVerificationReviewController::class, 'reviewDocument'])->whereNumber('verification')->whereNumber('document');
         Route::get('/city-proposals', [CityProposalController::class, 'index']);
         Route::patch('/city-proposals/{proposal}', [CityProposalController::class, 'update'])->whereNumber('proposal');
+        Route::get('/inquiries', [CustomerInquiryController::class, 'index']);
+        Route::get('/inquiries/{inquiry}', [CustomerInquiryController::class, 'show'])->whereNumber('inquiry');
+        Route::patch('/inquiries/{inquiry}', [CustomerInquiryController::class, 'update'])->whereNumber('inquiry');
+        Route::post('/inquiries/{inquiry}/replies', [CustomerInquiryController::class, 'reply'])->whereNumber('inquiry');
+        Route::get('/catalog-requests', [CatalogRequestReviewController::class, 'index']);
+        Route::get('/catalog-requests/matches', [CatalogRequestReviewController::class, 'matches']);
+        Route::patch('/catalog-requests/{catalogRequest}', [CatalogRequestReviewController::class, 'update'])->whereNumber('catalogRequest');
         Route::get('/locations', [LocationController::class, 'index']);
         Route::patch('/locations/{location}', [LocationController::class, 'update'])->whereNumber('location');
         Route::middleware('role:super_admin')->group(function (): void {
-            Route::get('/administrators', [AdminAccountController::class, 'index']);
             Route::post('/administrators', [AdminAccountController::class, 'store']);
             Route::patch('/administrators/{admin}', [AdminAccountController::class, 'update'])->whereNumber('admin');
         });

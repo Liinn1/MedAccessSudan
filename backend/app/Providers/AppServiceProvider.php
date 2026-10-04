@@ -7,6 +7,7 @@ use App\Models\DoctorProfile;
 use App\Models\LaboratoryOrder;
 use App\Models\LaboratoryProfile;
 use App\Models\ProviderVerification;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -31,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
             'doctor_profile' => DoctorProfile::class,
             'laboratory_profile' => LaboratoryProfile::class,
             'provider_verification' => ProviderVerification::class,
+            'user' => User::class,
         ]);
     }
 }

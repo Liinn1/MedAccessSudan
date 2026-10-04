@@ -23,6 +23,7 @@ import { PatientLaboratoryResultsPage } from './pages/patient/PatientLaboratoryR
 import { SignUpModalProvider } from './contexts/SignUpModalContext'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
+import { SetupPasswordPage } from './pages/auth/SetupPasswordPage'
 import { PatientProfilePage } from './pages/patient/PatientProfilePage'
 import { DoctorProfileManagementPage } from './pages/doctor/DoctorProfileManagementPage'
 import { DoctorAvailabilityPage } from './pages/doctor/DoctorAvailabilityPage'
@@ -60,6 +61,7 @@ function App() {
       <Route path="/patient/home" element={<PatientHomePage />} />
       <Route path="/patient/laboratory" element={<PatientLaboratoryPage />} />
       <Route path="/patient/laboratory/orders/:orderId" element={<PatientLaboratoryOrderPage />} />
+      <Route path="/patient/laboratory/orders/:orderId/review" element={<PatientReviewPage provider="laboratory" />} />
       <Route path="/patient/lab-results" element={<PatientLaboratoryResultsPage />} />
       <Route path="/patient/home-visits" element={<HomeVisitPage />} />
       <Route path="/patient/doctors/search" element={<FindDoctorPage />} />
@@ -76,8 +78,17 @@ function App() {
       <Route path="/doctor/availability" element={<DoctorAvailabilityPage />} />
       <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
       <Route path="/patient/profile" element={<PatientProfilePage />} />
-      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin" element={<AdminDashboardPage />}>
+        <Route index element={<Navigate replace to="dashboard" />} />
+        <Route path="dashboard" element={<></>} />
+        <Route path="account-management" element={<></>} />
+        <Route path="provider-verification" element={<></>} />
+        <Route path="customer-queries" element={<></>} />
+        <Route path="requests" element={<></>} />
+        <Route path="profile" element={<></>} />
+      </Route>
+      <Route path="/setup-password" element={<SetupPasswordPage />} />
       <Route path="*" element={<Navigate replace to="/" />} />
     </Routes></SignUpModalProvider>
   )

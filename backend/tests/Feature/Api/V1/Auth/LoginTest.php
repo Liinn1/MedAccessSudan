@@ -49,7 +49,7 @@ class LoginTest extends TestCase
             ->with([
                 'email' => 'patient@example.com',
                 'password' => 'secure-password',
-            ])
+            ], false)
             ->andReturnTrue();
         Auth::shouldReceive('user')->once()->andReturn($user);
 
@@ -149,7 +149,7 @@ class LoginTest extends TestCase
 
         $response = (new LoginController)($request);
 
-        $this->assertSame(422, $response->getStatusCode());
-        $this->assertSame('INVALID_CREDENTIALS', $response->getData(true)['code']);
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame('ACCOUNT_SUSPENDED', $response->getData(true)['code']);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Laboratory;
 use App\Http\Controllers\Controller;
 use App\Models\LabTest;
 use App\Models\LabTestCategory;
+use App\Support\LabTestQuery;
 use App\Support\LaboratoryAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,21 +18,16 @@ class CatalogController extends Controller
         $search = trim((string) $request->query('q', ''));
         $categoryId = $request->integer('category_id') ?: null;
 
-        $categories = LabTestCategory::query()->orderBy('sort_order')->get(['id', 'slug', 'name_en', 'name_ar']);
+        $categories = LabTestCategory::query()
+            ->whereHas('tests', fn ($query) => $query->where('is_active', true))
+            ->orderBy('sort_order')
+            ->get(['id', 'slug', 'name_en', 'name_ar']);
         $offerings = $profile->offerings()->get()->keyBy('lab_test_id');
 
         $tests = LabTest::query()
             ->where('is_active', true)
             ->when($categoryId, fn ($query) => $query->where('lab_test_category_id', $categoryId))
-            ->when($search !== '', function ($query) use ($search) {
-                $like = '%'.$search.'%';
-                $query->where(function ($inner) use ($like) {
-                    $inner->where('name_en', 'like', $like)
-                        ->orWhere('name_ar', 'like', $like)
-                        ->orWhere('short_name', 'like', $like)
-                        ->orWhere('slug', 'like', $like);
-                });
-            })
+            ->when($search !== '', fn ($query) => LabTestQuery::matchesSearch($query, $search))
             ->orderBy('name_en')
             ->get();
 
@@ -51,6 +47,7 @@ class CatalogController extends Controller
                         'name_en' => $test->name_en,
                         'name_ar' => $test->name_ar,
                         'short_name' => $test->short_name,
+                        'specimen_type' => $test->specimen_type,
                         'offering' => $offering ? [
                             'id' => $offering->id,
                             'price' => $offering->price,
@@ -61,7 +58,7 @@ class CatalogController extends Controller
                     ];
                 })->values()->all(),
             ];
-        })->filter(fn (array $category) => $category['tests'] !== [] || $search === '')->values()->all();
+        })->filter(fn (array $category) => $category['tests'] !== [])->values()->all();
 
         return response()->json([
             'data' => [

@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient'
 import type { AuthenticatedUser } from './authService'
 import type { ServicePayment } from './paymentTypes'
+import type { ProviderReview } from './providerReviewService'
 
 export type LaboratoryOrderStatus = 'requested' | 'sample_collected' | 'in_progress' | 'result_ready'
+export type LaboratoryCollectionMethod = 'at_lab' | 'home_collection'
 
 export interface NamedOption {
   id?: number
@@ -24,6 +26,7 @@ export interface CatalogTest {
   name_en: string
   name_ar: string
   short_name: string | null
+  specimen_type?: string | null
   offering: LaboratoryOfferingConfig | null
 }
 
@@ -60,6 +63,9 @@ export interface LaboratoryMatch {
   items: LaboratoryMatchItem[]
   total: string
   currency: string
+  supports_home_collection?: boolean
+  average_rating: number
+  review_count: number
 }
 
 export interface PatientLaboratoryDiscovery {
@@ -93,6 +99,16 @@ export interface LaboratoryOrder {
   reference: string
   status: LaboratoryOrderStatus
   requested_at: string
+  collection_method?: LaboratoryCollectionMethod
+  collection_starts_at?: string | null
+  collection?: {
+    location?: NamedOption | null
+    area?: string | null
+    address?: string | null
+    notes?: string | null
+    latitude?: number | string | null
+    longitude?: number | string | null
+  } | null
   laboratory_name: string
   laboratory_profile_id: number
   location?: NamedOption | null
@@ -104,6 +120,8 @@ export interface LaboratoryOrder {
   events?: Array<{ id: number; from_status: string | null; to_status: string; created_at: string }>
   result?: { id: number; uploaded_at: string; mime_type: string; original_filename: string; size_bytes: number } | null
   payment?: ServicePayment | null
+  review?: ProviderReview | null
+  can_review?: boolean
 }
 
 export interface LaboratoryProfilePayload {
@@ -114,6 +132,7 @@ export interface LaboratoryProfilePayload {
   profile_image_url: string | null
   location: NamedOption | null
   phone: string | null
+  supports_home_collection?: boolean
 }
 
 export interface LaboratoryActivityDay {
@@ -172,9 +191,10 @@ export async function requestCatalogAddition(input: { suggested_name: string; su
   return apiClient.post('/api/v1/laboratory/catalog-requests', input)
 }
 
-export async function getLaboratoryOrders(status = 'all', query = '', signal?: AbortSignal) {
+export async function getLaboratoryOrders(status = 'all', query = '', signal?: AbortSignal, collectionMethod: LaboratoryCollectionMethod | 'all' = 'all') {
   const params = new URLSearchParams()
   if (status && status !== 'all') params.set('status', status)
+  if (collectionMethod && collectionMethod !== 'all') params.set('collection_method', collectionMethod)
   if (query) params.set('q', query)
   const suffix = params.toString() ? `?${params}` : ''
   return (await apiClient.get<{ data: LaboratoryOrder[] }>(`/api/v1/laboratory/orders${suffix}`, signal)).data
@@ -216,7 +236,7 @@ export async function getLaboratoryProfile(signal?: AbortSignal) {
   return (await apiClient.get<{ data: { user: AuthenticatedUser; profile: LaboratoryProfilePayload } }>('/api/v1/laboratory/profile', signal)).data
 }
 
-export async function updateLaboratoryProfile(input: { name: string; phone: string; address: string; location: string }) {
+export async function updateLaboratoryProfile(input: { name: string; phone: string; address: string; location: string; supports_home_collection?: boolean }) {
   return (await apiClient.put<{ data: { user: AuthenticatedUser; profile: LaboratoryProfilePayload } }>('/api/v1/laboratory/profile', input)).data
 }
 
@@ -237,11 +257,12 @@ export function formatLaboratoryPrice(price: string | number | null | undefined,
   return `${formatted} ${currency || 'SDG'}`
 }
 
-export async function getPatientLaboratoryDiscovery(input: { query?: string; categoryId?: number; locationId?: number; labTestIds?: number[] } = {}, signal?: AbortSignal) {
+export async function getPatientLaboratoryDiscovery(input: { query?: string; categoryId?: number; locationId?: number; labTestIds?: number[]; collectionMethod?: LaboratoryCollectionMethod } = {}, signal?: AbortSignal) {
   const params = new URLSearchParams()
   if (input.query) params.set('q', input.query)
   if (input.categoryId) params.set('category_id', String(input.categoryId))
   if (input.locationId) params.set('location_id', String(input.locationId))
+  if (input.collectionMethod) params.set('collection_method', input.collectionMethod)
   input.labTestIds?.forEach((id) => params.append('lab_test_ids[]', String(id)))
   const suffix = params.toString() ? `?${params}` : ''
   return (await apiClient.get<{ data: PatientLaboratoryDiscovery }>(`/api/v1/patient/laboratory-offerings${suffix}`, signal)).data
@@ -255,10 +276,32 @@ export async function getPatientLaboratoryOrder(id: number, signal?: AbortSignal
   return (await apiClient.get<{ data: LaboratoryOrder }>(`/api/v1/patient/laboratory-orders/${id}`, signal)).data
 }
 
-export async function createPatientLaboratoryOrder(laboratoryProfileId: number, labTestIds: number[], paymentMethod: 'card' | 'pay_later') {
+export interface LaboratoryCollectionPayload {
+  collection_method: LaboratoryCollectionMethod
+  collection_location_id?: number
+  collection_area?: string
+  collection_address?: string
+  collection_notes?: string | null
+  collection_starts_at?: string
+  collection_latitude?: number
+  collection_longitude?: number
+}
+
+export function isHomeCollection(order: Pick<LaboratoryOrder, 'collection_method'>): boolean {
+  return (order.collection_method ?? 'at_lab') === 'home_collection'
+}
+
+export function laboratoryCollectionAddress(order: LaboratoryOrder, arabic: boolean): string {
+  if (!isHomeCollection(order) || !order.collection) return ''
+  const city = order.collection.location ? (arabic ? order.collection.location.name_ar : order.collection.location.name_en) : ''
+  return [city, order.collection.area, order.collection.address].filter(Boolean).join(' — ')
+}
+
+export async function createPatientLaboratoryOrder(laboratoryProfileId: number, labTestIds: number[], paymentMethod: 'card' | 'pay_later', collection?: LaboratoryCollectionPayload) {
   return (await apiClient.post<{ data: LaboratoryOrder }>('/api/v1/patient/laboratory-orders', {
     laboratory_profile_id: laboratoryProfileId,
     lab_test_ids: labTestIds,
     payment_method: paymentMethod,
+    ...collection,
   })).data
 }

@@ -28,23 +28,9 @@ class DoctorVerificationController extends Controller
         $status = DoctorVerificationStatus::fromAdminInput($request->validated('status'));
 
         if ($status === DoctorVerificationStatus::Verified) {
-            $doctor->load(['location', 'specialization', 'cityProposal']);
-
-            if (! $doctor->location_id || ! $doctor->location?->is_active) {
-                throw ValidationException::withMessages(['status' => 'Resolve the provider city before verification.']);
-            }
-
-            if (! $doctor->specialization?->is_active) {
-                throw ValidationException::withMessages(['status' => 'The provider specialization must be active before verification.']);
-            }
-
-            if (! $doctor->profile_image_path) {
-                throw ValidationException::withMessages(['status' => 'A provider profile picture is required before verification.']);
-            }
-
-            if ($doctor->cityProposal?->status?->value === 'pending') {
-                throw ValidationException::withMessages(['status' => 'Resolve the pending city proposal before verification.']);
-            }
+            throw ValidationException::withMessages([
+                'status' => 'Approve a submitted verification request instead of setting verified directly.',
+            ]);
         }
 
         $this->verifications->syncLegacyStatus($doctor, $status, $request->user());

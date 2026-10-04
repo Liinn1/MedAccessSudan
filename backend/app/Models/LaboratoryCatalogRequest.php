@@ -12,7 +12,7 @@ class LaboratoryCatalogRequest extends Model
 
     protected function casts(): array
     {
-        return ['status' => LaboratoryCatalogRequestStatus::class];
+        return ['status' => LaboratoryCatalogRequestStatus::class, 'reviewed_at' => 'datetime'];
     }
 
     public function laboratoryProfile(): BelongsTo
@@ -23,5 +23,15 @@ class LaboratoryCatalogRequest extends Model
     public function suggestedCategory(): BelongsTo
     {
         return $this->belongsTo(LabTestCategory::class, 'suggested_lab_test_category_id');
+    }
+
+    public function resolvedTest(): BelongsTo
+    {
+        return $this->belongsTo(LabTest::class, 'resolved_lab_test_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by_user_id');
     }
 }

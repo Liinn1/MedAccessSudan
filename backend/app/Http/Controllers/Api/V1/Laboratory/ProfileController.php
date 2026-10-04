@@ -7,6 +7,7 @@ use App\Http\Requests\Laboratory\UpdateLaboratoryProfileRequest;
 use App\Http\Resources\AuthenticatedUserResource;
 use App\Models\Location;
 use App\Services\ProfilePhotoService;
+use App\Services\ProviderVerificationService;
 use App\Support\LaboratoryAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,12 +15,16 @@ use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
+    public function __construct(private readonly ProviderVerificationService $verifications) {}
+
     public function show(Request $request): JsonResponse
     {
         $profile = LaboratoryAccess::profile($request->user());
-        $profile->load('location:id,code,name_en,name_ar');
+        $this->verifications->ensure($profile);
+        $profile->refresh()->load('location:id,code,name_en,name_ar');
 
-        return response()->json(['data' => $this->payload($request, $profile)]);
+        return response()->json(['data' => $this->payload($request, $profile)])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     public function update(UpdateLaboratoryProfileRequest $request): JsonResponse
@@ -41,6 +46,7 @@ class ProfileController extends Controller
                 'name' => $data['name'],
                 'address' => $data['address'],
                 'location_id' => $locationId,
+                'supports_home_collection' => (bool) ($data['supports_home_collection'] ?? $profile->supports_home_collection),
             ]);
         });
 
@@ -65,6 +71,7 @@ class ProfileController extends Controller
                 'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path ?? $request->user()->profile_image_path),
                 'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                 'phone' => $request->user()->fresh()->phone,
+                'supports_home_collection' => (bool) $profile->supports_home_collection,
             ],
         ];
     }

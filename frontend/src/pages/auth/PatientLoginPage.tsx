@@ -2,13 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
+import { ForgotPasswordFlow, RememberMeRow } from '../../components/auth/ForgotPasswordFlow'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { LoadingState } from '../../components/feedback/LoadingState'
 import { InputField } from '../../components/forms/InputField'
 import { EyeIcon, LockIcon, MailIcon } from '../../components/icons/AuthIcons'
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { useSignUpModal } from '../../contexts/signUpModal'
-import { ApiError } from '../../services/apiClient'
+import { ApiError, consumeAuthNotice, getApiErrorCode, isAbortError } from '../../services/apiClient'
 import { getCurrentUser, login, resendEmailVerification } from '../../services/authService'
 import { isValidEmail } from '../../utils/authValidation'
 import { getAuthenticatedDestination } from '../../utils/navigation'
@@ -22,11 +23,6 @@ interface LoginRouteState {
   registrationSuccess?: boolean
   registrationRole?: 'patient' | 'doctor'
   verificationEmail?: string
-}
-
-function getApiErrorCode(error: ApiError): string | undefined {
-  if (typeof error.details !== 'object' || error.details === null || !('code' in error.details)) return undefined
-  return typeof error.details.code === 'string' ? error.details.code : undefined
 }
 
 export function PatientLoginPage() {
@@ -48,10 +44,15 @@ export function PatientLoginPage() {
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [errors, setErrors] = useState<LoginFormErrors>({})
-  const [statusMessageKey, setStatusMessageKey] = useState(() => searchParams.get('verified') === '1' ? 'auth.login.emailVerified' : '')
+  const [statusMessageKey, setStatusMessageKey] = useState(() => {
+    if (consumeAuthNotice() === 'suspended') return 'auth.login.errors.suspended'
+    return searchParams.get('verified') === '1' ? 'auth.login.emailVerified' : ''
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isResending, setIsResending] = useState(false)
+  const [remember, setRemember] = useState(false)
+  const [forgot, setForgot] = useState(false)
 
   useEffect(() => {
     if (!registrationRole) return
@@ -71,8 +72,10 @@ export function PatientLoginPage() {
         navigate(destination, { replace: true })
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        if (!(error instanceof ApiError) || error.status !== 401) {
+        if (isAbortError(error)) return
+        if (error instanceof ApiError && getApiErrorCode(error) === 'ACCOUNT_SUSPENDED') {
+          setStatusMessageKey('auth.login.errors.suspended')
+        } else if (!(error instanceof ApiError) || error.status !== 401) {
           setStatusMessageKey('auth.login.errors.serviceUnavailable')
         }
         setIsCheckingSession(false)
@@ -101,7 +104,7 @@ export function PatientLoginPage() {
     setIsSubmitting(true)
 
     try {
-      const user = await login(identifier.trim(), password)
+      const user = await login(identifier.trim(), password, remember)
       setPassword('')
       const destination = getAuthenticatedDestination(user.role, location.search)
       if (!destination) {
@@ -117,6 +120,8 @@ export function PatientLoginPage() {
           setStatusMessageKey('auth.login.errors.invalidCredentials')
         } else if (errorCode === 'TOO_MANY_ATTEMPTS') {
           setStatusMessageKey('auth.login.errors.tooManyAttempts')
+        } else if (errorCode === 'ACCOUNT_SUSPENDED') {
+          setStatusMessageKey('auth.login.errors.suspended')
         } else if (errorCode === 'EMAIL_UNVERIFIED') {
           const maybeEmail = identifier.trim()
           if (isValidEmail(maybeEmail)) {
@@ -140,8 +145,10 @@ export function PatientLoginPage() {
 
   return (
     <PublicLayout>
-      <AuthShell title={t('auth.login.welcomeBack')} subtitle={t('auth.login.patientTagline')}>
-        {isResolvingSession ? (
+      <AuthShell title={forgot ? t('auth.forgot.title') : t('auth.login.welcomeBack')} subtitle={forgot ? t('auth.forgot.subtitle') : t('auth.login.patientTagline')}>
+        {forgot ? (
+          <ForgotPasswordFlow loginPath="/login" onCancel={() => setForgot(false)} />
+        ) : isResolvingSession ? (
           <LoadingState section message={t(isSubmitting ? 'auth.login.submitting' : 'auth.login.checkingSession')} />
         ) : (
           <form className="flex flex-col" noValidate onSubmit={handleSubmit}>
@@ -203,13 +210,7 @@ export function PatientLoginPage() {
             />
           </div>
 
-          <button
-            className="mt-2 min-h-11 self-end rounded-lg px-1 text-sm font-semibold text-[var(--color-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] rtl:self-start"
-            onClick={() => setStatusMessageKey('auth.login.recoveryPending')}
-            type="button"
-          >
-            {t('auth.login.forgotPassword')}
-          </button>
+          <RememberMeRow checked={remember} onForgot={() => setForgot(true)} onToggle={setRemember} />
 
           <div className="mt-1" aria-live="polite">
             {statusMessageKey && (

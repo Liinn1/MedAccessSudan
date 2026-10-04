@@ -4,10 +4,12 @@ import customerCareImage from '../../assets/public-home/customer-care.jpg'
 import { SupportIcon } from '../icons/PatientHomeIcons'
 import { BotanicalDecoration } from './BotanicalDecoration'
 import { Reveal } from './Reveal'
+import { ApiError } from '../../services/apiClient'
+import { submitPublicContact } from '../../services/adminService'
 
 type ContactFieldName = 'name' | 'email' | 'subject' | 'message'
 type ContactErrors = Record<ContactFieldName, boolean>
-type ContactMessage = 'validation' | 'unavailable' | ''
+type ContactMessage = 'validation' | 'unavailable' | 'success' | ''
 
 const contactLimits = {
   name: 100,
@@ -19,11 +21,6 @@ const contactLimits = {
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const formStatusId = 'contact-form-status'
 
-/**
- * Validates contact details for immediate feedback. No endpoint is configured,
- * so valid submissions remain local and report that delivery is unavailable.
- * A future Laravel endpoint must repeat validation and enforce request limits.
- */
 export function ContactSection() {
   const { t } = useTranslation()
   const [errors, setErrors] = useState<ContactErrors>({
@@ -33,10 +30,12 @@ export function ContactSection() {
     message: false,
   })
   const [messageKey, setMessageKey] = useState<ContactMessage>('')
+  const [busy, setBusy] = useState(false)
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const values = new FormData(event.currentTarget)
+    const form = event.currentTarget
+    const values = new FormData(form)
     const name = String(values.get('name') ?? '').trim()
     const email = String(values.get('email') ?? '').trim()
     const subject = String(values.get('subject') ?? '').trim()
@@ -50,10 +49,25 @@ export function ContactSection() {
     const hasErrors = Object.values(nextErrors).some(Boolean)
 
     setErrors(nextErrors)
-    setMessageKey(hasErrors ? 'validation' : 'unavailable')
+    if (hasErrors) {
+      setMessageKey('validation')
+      return
+    }
+
+    setBusy(true)
+    try {
+      await submitPublicContact({ name, email, subject, message })
+      setMessageKey('success')
+      form.reset()
+    } catch (error) {
+      setMessageKey(error instanceof ApiError && error.status === 422 ? 'validation' : 'unavailable')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const hasErrors = Object.values(errors).some(Boolean)
+  const tone = messageKey === 'success' ? 'text-emerald-700' : hasErrors || messageKey === 'unavailable' ? 'text-red-700' : 'text-amber-700'
 
   return (
     <section className="relative bg-[#fffaf2] pb-18 pt-16" id="contact">
@@ -78,7 +92,7 @@ export function ContactSection() {
               </p>
             </div>
 
-            <form noValidate onSubmit={submit}>
+            <form noValidate onSubmit={(event) => { void submit(event) }}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <ContactField
                   autoComplete="name"
@@ -114,14 +128,15 @@ export function ContactSection() {
                 />
               </label>
               <button
-                className="mt-5 min-h-12 w-full rounded-xl bg-[var(--color-primary)] px-6 font-extrabold text-white shadow-sm"
+                className="mt-5 min-h-12 w-full rounded-xl bg-[var(--color-primary)] px-6 font-extrabold text-white shadow-sm disabled:opacity-60"
+                disabled={busy}
                 type="submit"
               >
-                {t('publicHome.contact.send')}
+                {busy ? t('publicHome.contact.sending') : t('publicHome.contact.send')}
               </button>
               <p
                 aria-live="polite"
-                className={`mt-3 min-h-5 text-sm font-semibold ${hasErrors ? 'text-red-700' : 'text-amber-700'}`}
+                className={`mt-3 min-h-5 text-sm font-semibold ${tone}`}
                 id={formStatusId}
               >
                 {messageKey ? t(`publicHome.contact.${messageKey}`) : ''}

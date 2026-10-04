@@ -25,9 +25,9 @@ enum DoctorVerificationStatus: string
     public static function fromAdminInput(string $value): self
     {
         return match ($value) {
-            'pending' => self::PendingDocuments,
+            '', 'pending', 'not_submitted' => self::PendingDocuments,
             'rejected' => self::ActionRequired,
-            default => self::from($value),
+            default => self::tryFrom($value) ?? self::PendingDocuments,
         };
     }
 

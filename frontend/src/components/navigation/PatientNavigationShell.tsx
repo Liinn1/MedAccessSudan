@@ -29,9 +29,9 @@ export function PatientNavigationShell({ isLoggingOut, onAppointments, onDashboa
       isLoggingOut={isLoggingOut}
       items={[
         { key: 'dashboard', active: current === 'dashboard', icon: HomeIcon, label: t('patient.navigation.dashboard'), onSelect: onDashboard },
+        { key: 'appointments', active: current === 'appointments', icon: CalendarIcon, label: t('patient.navigation.appointments'), onSelect: onAppointments },
         { key: 'book', active: current === 'book', icon: StethoscopeIcon, label: t('patient.navigation.book'), onSelect: () => navigate('/patient/doctors/search') },
         { key: 'home-visit', active: current === 'homeVisit', icon: VisitIcon, label: t('patient.navigation.homeVisit'), onSelect: () => navigate('/patient/home-visits') },
-        { key: 'appointments', active: current === 'appointments', icon: CalendarIcon, label: t('patient.navigation.appointments'), onSelect: onAppointments },
         { key: 'laboratory', active: current === 'laboratory', icon: LaboratoryIcon, label: t('patient.navigation.laboratory'), onSelect: () => navigate('/patient/laboratory') },
         { key: 'profile', active: current === 'profile', icon: ProfileIcon, label: t('patient.navigation.profile'), onSelect: onProfile },
         { key: 'public-home', active: false, icon: GlobeIcon, label: t('patient.navigation.publicHome'), onSelect: () => navigate('/') },

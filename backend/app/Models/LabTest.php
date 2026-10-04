@@ -12,7 +12,10 @@ class LabTest extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'search_aliases' => 'array',
+        ];
     }
 
     public function category(): BelongsTo

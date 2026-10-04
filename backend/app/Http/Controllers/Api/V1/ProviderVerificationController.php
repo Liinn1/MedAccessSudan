@@ -18,7 +18,8 @@ class ProviderVerificationController extends Controller
     {
         $verification = $this->verifications->forUser($request->user());
 
-        return response()->json(['data' => $this->verifications->snapshot($verification)]);
+        return response()->json(['data' => $this->verifications->snapshot($verification)])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     public function upload(UploadVerificationDocumentRequest $request): JsonResponse

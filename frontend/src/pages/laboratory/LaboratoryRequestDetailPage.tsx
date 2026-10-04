@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
+import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
+import { LocationMapPreview } from '../../components/patient/LocationMapPreview'
+import { LocationIcon } from '../../components/icons/PatientHomeIcons'
+import { CollectionMethodBadge } from '../../components/laboratory/CollectionMethodBadge'
 import { LaboratoryStatusBadge } from '../../components/laboratory/LaboratoryStatusBadge'
 import { LaboratoryLayout } from '../../layouts/LaboratoryLayout'
 import { ApiError } from '../../services/apiClient'
-import { downloadLaboratoryResult, getLaboratoryOrder, openLaboratoryResult, transitionLaboratoryOrder, uploadLaboratoryResult, type LaboratoryOrder } from '../../services/laboratoryService'
+import { downloadLaboratoryResult, getLaboratoryOrder, isHomeCollection, laboratoryCollectionAddress, openLaboratoryResult, transitionLaboratoryOrder, uploadLaboratoryResult, type LaboratoryOrder } from '../../services/laboratoryService'
+import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 
 export function LaboratoryRequestDetailPage() {
   const { i18n, t } = useTranslation()
@@ -55,7 +60,7 @@ export function LaboratoryRequestDetailPage() {
       <button className="font-bold text-[var(--color-primary)]" onClick={() => navigate('/laboratory/requests')} type="button">{t('laboratory.detail.back')}</button>
       <header className="mt-4 rounded-3xl border border-teal-100 bg-gradient-to-r from-[var(--color-primary-surface)] to-white p-6 rtl:bg-gradient-to-l">
         <p className="font-bold text-[var(--color-primary)]">{t('laboratory.detail.eyebrow')}</p>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><h1 className="text-3xl font-extrabold">{t('laboratory.detail.title')}</h1><LaboratoryStatusBadge status={order.status} /></div>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><h1 className="text-3xl font-extrabold">{t('laboratory.detail.title')}</h1><div className="flex flex-wrap items-center gap-2"><CollectionMethodBadge method={order.collection_method} /><LaboratoryStatusBadge status={order.status} /></div></div>
       </header>
       {message && <p className="mt-4 font-semibold text-[var(--color-primary)]">{message}</p>}
       <dl className="mt-6 grid gap-4 rounded-3xl border border-[var(--color-border)] bg-white p-6 sm:grid-cols-2">
@@ -63,7 +68,24 @@ export function LaboratoryRequestDetailPage() {
         <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.date')}</dt><dd className="mt-1 font-semibold">{new Date(order.requested_at).toLocaleString(arabic ? 'ar-SD' : 'en')}</dd></div>
         <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.patient')}</dt><dd className="mt-1 font-semibold">{order.patient?.name}</dd></div>
         <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.phone')}</dt><dd className="direction-ltr mt-1 text-start font-semibold">{order.patient?.phone}</dd></div>
+        <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collection')}</dt><dd className="mt-1"><CollectionMethodBadge method={order.collection_method} /></dd></div>
+        {isHomeCollection(order) ? <>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionWhen')}</dt><dd className="mt-1 font-semibold">{order.collection_starts_at ? new Intl.DateTimeFormat(arabic ? 'ar-SD' : 'en', { dateStyle: 'medium', timeStyle: 'short', timeZone: SUDAN_TIME_ZONE }).format(new Date(order.collection_starts_at)) : '—'}</dd></div>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionCity')}</dt><dd className="mt-1 font-semibold">{order.collection?.location ? (arabic ? order.collection.location.name_ar : order.collection.location.name_en) : '—'}</dd></div>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionArea')}</dt><dd className="mt-1 font-semibold">{order.collection?.area || '—'}</dd></div>
+          <div className="sm:col-span-2"><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionAddress')}</dt><dd className="mt-1 font-semibold">{order.collection?.address || laboratoryCollectionAddress(order, arabic) || '—'}</dd></div>
+          {order.collection?.notes && <div className="sm:col-span-2"><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionNotes')}</dt><dd className="mt-1 font-semibold">{order.collection.notes}</dd></div>}
+          {order.collection?.latitude != null && order.collection?.longitude != null && (
+            <div className="sm:col-span-2">
+              <LocationMapPreview className="mt-1" latitude={Number(order.collection.latitude)} longitude={Number(order.collection.longitude)} />
+              <a className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-primary)] bg-white px-4 py-2 font-bold text-[var(--color-primary)]" href={`https://www.google.com/maps?q=${encodeURIComponent(`${order.collection.latitude},${order.collection.longitude}`)}`} rel="noreferrer" target="_blank">
+                <LocationIcon className="size-5" />{t('doctor.appointments.openLocation')}
+              </a>
+            </div>
+          )}
+        </> : null}
       </dl>
+      {order.payment && <div className="mt-4"><BookingPaymentSummary payment={order.payment} /></div>}
       <section className="mt-4 rounded-3xl border border-[var(--color-border)] bg-white p-6">
         <h2 className="font-extrabold">{t('laboratory.detail.tests')}</h2>
         <ul className="mt-3 space-y-2">{(order.items ?? []).map((item) => <li className="flex justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3" key={item.id}><span><p className="font-bold">{arabic ? item.name_ar : item.name_en}</p><p className="text-sm text-[var(--color-text-secondary)]">{t('laboratory.catalog.hours', { count: item.estimated_turnaround_hours })}</p></span><span className="font-semibold">{item.price} {item.currency}</span></li>)}</ul>

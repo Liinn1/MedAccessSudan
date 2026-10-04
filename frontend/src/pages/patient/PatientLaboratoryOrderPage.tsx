@@ -8,7 +8,8 @@ import { LoadingState } from '../../components/feedback/LoadingState'
 import { LaboratoryStatusBadge } from '../../components/laboratory/LaboratoryStatusBadge'
 import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
-import { downloadLaboratoryResult, formatLaboratoryPrice, getPatientLaboratoryOrder, openLaboratoryResult, type LaboratoryOrder, type LaboratoryOrderStatus } from '../../services/laboratoryService'
+import { downloadLaboratoryResult, formatLaboratoryPrice, getPatientLaboratoryOrder, isHomeCollection, laboratoryCollectionAddress, openLaboratoryResult, type LaboratoryOrder, type LaboratoryOrderStatus } from '../../services/laboratoryService'
+import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 
 const timeline: LaboratoryOrderStatus[] = ['requested', 'sample_collected', 'in_progress', 'result_ready']
 
@@ -42,6 +43,9 @@ export function PatientLaboratoryOrderPage() {
 
   const currentIndex = timeline.indexOf(order.status)
   const location = order.location ? (arabic ? order.location.name_ar : order.location.name_en) : ''
+  const home = isHomeCollection(order)
+  const scheduled = Boolean(order.collection_starts_at)
+  const when = scheduled && order.collection_starts_at ? new Date(order.collection_starts_at) : new Date(order.requested_at)
   const imageResult = order.result?.mime_type.startsWith('image/')
 
   return <PatientLayout activeSection="appointments">
@@ -54,8 +58,10 @@ export function PatientLaboratoryOrderPage() {
       <BookingPanel>
         <dl className="grid gap-4 sm:grid-cols-2">
           <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('patient.laboratory.laboratory')}</dt><dd className="mt-1 font-extrabold">{order.laboratory_name}</dd></div>
-          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('patient.laboratory.location')}</dt><dd className="mt-1 font-semibold">{[location, order.address].filter(Boolean).join(' — ') || '—'}</dd></div>
-          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('patient.laboratory.date')}</dt><dd className="mt-1 font-semibold">{new Date(order.requested_at).toLocaleString(locale)}</dd></div>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('patient.laboratory.collection')}</dt><dd className="mt-1 font-semibold">{t(`patient.laboratory.collectionMethods.${order.collection_method ?? 'at_lab'}`)}</dd></div>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{home ? t('patient.laboratory.collectionAddress') : t('patient.laboratory.location')}</dt><dd className="mt-1 font-semibold">{home ? laboratoryCollectionAddress(order, arabic) || '—' : [location, order.address].filter(Boolean).join(' — ') || '—'}</dd></div>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{scheduled ? t('patient.laboratory.collectionDate') : t('patient.laboratory.date')}</dt><dd className="mt-1 font-semibold">{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: scheduled ? 'short' : undefined, timeZone: SUDAN_TIME_ZONE }).format(when)}</dd></div>
+          {home && order.collection?.notes && <div className="sm:col-span-2"><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('patient.laboratory.collectionNotes')}</dt><dd className="mt-1 font-semibold">{order.collection.notes}</dd></div>}
         </dl>
         <ol className="mt-6 flex flex-wrap gap-2">
           {timeline.map((status, index) => {
@@ -75,6 +81,7 @@ export function PatientLaboratoryOrderPage() {
           <button className="rounded-full bg-[var(--color-primary)] px-5 py-3 font-bold text-white" onClick={() => openLaboratoryResult(`/api/v1/patient/laboratory-orders/${order.id}/result`)} type="button">{imageResult ? t('patient.laboratory.viewImage') : t('patient.laboratory.view')}</button>
           <button className="rounded-full border border-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary)]" onClick={() => downloadLaboratoryResult(`/api/v1/patient/laboratory-orders/${order.id}/result`)} type="button">{t('patient.laboratory.download')}</button>
           <button className="rounded-full border border-[var(--color-border)] px-5 py-3 font-bold" onClick={() => navigate('/patient/lab-results')} type="button">{t('patient.laboratory.results')}</button>
+          {(order.review || order.can_review) && <button className="rounded-full border border-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary)]" onClick={() => navigate(`/patient/laboratory/orders/${order.id}/review`)} type="button">{t(order.review ? 'patient.appointments.viewReview' : 'patient.appointments.rateLaboratory')}</button>}
         </div>}
       </BookingPanel>
     </div>
