@@ -15,11 +15,13 @@ class LaboratoryProfile extends Model
 {
     use HasProfessionalVerification;
     use HasProviderRatings;
+
     protected $guarded = [];
 
     protected function casts(): array
     {
         return [
+            'supports_at_lab' => 'boolean',
             'supports_home_collection' => 'boolean',
         ];
     }

@@ -1,13 +1,15 @@
 import { apiClient } from './apiClient'
 import type { HomeVisitDetails } from './patientAppointmentService'
 
-export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled' | 'rejected' | 'pending'
+export type AppointmentStatus = 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
 export type AppointmentServiceType = 'clinic' | 'home_visit'
 
 export interface DoctorAppointment {
   id: number
   starts_at: string
   ends_at: string
+  started_at: string | null
+  completed_at: string | null
   status: AppointmentStatus
   service_type: AppointmentServiceType
   notes: string | null
@@ -22,5 +24,10 @@ export async function getDoctorAppointments(signal?: AbortSignal): Promise<Docto
 
 export async function completeDoctorAppointment(id: number): Promise<DoctorAppointment> {
   const response = await apiClient.patch<{ data: DoctorAppointment }>(`/api/v1/doctor/appointments/${id}/complete`)
+  return response.data
+}
+
+export async function startDoctorAppointment(id: number): Promise<DoctorAppointment> {
+  const response = await apiClient.patch<{ data: DoctorAppointment }>(`/api/v1/doctor/appointments/${id}/start`)
   return response.data
 }

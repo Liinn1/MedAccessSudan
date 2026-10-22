@@ -15,7 +15,7 @@ class Appointment extends Model
 
     protected function casts(): array
     {
-        return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'status' => AppointmentStatus::class, 'service_type' => AppointmentServiceType::class];
+        return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'started_at' => 'datetime', 'completed_at' => 'datetime', 'status' => AppointmentStatus::class, 'service_type' => AppointmentServiceType::class];
     }
 
     public function patient(): BelongsTo

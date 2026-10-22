@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ClinicVisitFrame } from '../../components/booking/ClinicVisitFrame'
 import { BookingPanel } from '../../components/booking/BookingPanel'
@@ -82,9 +83,9 @@ function DoctorClinicSlots({ arabic, doctor, formatSlot, onContinue, selectedSlo
   selectedSlotId: string | null
   setSelectedSlotId: (id: string) => void
 }) {
-  const { t } = useTranslation()
+  const { i18n, t } = useTranslation()
   const specialization = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
-  const location = doctor.location ? (arabic ? doctor.location.name_ar : doctor.location.name_en) : ''
+  const location = localizedName(doctor.location, i18n.language)
   const biography = doctor.biography || t('patient.doctorProfile.noBiography')
   const availabilityGroups = doctor.availability.reduce<Array<{ key: string; label: string; slots: typeof doctor.availability }>>((groups, slot) => {
     const key = sudanDateKey(slot.starts_at)
@@ -113,6 +114,7 @@ function DoctorClinicSlots({ arabic, doctor, formatSlot, onContinue, selectedSlo
           <dl className="mt-6 space-y-4 rounded-2xl bg-[var(--color-background)] p-5">
             <div><dt className="text-sm font-bold text-[var(--color-text-secondary)]">{t('patient.doctorProfile.specialization')}</dt><dd className="mt-1 font-semibold">{specialization}</dd></div>
             {location && <div><dt className="text-sm font-bold text-[var(--color-text-secondary)]">{t('patient.doctorProfile.location')}</dt><dd className="mt-1 font-semibold">{location}</dd></div>}
+            {doctor.address && <div><dt className="text-sm font-bold text-[var(--color-text-secondary)]">{t('patient.doctorProfile.address')}</dt><dd className="mt-1 font-semibold">{doctor.address}</dd></div>}
             {doctor.clinic_name && <div><dt className="text-sm font-bold text-[var(--color-text-secondary)]">{t('patient.doctorProfile.clinic')}</dt><dd className="mt-1 font-semibold">{doctor.clinic_name}</dd></div>}
           </dl>
         </section>

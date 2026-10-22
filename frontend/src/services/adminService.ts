@@ -4,26 +4,15 @@ import type { AuthenticatedUser } from './authService'
 
 export interface AdminLocation extends DoctorFilterOption { id: number; is_active?: boolean }
 
-export interface CityProposal {
-  id: number
-  proposed_name: string
-  status: 'pending' | 'approved' | 'mapped' | 'rejected'
-  doctor: { id: number; name: string; email: string }
-  likely_matches: AdminLocation[]
-  created_at?: string
-}
-
 export interface AdminMetrics {
   verifications_awaiting_review: number
   inquiries_new: number
-  location_requests_pending: number
   test_requests_pending: number
   users_total: number
   pending_doctors: number
   verified_doctors: number
   verified_laboratories: number
   suspended_doctors: number
-  pending_city_proposals: number
   registered_patients: number
   registered_doctors: number
   upcoming_appointments: number
@@ -33,7 +22,7 @@ export interface AdminMetrics {
 
 export interface AdminAttentionItem {
   key: string
-  kind: 'verification' | 'inquiry' | 'location' | 'test'
+  kind: 'verification' | 'inquiry' | 'test'
   section: 'verification' | 'inquiries' | 'requests'
   id: number
   title?: string
@@ -47,7 +36,6 @@ export interface AdminAttentionItem {
 export interface AdminDashboardQueues {
   verifications: AdminAttentionItem[]
   inquiries: AdminAttentionItem[]
-  locations: AdminAttentionItem[]
   tests: AdminAttentionItem[]
 }
 
@@ -79,7 +67,7 @@ export interface MonitoredUser {
   profile_image_url?: string | null
   first_name?: string | null
   last_name?: string | null
-  doctor_profile?: { clinic_name: string | null; specialization: DoctorFilterOption | null; location: DoctorFilterOption | null } | null
+  doctor_profile?: { clinic_name: string | null; address: string | null; specialization: DoctorFilterOption | null; location: DoctorFilterOption | null } | null
   laboratory_profile?: { name: string; address: string; location: DoctorFilterOption | null } | null
 }
 
@@ -189,15 +177,6 @@ export async function inviteAdministrator(input: { name: string; email: string; 
 export async function updateAdministratorAccess(id: number, input: { is_active?: boolean }) {
   await apiClient.initializeCsrfProtection()
   return (await apiClient.patch<{ data: { admin: AdministratorAccount } }>(`/api/v1/admin/administrators/${id}`, input)).data.admin
-}
-
-export async function getCityProposals(status = 'pending', signal?: AbortSignal) {
-  return (await apiClient.get<{ data: { proposals: CityProposal[]; locations: AdminLocation[] } }>(`/api/v1/admin/city-proposals?status=${status}`, signal)).data
-}
-
-export async function resolveCityProposal(id: number, input: { action: 'approve' | 'map' | 'reject'; name_en?: string; name_ar?: string; location_id?: number }) {
-  await apiClient.initializeCsrfProtection()
-  return apiClient.patch(`/api/v1/admin/city-proposals/${id}`, input)
 }
 
 export async function getAdminLocations(signal?: AbortSignal) {

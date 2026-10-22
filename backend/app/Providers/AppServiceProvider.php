@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Appointment;
+use App\Models\CustomerInquiry;
 use App\Models\DoctorProfile;
+use App\Models\LaboratoryCatalogRequest;
 use App\Models\LaboratoryOrder;
 use App\Models\LaboratoryProfile;
 use App\Models\ProviderVerification;
@@ -28,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'appointment' => Appointment::class,
+            'customer_inquiry' => CustomerInquiry::class,
+            'laboratory_catalog_request' => LaboratoryCatalogRequest::class,
             'laboratory_order' => LaboratoryOrder::class,
             'doctor_profile' => DoctorProfile::class,
             'laboratory_profile' => LaboratoryProfile::class,

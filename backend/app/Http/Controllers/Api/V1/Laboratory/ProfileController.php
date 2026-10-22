@@ -21,7 +21,7 @@ class ProfileController extends Controller
     {
         $profile = LaboratoryAccess::profile($request->user());
         $this->verifications->ensure($profile);
-        $profile->refresh()->load('location:id,code,name_en,name_ar');
+        $profile->refresh()->load(['location:id,code,name_en,name_ar']);
 
         return response()->json(['data' => $this->payload($request, $profile)])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -32,8 +32,8 @@ class ProfileController extends Controller
         $user = $request->user();
         $profile = LaboratoryAccess::profile($user);
         $data = $request->validated();
-        $locationId = ! empty($data['location'])
-            ? Location::query()->where('code', $data['location'])->valueOrFail('id')
+        $locationId = array_key_exists('location', $data)
+            ? (! empty($data['location']) ? Location::query()->where('code', $data['location'])->valueOrFail('id') : null)
             : $profile->location_id;
 
         DB::transaction(function () use ($user, $profile, $data, $locationId): void {
@@ -46,11 +46,12 @@ class ProfileController extends Controller
                 'name' => $data['name'],
                 'address' => $data['address'],
                 'location_id' => $locationId,
+                'supports_at_lab' => (bool) ($data['supports_at_lab'] ?? $profile->supports_at_lab),
                 'supports_home_collection' => (bool) ($data['supports_home_collection'] ?? $profile->supports_home_collection),
             ]);
         });
 
-        $profile->refresh()->load('location:id,code,name_en,name_ar');
+        $profile->refresh()->load(['location:id,code,name_en,name_ar']);
 
         return response()->json([
             'data' => $this->payload($request, $profile),
@@ -71,6 +72,7 @@ class ProfileController extends Controller
                 'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path ?? $request->user()->profile_image_path),
                 'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                 'phone' => $request->user()->fresh()->phone,
+                'supports_at_lab' => (bool) $profile->supports_at_lab,
                 'supports_home_collection' => (bool) $profile->supports_home_collection,
             ],
         ];

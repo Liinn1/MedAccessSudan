@@ -2,8 +2,9 @@ import { apiClient } from './apiClient'
 import type { DoctorFilterOption } from './doctorService'
 import type { ServicePayment } from './paymentTypes'
 import type { ProviderReview } from './providerReviewService'
+import type { LaboratoryOrder } from './laboratoryService'
 
-export type PatientAppointmentStatus = 'confirmed' | 'cancelled' | 'completed'
+export type PatientAppointmentStatus = 'confirmed' | 'in_progress' | 'cancelled' | 'completed'
 export interface HomeVisitDetails { contact_phone: string; city: DoctorFilterOption | null; area: string; address_details: string; additional_directions: string | null; latitude?: string | null; longitude?: string | null }
 
 export interface PatientAppointment {
@@ -26,8 +27,17 @@ export interface PatientAppointment {
   }
 }
 
+export type PatientUpcomingBooking =
+  | { type: 'clinic_visit' | 'home_visit'; scheduled_at: string; appointment: PatientAppointment }
+  | { type: 'laboratory'; scheduled_at: string; laboratory_order: LaboratoryOrder }
+
 export async function getPatientAppointments(signal?: AbortSignal): Promise<PatientAppointment[]> {
   const response = await apiClient.get<{ data: PatientAppointment[] }>('/api/v1/patient/appointments', signal)
+  return response.data
+}
+
+export async function getPatientUpcomingBookings(signal?: AbortSignal): Promise<PatientUpcomingBooking[]> {
+  const response = await apiClient.get<{ data: PatientUpcomingBooking[] }>('/api/v1/patient/upcoming-bookings', signal)
   return response.data
 }
 

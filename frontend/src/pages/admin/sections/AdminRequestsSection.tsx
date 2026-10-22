@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CityRequestReviewDialog } from '../../../components/admin/CityRequestReviewDialog'
 import { AdminFilter, AdminFilters, AdminRecordCard, AdminRecordList } from '../../../components/admin/AdminManagementList'
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader'
 import { AdminStatusBadge } from '../../../components/admin/AdminStatusBadge'
@@ -11,20 +9,13 @@ import { ApiError } from '../../../services/apiClient'
 import {
   getCatalogMatches,
   getCatalogRequests,
-  getCityProposals,
   reviewCatalogRequest,
-  resolveCityProposal,
   type CatalogRequestItem,
-  type CityProposal,
-  type AdminLocation,
 } from '../../../services/adminService'
 import { ActionButton } from '../../../components/buttons/ActionButton'
 import { SUDAN_TIME_ZONE } from '../../../utils/dateTime'
 
 export function AdminRequestsSection({
-  tab,
-  onTabChange,
-  openLocationId,
   openTestId,
 }: {
   tab: 'locations' | 'tests'
@@ -33,130 +24,12 @@ export function AdminRequestsSection({
   openTestId?: number | null
 }) {
   const { t } = useTranslation()
-  const [locationCount, setLocationCount] = useState<number | null>(null)
-  const [testCount, setTestCount] = useState<number | null>(null)
-
-  async function refreshCounts(signal?: AbortSignal) {
-    try {
-      const [locations, tests] = await Promise.all([
-        getCityProposals('pending', signal),
-        getCatalogRequests('pending', signal),
-      ])
-      if (signal?.aborted) return
-      setLocationCount(locations.proposals.length)
-      setTestCount(tests.requests.length)
-    } catch {
-      if (!signal?.aborted) {
-        setLocationCount(null)
-        setTestCount(null)
-      }
-    }
-  }
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void refreshCounts(controller.signal)
-    return () => controller.abort()
-  }, [])
-
-  const tabClass = (active: boolean) => `whitespace-nowrap rounded-full px-4 py-2 font-bold ${active ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-border)] bg-white'}`
 
   return (
     <DashboardPage>
       <AdminPageHeader description={t('admin.requests.description')} eyebrow={t('admin.workspace')} title={t('admin.navigation.requests')} />
-      <div className="mt-6 flex flex-wrap gap-2">
-        <button className={tabClass(tab === 'locations')} onClick={() => onTabChange('locations')} type="button">
-          {t('admin.requests.locations')}{locationCount !== null ? ` (${locationCount})` : ''}
-        </button>
-        <button className={tabClass(tab === 'tests')} onClick={() => onTabChange('tests')} type="button">
-          {t('admin.requests.tests')}{testCount !== null ? ` (${testCount})` : ''}
-        </button>
-      </div>
-      {tab === 'locations'
-        ? <LocationRequests onChanged={() => void refreshCounts()} openId={openLocationId} />
-        : <TestRequests onChanged={() => void refreshCounts()} openId={openTestId} />}
+      <TestRequests onChanged={() => {}} openId={openTestId} />
     </DashboardPage>
-  )
-}
-
-function LocationRequests({ openId, onChanged }: { openId?: number | null; onChanged: () => void }) {
-  const { i18n, t } = useTranslation()
-  const [status, setStatus] = useState('pending')
-  const [proposals, setProposals] = useState<CityProposal[]>([])
-  const [locations, setLocations] = useState<AdminLocation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [review, setReview] = useState<CityProposal | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [cityError, setCityError] = useState('')
-
-  async function load(signal?: AbortSignal) {
-    setLoading(true); setError('')
-    try {
-      const data = await getCityProposals(status, signal)
-      setProposals(data.proposals)
-      setLocations(data.locations)
-    } catch { if (!signal?.aborted) setError(t('admin.errors.load')) }
-    finally { if (!signal?.aborted) setLoading(false) }
-  }
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
-  }, [status])
-
-  useEffect(() => {
-    if (!openId) return
-    const match = proposals.find((item) => item.id === openId)
-    if (match) setReview(match)
-  }, [openId, proposals])
-
-  async function resolve(input: { action: 'approve'; name_en: string } | { action: 'map'; location_id: number } | { action: 'reject' }) {
-    if (!review) return
-    setBusy(true); setCityError('')
-    try {
-      await resolveCityProposal(review.id, input)
-      setReview(null)
-      await load()
-      onChanged()
-    } catch (caught) {
-      setCityError(caught instanceof ApiError && caught.status === 422 ? t('admin.cityReview.duplicateError') : t('admin.errors.action'))
-    } finally { setBusy(false) }
-  }
-
-  const locale = i18n.language.startsWith('ar') ? 'ar' : 'en'
-
-  return (
-    <>
-      {error && <div className="mt-4"><ErrorState contained message={error} onRetry={() => void load()} retryLabel={t('admin.retry')} /></div>}
-      <AdminFilters>
-        <AdminFilter label={t('admin.table.status')} onChange={setStatus} value={status}>
-          <option value="pending">{t('admin.statuses.pending')}</option>
-          <option value="approved">{t('admin.statuses.approved')}</option>
-          <option value="rejected">{t('admin.statuses.rejected')}</option>
-          <option value="all">{t('admin.filters.all')}</option>
-        </AdminFilter>
-      </AdminFilters>
-      <AdminRecordList emptyDescription={t(`admin.requests.emptyStates.locations.${status}.description`)} emptyTitle={t(`admin.requests.emptyStates.locations.${status}.title`)} loading={loading}>
-        {proposals.map((proposal) => (
-          <AdminRecordCard
-            action={proposal.status === 'pending' ? <ActionButton onClick={() => setReview(proposal)} size="sm" variant="secondary">{t('admin.actions.review')}</ActionButton> : undefined}
-            key={proposal.id}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-extrabold">{proposal.proposed_name}</p>
-                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{t('admin.cities.provider')}: {proposal.doctor.name}</p>
-                {proposal.created_at && <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: SUDAN_TIME_ZONE }).format(new Date(proposal.created_at))}</p>}
-              </div>
-              <AdminStatusBadge label={t(`admin.statuses.${proposal.status === 'mapped' ? 'approved' : proposal.status}`)} status={proposal.status === 'mapped' ? 'approved' : proposal.status} />
-            </div>
-          </AdminRecordCard>
-        ))}
-      </AdminRecordList>
-      {review ? createPortal(<CityRequestReviewDialog busy={busy} error={cityError} locations={locations} onClose={() => { if (!busy) setReview(null) }} onResolve={resolve} open proposal={review} />, document.body) : null}
-    </>
   )
 }
 
@@ -178,17 +51,18 @@ function TestRequests({ openId, onChanged }: { openId?: number | null; onChanged
     } catch { if (!signal?.aborted) setError(t('admin.errors.load')) }
     finally { if (!signal?.aborted) setLoading(false) }
   }
+  const loadEffect = useEffectEvent(load)
 
   useEffect(() => {
     const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
+    const timer = window.setTimeout(() => { void loadEffect(controller.signal) }, 0)
+    return () => { controller.abort(); window.clearTimeout(timer) }
   }, [status])
 
   useEffect(() => {
     if (!openId) return
     const match = items.find((item) => item.id === openId)
-    if (match) setReview(match)
+    if (match) window.setTimeout(() => setReview(match), 0)
   }, [openId, items])
 
   const locale = i18n.language.startsWith('ar') ? 'ar' : 'en'
@@ -280,7 +154,7 @@ function CatalogReview({ item, categories, onClose, onUpdated }: { item: Catalog
         {matches.length > 0 && (
           <label className="mt-4 block font-bold">{t('admin.tests.mapExisting')}
             <select className="mt-2 w-full rounded-xl border px-3 py-2" onChange={(event) => setMapId(event.target.value)} value={mapId}>
-              <option value="">{t('admin.cities.chooseExisting')}</option>
+              <option value="">{t('admin.tests.chooseExisting')}</option>
               {matches.map((match) => <option key={match.id} value={match.id}>{localized(match)}{match.short_name ? ` (${match.short_name})` : ''}</option>)}
             </select>
           </label>

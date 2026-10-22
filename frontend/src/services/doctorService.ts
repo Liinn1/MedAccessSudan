@@ -26,6 +26,7 @@ export interface DoctorAvailabilitySlot {
 }
 
 export interface DoctorProfile extends Omit<DoctorSummary, 'next_available_at'> {
+  address: string | null
   biography: string | null
   biography_language: 'en' | 'ar'
   biography_is_translated: boolean

@@ -64,7 +64,7 @@ class ProfilePhotoManagementTest extends TestCase
         ])->assertCreated();
 
         $profile = DoctorProfile::query()->firstOrFail();
-        $this->assertSame('verified', $profile->verification_status);
+        $this->assertSame('pending_documents', $profile->verification_status);
         $this->assertStringStartsWith('profile-photos/doctors/', $profile->profile_image_path);
         Storage::disk('public')->assertExists($profile->profile_image_path);
     }
@@ -89,6 +89,22 @@ class ProfilePhotoManagementTest extends TestCase
         Storage::disk('public')->assertMissing($newPath);
     }
 
+    public function test_patient_picture_urls_follow_the_api_request_origin_for_web_and_mobile_clients(): void
+    {
+        $path = 'profile-photos/patients/persisted.png';
+        Storage::disk('public')->put($path, 'persisted-photo');
+        $patient = User::factory()->create(['role' => UserRole::Patient, 'profile_image_path' => $path]);
+        Sanctum::actingAs($patient);
+
+        $this->getJson('http://127.0.0.1:8000/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.user.profile_image_url', "http://127.0.0.1:8000/storage/{$path}");
+
+        $this->getJson('http://192.168.1.4:8000/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.user.profile_image_url', "http://192.168.1.4:8000/storage/{$path}");
+    }
+
     public function test_doctor_can_replace_only_their_own_picture_and_patient_cannot_use_doctor_endpoint(): void
     {
         $doctor = $this->doctor('profile-photos/doctors/old.png');
@@ -108,6 +124,25 @@ class ProfilePhotoManagementTest extends TestCase
         $this->postJson('/api/v1/doctor/profile-photo')->assertForbidden();
     }
 
+    public function test_doctor_picture_is_consistent_across_authenticated_session_and_dashboard_payloads(): void
+    {
+        $path = 'profile-photos/doctors/canonical.png';
+        Storage::disk('public')->put($path, 'canonical-doctor-photo');
+        $doctor = $this->doctor($path);
+        Sanctum::actingAs($doctor);
+
+        $expectedUrl = "http://192.168.1.4:8000/storage/{$path}";
+
+        $this->getJson('http://192.168.1.4:8000/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.user.profile_image_url', $expectedUrl);
+
+        $this->getJson('http://192.168.1.4:8000/api/v1/doctor/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.user.profile_image_url', $expectedUrl)
+            ->assertJsonPath('data.profile.profile_image_url', $expectedUrl);
+    }
+
     private function patientPayload(string $email = 'patient@example.com', string $phone = '+249111222333'): array
     {
         return ['first_name' => 'Amira', 'last_name' => 'Ali', 'email' => $email, 'phone' => $phone, 'password' => 'Secure123', 'password_confirmation' => 'Secure123'];
@@ -115,7 +150,7 @@ class ProfilePhotoManagementTest extends TestCase
 
     private function doctorPayload(): array
     {
-        return [...$this->patientPayload('doctor@example.com', '+249111222335'), 'specialization' => 'general_medicine', 'location' => 'khartoum'];
+        return [...$this->patientPayload('doctor@example.com', '+249111222335'), 'specialization' => 'general_medicine', 'location' => 'SD-KH', 'address' => 'Khartoum, Al Riyadh'];
     }
 
     private function validPhoto(string $name): UploadedFile

@@ -12,15 +12,17 @@ import { ContextualFeedback, type ContextualFeedbackState } from '../../componen
 import { ProviderVerificationCard } from '../../components/verification/ProviderVerificationCard'
 import { DoctorLayout } from '../../layouts/DoctorLayout'
 import { ApiError } from '../../services/apiClient'
-import { type AuthenticatedUser } from '../../services/authService'
+import { getDoctorRegistrationOptions, type AuthenticatedUser, type RegistrationOption } from '../../services/authService'
 import { getDoctorDashboard, updateDoctorProfile, type DoctorDashboardProfile } from '../../services/doctorDashboardService'
 import { updateDoctorProfilePhoto } from '../../services/profilePhotoService'
 import { getProviderVerification, type ProviderVerificationPayload } from '../../services/providerVerificationService'
 import { doctorProfileCompletion, type CompletionItemKey } from '../../utils/profileCompletion'
+import { localizedName } from '../../utils/localizedName'
+import { SearchableSelectField } from '../../components/forms/SearchableSelectField'
 
-type ProfileForm = { clinic_name: string; biography: string; biography_language: 'en' | 'ar'; offers_clinic_visits: boolean; offers_home_visits: boolean }
+type ProfileForm = { clinic_name: string; biography: string; biography_language: 'en' | 'ar'; location: string; address: string; offers_clinic_visits: boolean; offers_home_visits: boolean }
 type Tab = 'information' | 'professional' | 'verification' | 'security'
-const emptyForm: ProfileForm = { clinic_name: '', biography: '', biography_language: 'en', offers_clinic_visits: true, offers_home_visits: false }
+const emptyForm: ProfileForm = { clinic_name: '', biography: '', biography_language: 'en', location: '', address: '', offers_clinic_visits: true, offers_home_visits: false }
 const tabs: Tab[] = ['information', 'professional', 'verification', 'security']
 
 export function DoctorProfileManagementPage() {
@@ -38,6 +40,7 @@ export function DoctorProfileManagementPage() {
   const [loadState, setLoadState] = useState<'loading' | 'success' | 'error'>('loading')
   const [attempt, setAttempt] = useState(0)
   const [verification, setVerification] = useState<ProviderVerificationPayload | null>(null)
+  const [locations, setLocations] = useState<RegistrationOption[]>([])
 
   useEffect(() => {
     if (tab !== 'verification') return
@@ -48,12 +51,13 @@ export function DoctorProfileManagementPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([getDoctorDashboard(controller.signal), getProviderVerification('doctor', controller.signal)])
-      .then(([data, nextVerification]) => {
+    Promise.all([getDoctorDashboard(controller.signal), getProviderVerification('doctor', controller.signal), getDoctorRegistrationOptions(controller.signal)])
+      .then(([data, nextVerification, options]) => {
         setUser(data.user)
         setProfile(data.profile)
         setVerification(nextVerification)
-        if (data.profile) setForm({ clinic_name: data.profile.clinic_name ?? '', biography: data.profile.biography ?? '', biography_language: data.profile.biography_language ?? (i18n.language.startsWith('ar') ? 'ar' : 'en'), offers_clinic_visits: data.profile.offers_clinic_visits, offers_home_visits: data.profile.offers_home_visits })
+        setLocations(options.locations)
+        if (data.profile) setForm({ clinic_name: data.profile.clinic_name ?? '', biography: data.profile.biography ?? '', biography_language: data.profile.biography_language ?? (i18n.language.startsWith('ar') ? 'ar' : 'en'), location: data.profile.location?.code ?? '', address: data.profile.address ?? '', offers_clinic_visits: data.profile.offers_clinic_visits, offers_home_visits: data.profile.offers_home_visits })
         setLoadState('success')
       })
       .catch((error: unknown) => {
@@ -73,6 +77,8 @@ export function DoctorProfileManagementPage() {
         clinic_name: form.offers_clinic_visits ? (form.clinic_name.trim() || null) : (profile?.clinic_name ?? null),
         biography: form.biography.trim() || null,
         biography_language: form.biography.trim() ? form.biography_language : null,
+        location: form.location,
+        address: form.address.trim(),
         offers_clinic_visits: form.offers_clinic_visits,
         offers_home_visits: form.offers_home_visits,
       })
@@ -93,7 +99,7 @@ export function DoctorProfileManagementPage() {
     } catch { setPhotoFeedback({ type: 'error', messageKey: 'profilePhoto.updateError' }) }
     finally { setBusy('') }
   }
-  const localized = (value: DoctorDashboardProfile['specialization']) => value ? (i18n.language.startsWith('ar') ? value.name_ar : value.name_en) : t('doctor.dashboard.notProvided')
+  const localized = (value: DoctorDashboardProfile['specialization']) => localizedName(value, i18n.resolvedLanguage) || t('doctor.dashboard.notProvided')
   function handleMissing(item: CompletionItemKey) {
     if (item === 'weeklyAvailability') { navigate('/doctor/availability'); return }
     if (item === 'profilePicture') { setTab('information'); return }
@@ -142,6 +148,8 @@ export function DoctorProfileManagementPage() {
                       { key: 'home', label: t('profilePage.homeVisits'), checked: form.offers_home_visits, onChange: (checked) => update('offers_home_visits', checked) },
                     ]}
                   />
+                  <SearchableSelectField id="doctor-profile-state" label={t('auth.doctorRegistration.location')} onChange={(value) => update('location', value)} options={locations.map((item) => ({ value: item.code, label: localizedName(item, i18n.resolvedLanguage) }))} placeholder={t('auth.doctorRegistration.chooseLocation')} searchLabel={t('auth.doctorRegistration.searchState')} value={form.location} />
+                  <label className="font-semibold">{t('auth.doctorRegistration.address')}<input className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] px-4 py-3" maxLength={255} onChange={(event) => update('address', event.target.value)} value={form.address} /></label>
                   {form.offers_clinic_visits && <label className="font-semibold">{t('profilePage.clinic')}<input className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-teal-100" maxLength={255} onChange={(event) => update('clinic_name', event.target.value)} value={form.clinic_name} /></label>}
                   <label className="font-semibold">{t('profilePage.biographyLanguage')}<select className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3" onChange={(event) => update('biography_language', event.target.value)} value={form.biography_language}><option value="en">{t('profilePage.languages.en')}</option><option value="ar">{t('profilePage.languages.ar')}</option></select></label>
                   <label className="font-semibold">{t('profilePage.biography')}<textarea className="mt-2 block min-h-40 w-full resize-y rounded-2xl border border-[var(--color-border)] px-4 py-3" dir={form.biography_language === 'ar' ? 'rtl' : 'ltr'} lang={form.biography_language} maxLength={2000} onChange={(event) => update('biography', event.target.value)} value={form.biography} /><span className="mt-2 block text-sm font-normal text-[var(--color-text-secondary)]">{t('profilePage.biographyHelp')}</span></label>

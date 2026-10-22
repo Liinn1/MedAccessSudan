@@ -9,7 +9,7 @@ import { DashboardPage } from '../../../components/dashboard/DashboardPage'
 import { DashboardSplit } from '../../../components/dashboard/DashboardSectionCard'
 import { DashboardStatCard, DashboardStatsGrid } from '../../../components/dashboard/DashboardStatCard'
 import { LoadingState } from '../../../components/feedback/LoadingState'
-import { LaboratoryIcon, LocationIcon, MailIcon, StethoscopeIcon } from '../../../components/icons/PatientHomeIcons'
+import { LaboratoryIcon, MailIcon, StethoscopeIcon } from '../../../components/icons/PatientHomeIcons'
 import type { AdminAttentionItem, AdminDashboardPayload } from '../../../services/adminService'
 import { greetingPeriod, SUDAN_TIME_ZONE } from '../../../utils/dateTime'
 import { ActionButton } from '../../../components/buttons/ActionButton'
@@ -30,8 +30,8 @@ export function AdminOverviewSection({
 }) {
   const { i18n, t } = useTranslation()
   const locale = i18n.language.startsWith('ar') ? 'ar' : 'en'
-  const queues = data?.queues ?? { verifications: [], inquiries: [], locations: [], tests: [] }
-  const requestItems = [...queues.locations, ...queues.tests].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
+  const queues = data?.queues ?? { verifications: [], inquiries: [], tests: [] }
+  const requestItems = [...queues.tests].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
 
   return (
     <DashboardPage>
@@ -44,7 +44,6 @@ export function AdminOverviewSection({
           <DashboardStatsGrid label={t('admin.overviewLabel')}>
             <DashboardStatCard actionLabel={t('admin.actions.review')} hint={t('admin.metrics.verificationsHint')} icon={StethoscopeIcon} label={t('admin.metrics.verifications_awaiting_review')} onSelect={() => onNavigate('verification')} tone="pending" value={data.metrics.verifications_awaiting_review} />
             <DashboardStatCard actionLabel={t('admin.actions.respond')} hint={t('admin.metrics.inquiriesHint')} icon={MailIcon} label={t('admin.metrics.inquiries_new')} onSelect={() => onNavigate('inquiries')} tone="info" value={data.metrics.inquiries_new} />
-            <DashboardStatCard actionLabel={t('admin.actions.review')} hint={t('admin.metrics.locationsHint')} icon={LocationIcon} label={t('admin.metrics.location_requests_pending')} onSelect={() => onNavigate('requests', { requestTab: 'locations' })} tone="pending" value={data.metrics.location_requests_pending} />
             <DashboardStatCard actionLabel={t('admin.actions.review')} hint={t('admin.metrics.testsHint')} icon={LaboratoryIcon} label={t('admin.metrics.test_requests_pending')} onSelect={() => onNavigate('requests', { requestTab: 'tests' })} tone="pending" value={data.metrics.test_requests_pending} />
           </DashboardStatsGrid>
 
@@ -101,7 +100,7 @@ export function AdminOverviewSection({
               items={requestItems}
               locale={locale}
               onOpen={onOpenAttention}
-              onViewAll={() => onNavigate('requests', { requestTab: queues.locations.length ? 'locations' : 'tests' })}
+              onViewAll={() => onNavigate('requests', { requestTab: 'tests' })}
               renderMeta={(item) => t(`admin.attention.kinds.${item.kind}`)}
               statusKey={() => 'admin.statuses.pending'}
               title={t('admin.navigation.requests')}

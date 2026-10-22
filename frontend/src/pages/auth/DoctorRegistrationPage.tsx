@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
 import { SelectField } from '../../components/forms/SelectField'
+import { SearchableSelectField } from '../../components/forms/SearchableSelectField'
 import { ProfilePhotoField } from '../../components/forms/ProfilePhotoField'
 import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { EyeIcon, LockIcon, MailIcon, PhoneIcon, UserIcon } from '../../components/icons/AuthIcons'
@@ -13,7 +15,6 @@ import { ApiError } from '../../services/apiClient'
 import { getDoctorRegistrationOptions, registerDoctor, type RegistrationOption } from '../../services/authService'
 import { isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
 
-const OTHER_CITY = '__other__'
 const TOTAL_STEPS = 3
 const emptyForm = {
   firstName: '',
@@ -24,7 +25,7 @@ const emptyForm = {
   passwordConfirmation: '',
   specialization: '',
   location: '',
-  proposedCity: '',
+  address: '',
   clinicName: '',
   offersClinic: true,
   offersHome: false,
@@ -32,7 +33,7 @@ const emptyForm = {
 
 type DoctorForm = typeof emptyForm
 type DoctorStep = 1 | 2 | 3
-type DoctorField = 'firstName' | 'lastName' | 'email' | 'phone' | 'password' | 'passwordConfirmation' | 'specialization' | 'location' | 'proposedCity'
+type DoctorField = 'firstName' | 'lastName' | 'email' | 'phone' | 'password' | 'passwordConfirmation' | 'specialization' | 'location' | 'address'
 type FieldErrors = Partial<Record<DoctorField, string>>
 
 const stepLabels = ['account', 'professional', 'review'] as const
@@ -46,7 +47,7 @@ const fieldIds: Record<DoctorField, string> = {
   passwordConfirmation: 'doctor-password-confirmation',
   specialization: 'doctor-specialization',
   location: 'doctor-location',
-  proposedCity: 'doctor-proposed-city',
+  address: 'doctor-address',
 }
 
 export function DoctorRegistrationPage() {
@@ -121,7 +122,7 @@ export function DoctorRegistrationPage() {
     const next: FieldErrors = {}
     if (!form.specialization) next.specialization = 'required'
     if (!form.location) next.location = 'required'
-    if (form.location === OTHER_CITY && !form.proposedCity.trim()) next.proposedCity = 'required'
+    if (!form.address.trim()) next.address = 'required'
     const photoIssue = profilePhotoIssue(profilePhoto, true)
     if (photoIssue) setProfilePhotoError(t(`profilePhoto.${photoIssue}`))
     else setProfilePhotoError('')
@@ -138,7 +139,7 @@ export function DoctorRegistrationPage() {
     return code ? t(`auth.registration.errors.${group}.${code}`) : undefined
   }
 
-  const localized = (option: RegistrationOption) => i18n.language.startsWith('ar') ? option.name_ar : option.name_en
+  const localized = (option: RegistrationOption) => localizedName(option, i18n.resolvedLanguage)
   const optionLabel = (list: RegistrationOption[], code: string) => {
     const match = list.find((option) => option.code === code)
     return match ? localized(match) : code
@@ -202,7 +203,8 @@ export function DoctorRegistrationPage() {
         password: form.password,
         password_confirmation: form.passwordConfirmation,
         specialization: form.specialization,
-        ...(form.location === OTHER_CITY ? { proposed_city: form.proposedCity.trim() } : { location: form.location }),
+        location: form.location,
+        address: form.address.trim(),
         clinic_name: form.offersClinic ? form.clinicName : '',
         offers_clinic_visits: form.offersClinic,
         offers_home_visits: form.offersHome,
@@ -221,7 +223,7 @@ export function DoctorRegistrationPage() {
           passwordConfirmation: server.password_confirmation ? 'server' : undefined,
           specialization: server.specialization ? 'server' : undefined,
           location: server.location ? 'server' : undefined,
-          proposedCity: server.proposed_city ? 'server' : undefined,
+          address: server.address ? 'server' : undefined,
         })
         setProfilePhotoError(server.profile_photo ? t('profilePhoto.invalid') : '')
         setStatus('auth.doctorRegistration.invalid')
@@ -269,12 +271,8 @@ export function DoctorRegistrationPage() {
                   <h2 className="mb-1.5 text-sm font-extrabold text-[var(--color-primary)]">{t('auth.doctorRegistration.groups.professional')}</h2>
                   <div className={fieldClass}>
                     <SelectField error={fieldErrors.specialization ? t('auth.doctorRegistration.required') : undefined} id="doctor-specialization" icon={<UserIcon />} label={t('auth.doctorRegistration.specialization')} onChange={(event) => update('specialization', event.target.value)} options={[{ value: '', label: t('auth.doctorRegistration.chooseSpecialization') }, ...options.specializations.map((option) => ({ value: option.code, label: localized(option) }))]} value={form.specialization} variant="auth" />
-                    <SelectField error={fieldErrors.location ? t('auth.doctorRegistration.required') : undefined} id="doctor-location" icon={<UserIcon />} label={t('auth.doctorRegistration.location')} onChange={(event) => update('location', event.target.value)} options={[{ value: '', label: t('auth.doctorRegistration.chooseLocation') }, ...options.locations.map((option) => ({ value: option.code, label: localized(option) })), { value: OTHER_CITY, label: t('auth.doctorRegistration.otherCity') }]} value={form.location} variant="auth" />
-                    {form.location === OTHER_CITY && (
-                      <div className="md:col-span-2">
-                        <InputField error={fieldErrors.proposedCity ? t('auth.doctorRegistration.required') : undefined} id="doctor-proposed-city" icon={<UserIcon />} label={t('auth.doctorRegistration.proposedCity')} onChange={(event) => update('proposedCity', event.target.value)} placeholder={t('auth.doctorRegistration.proposedCityPlaceholder')} value={form.proposedCity} />
-                      </div>
-                    )}
+                    <SearchableSelectField error={fieldErrors.location ? t('auth.doctorRegistration.required') : undefined} id="doctor-location" label={t('auth.doctorRegistration.location')} onChange={(value) => update('location', value)} options={options.locations.map((option) => ({ value: option.code, label: localized(option) }))} placeholder={t('auth.doctorRegistration.chooseLocation')} searchLabel={t('auth.doctorRegistration.searchState')} value={form.location} />
+                    <InputField error={fieldErrors.address ? t('auth.doctorRegistration.required') : undefined} id="doctor-address" icon={<UserIcon />} label={t('auth.doctorRegistration.address')} onChange={(event) => update('address', event.target.value)} placeholder={t('auth.doctorRegistration.addressPlaceholder')} value={form.address} />
                     <div className={form.offersClinic ? '' : 'md:col-span-2'}>
                       <ProfilePhotoField error={profilePhotoError} file={profilePhoto} onChange={(file) => { const issue = profilePhotoIssue(file, true); setProfilePhoto(issue === 'invalid' ? null : file); setProfilePhotoError(issue ? t(`profilePhoto.${issue}`) : '') }} compact required />
                     </div>
@@ -282,7 +280,6 @@ export function DoctorRegistrationPage() {
                       <InputField id="doctor-clinic" icon={<UserIcon />} label={t('auth.doctorRegistration.clinic')} onChange={(event) => update('clinicName', event.target.value)} value={form.clinicName} />
                     )}
                   </div>
-                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">{t('auth.doctorRegistration.cityReviewNote')}</p>
                 </section>
                 <section>
                   <h2 className="mb-1.5 text-sm font-extrabold text-[var(--color-primary)]">{t('auth.doctorRegistration.groups.availability')}</h2>
@@ -306,7 +303,7 @@ export function DoctorRegistrationPage() {
             {step === 3 && (
               <DoctorRegistrationReview
                 form={form}
-                locationLabel={form.location === OTHER_CITY ? form.proposedCity : optionLabel(options.locations, form.location)}
+                locationLabel={optionLabel(options.locations, form.location)}
                 onEdit={setStep}
                 photo={profilePhoto}
                 specializationLabel={optionLabel(options.specializations, form.specialization)}

@@ -13,7 +13,6 @@ use App\Models\Location;
 use App\Models\Specialization;
 use App\Models\User;
 use App\Services\AdminAuditService;
-use App\Services\CityNameNormalizer;
 use App\Services\ProfilePhotoService;
 use App\Services\ProviderVerificationService;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +27,6 @@ class AdminUserController extends Controller
     public function __construct(
         private readonly AdminAuditService $audit,
         private readonly ProviderVerificationService $verifications,
-        private readonly CityNameNormalizer $cityNames,
         private readonly ProfilePhotoService $photos,
     ) {}
 
@@ -221,8 +219,8 @@ class AdminUserController extends Controller
             'phone' => ['required', 'regex:/^\+?[0-9]{7,15}$/', 'max:30', 'unique:users,phone'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'specialization' => ['required', Rule::exists(Specialization::class, 'code')->where('is_active', true)],
-            'location' => ['nullable', 'required_without:proposed_city', Rule::exists(Location::class, 'code')->where('is_active', true)],
-            'proposed_city' => ['nullable', 'required_without:location', 'string', 'min:2', 'max:150'],
+            'location' => ['required', Rule::exists(Location::class, 'code')->where('is_active', true)],
+            'address' => ['required', 'string', 'min:4', 'max:255'],
             'clinic_name' => ['nullable', 'string', 'max:255'],
             'profile_photo' => ['required', ...ProfilePhotoService::VALIDATION_RULES],
         ]);
@@ -242,16 +240,10 @@ class AdminUserController extends Controller
                 'specialization_id' => Specialization::where('code', $data['specialization'])->valueOrFail('id'),
                 'location_id' => $locationId,
                 'clinic_name' => $data['clinic_name'] ?? null,
+                'address' => $data['address'],
                 'profile_image_path' => $photoPath,
                 'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
             ]);
-            if (! empty($data['proposed_city'])) {
-                $profile->cityProposal()->create([
-                    'proposed_name' => $this->cityNames->display($data['proposed_city']),
-                    'normalized_name' => $this->cityNames->comparison($data['proposed_city']),
-                    'status' => 'pending',
-                ]);
-            }
             $this->verifications->ensure($profile);
 
             return $user;
@@ -268,8 +260,7 @@ class AdminUserController extends Controller
             'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
             'phone' => ['required', 'regex:/^\+?[0-9]{7,15}$/', 'max:30', 'unique:users,phone'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
-            'location' => ['nullable', 'required_without:proposed_city', Rule::exists(Location::class, 'code')->where('is_active', true)],
-            'proposed_city' => ['nullable', 'required_without:location', 'string', 'min:2', 'max:150'],
+            'location' => ['required', Rule::exists(Location::class, 'code')->where('is_active', true)],
             'address' => ['required', 'string', 'min:4', 'max:255'],
         ]);
         $locationId = isset($data['location']) ? Location::where('code', $data['location'])->valueOrFail('id') : null;
@@ -286,7 +277,6 @@ class AdminUserController extends Controller
                 'name' => $data['laboratory_name'],
                 'location_id' => $locationId,
                 'address' => $data['address'],
-                'proposed_city' => $data['proposed_city'] ?? null,
                 'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
             ]);
             $this->verifications->ensure($profile);
@@ -329,6 +319,7 @@ class AdminUserController extends Controller
             'last_name' => $user->last_name,
             'doctor_profile' => $user->doctorProfile ? [
                 'clinic_name' => $user->doctorProfile->clinic_name,
+                'address' => $user->doctorProfile->address,
                 'specialization' => $user->doctorProfile->specialization?->only(['code', 'name_en', 'name_ar']),
                 'location' => $user->doctorProfile->location?->only(['code', 'name_en', 'name_ar']),
             ] : null,

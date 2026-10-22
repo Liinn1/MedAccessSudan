@@ -6,7 +6,6 @@ import { SupportIcon } from '../icons/PatientHomeIcons'
 import { LanguageToggle } from '../LanguageToggle'
 import { BrandMark } from '../branding/BrandMark'
 import { ProfileAvatar } from '../branding/ProfileAvatar'
-import { InformationDialog } from '../feedback/InformationDialog'
 
 export interface DashboardNavItem {
   key: string
@@ -29,7 +28,6 @@ interface DashboardNavigationShellProps {
   navigationLabel: string
   onLogout: () => void
   roleLabel: string
-  supportComingSoon: string
   contactSupportLabel: string
   user?: AuthenticatedUser | null
 }
@@ -48,12 +46,10 @@ export function DashboardNavigationShell({
   navigationLabel,
   onLogout,
   roleLabel,
-  supportComingSoon,
   user,
 }: DashboardNavigationShellProps) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [supportOpen, setSupportOpen] = useState(false)
   const primaryItems = items.filter((item) => item.key !== 'public-home')
   const homeItems = items.filter((item) => item.key === 'public-home')
 
@@ -92,7 +88,7 @@ export function DashboardNavigationShell({
         <h2 className="text-sm font-extrabold text-[var(--color-text-primary)]">{helpTitle}</h2>
       </div>
       <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">{helpDescription}</p>
-      <button className="mt-2.5 w-full rounded-xl border border-teal-200 bg-white px-3 py-2 text-sm font-bold text-[var(--color-primary)] hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" onClick={() => setSupportOpen(true)} type="button">{contactSupportLabel}</button>
+      <Link className="mt-2.5 block w-full rounded-xl border border-teal-200 bg-white px-3 py-2 text-center text-sm font-bold text-[var(--color-primary)] hover:border-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]" onClick={() => setMenuOpen(false)} to="/#contact">{contactSupportLabel}</Link>
     </section>
   )
 
@@ -104,7 +100,7 @@ export function DashboardNavigationShell({
       <div>{support}</div>
     </aside>
 
-    <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-white/95 backdrop-blur lg:ms-64">
+    <header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--color-border)] bg-white/95 backdrop-blur lg:start-64">
       <div className="flex min-h-14 items-center px-4 sm:px-6 lg:min-h-16 lg:px-8">
         <Link aria-label={t('publicHome.header.logoLabel')} className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] lg:hidden" to="/">
           <BrandMark compact />
@@ -122,6 +118,7 @@ export function DashboardNavigationShell({
         </button>
       </div>
     </header>
+    <div aria-hidden="true" className="h-14 lg:h-16" />
 
     {menuOpen && <div className="dashboard-drawer-overlay fixed inset-0 z-50 bg-slate-950/45 lg:hidden" onMouseDown={() => setMenuOpen(false)}>
       <aside aria-label={mobileLabel} className="dashboard-drawer-enter absolute inset-block-0 start-0 flex w-[min(84vw,20rem)] flex-col overflow-y-auto bg-white p-5 shadow-2xl" id="dashboard-mobile-drawer" onMouseDown={(event) => event.stopPropagation()}>
@@ -144,6 +141,5 @@ export function DashboardNavigationShell({
       </aside>
     </div>}
 
-    <InformationDialog closeLabel={closeLabel} description={supportComingSoon} onClose={() => setSupportOpen(false)} open={supportOpen} title={contactSupportLabel} />
   </>
 }

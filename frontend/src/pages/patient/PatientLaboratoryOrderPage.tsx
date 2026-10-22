@@ -10,6 +10,7 @@ import { PatientLayout } from '../../layouts/PatientLayout'
 import { ApiError } from '../../services/apiClient'
 import { downloadLaboratoryResult, formatLaboratoryPrice, getPatientLaboratoryOrder, isHomeCollection, laboratoryCollectionAddress, openLaboratoryResult, type LaboratoryOrder, type LaboratoryOrderStatus } from '../../services/laboratoryService'
 import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
+import { localizedName } from '../../utils/localizedName'
 
 const timeline: LaboratoryOrderStatus[] = ['requested', 'sample_collected', 'in_progress', 'result_ready']
 
@@ -23,12 +24,10 @@ export function PatientLaboratoryOrderPage() {
   const arabic = i18n.language.startsWith('ar')
   const locale = arabic ? 'ar-SD' : 'en'
   const id = Number(orderId)
+  const invalidId = !Number.isFinite(id) || id <= 0
 
   useEffect(() => {
-    if (!Number.isFinite(id) || id <= 0) {
-      setState('error')
-      return
-    }
+    if (invalidId) return
     const controller = new AbortController()
     getPatientLaboratoryOrder(id, controller.signal).then((data) => { setOrder(data); setState('success') }).catch((error: unknown) => {
       if (error instanceof DOMException && error.name === 'AbortError') return
@@ -36,13 +35,13 @@ export function PatientLaboratoryOrderPage() {
       else setState('error')
     })
     return () => controller.abort()
-  }, [attempt, id, navigate])
+  }, [attempt, id, invalidId, navigate])
 
   if (state === 'loading') return <PatientLayout activeSection="appointments"><LoadingState contained message={t('patient.laboratory.loading')} /></PatientLayout>
-  if (state === 'error' || !order) return <PatientLayout activeSection="appointments"><ErrorState contained message={t('patient.laboratory.detailError')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1) }} retryLabel={t('laboratory.dashboard.retry')} /></PatientLayout>
+  if (invalidId || state === 'error' || !order) return <PatientLayout activeSection="appointments"><ErrorState contained message={t('patient.laboratory.detailError')} onRetry={() => { setState('loading'); setAttempt((value) => value + 1) }} retryLabel={t('laboratory.dashboard.retry')} /></PatientLayout>
 
   const currentIndex = timeline.indexOf(order.status)
-  const location = order.location ? (arabic ? order.location.name_ar : order.location.name_en) : ''
+  const location = localizedName(order.location, i18n.language)
   const home = isHomeCollection(order)
   const scheduled = Boolean(order.collection_starts_at)
   const when = scheduled && order.collection_starts_at ? new Date(order.collection_starts_at) : new Date(order.requested_at)

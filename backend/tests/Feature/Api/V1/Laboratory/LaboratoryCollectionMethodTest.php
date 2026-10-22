@@ -68,7 +68,7 @@ class LaboratoryCollectionMethodTest extends TestCase
         $lab = $this->laboratory(home: true);
         $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();
         $this->enable($lab['user'], $cbc);
-        $locationId = Location::query()->where('code', 'khartoum')->valueOrFail('id');
+        $locationId = Location::query()->where('code', 'SD-KH')->valueOrFail('id');
         Sanctum::actingAs($this->patient());
         $startsAt = now()->addDay()->setTime(10, 30);
 
@@ -112,7 +112,7 @@ class LaboratoryCollectionMethodTest extends TestCase
             'lab_test_ids' => [$cbc->id],
             'payment_method' => 'pay_later',
             'collection_method' => LaboratoryCollectionMethod::HomeCollection->value,
-            'collection_location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+            'collection_location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
             'collection_area' => 'Al Riyadh',
             'collection_address' => 'Building 12',
             'collection_starts_at' => now()->addDay()->toIso8601String(),
@@ -120,6 +120,23 @@ class LaboratoryCollectionMethodTest extends TestCase
             'collection_longitude' => 32.5,
         ])->assertUnprocessable()
             ->assertJsonPath('code', 'LABORATORY_HOME_COLLECTION_UNAVAILABLE');
+    }
+
+    public function test_at_lab_collection_is_rejected_when_laboratory_does_not_support_it(): void
+    {
+        $lab = $this->laboratory(home: true);
+        $lab['profile']->update(['supports_at_lab' => false]);
+        $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();
+        $this->enable($lab['user'], $cbc);
+        Sanctum::actingAs($this->patient());
+
+        $this->postJson('/api/v1/patient/laboratory-orders', [
+            'laboratory_profile_id' => $lab['profile']->id,
+            'lab_test_ids' => [$cbc->id],
+            'payment_method' => 'pay_later',
+            'collection_method' => LaboratoryCollectionMethod::AtLab->value,
+        ])->assertUnprocessable()
+            ->assertJsonPath('code', 'LABORATORY_AT_LAB_UNAVAILABLE');
     }
 
     public function test_home_collection_discovery_excludes_laboratories_without_the_capability(): void
@@ -155,7 +172,7 @@ class LaboratoryCollectionMethodTest extends TestCase
         $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();
         $this->enable($lab['user'], $cbc);
         $patient = $this->patient('filter.patient@example.com');
-        $locationId = Location::query()->where('code', 'khartoum')->valueOrFail('id');
+        $locationId = Location::query()->where('code', 'SD-KH')->valueOrFail('id');
         Sanctum::actingAs($patient);
         $this->postJson('/api/v1/patient/laboratory-orders', [
             'laboratory_profile_id' => $lab['profile']->id,
@@ -193,7 +210,7 @@ class LaboratoryCollectionMethodTest extends TestCase
             'name' => $lab['profile']->name,
             'phone' => $lab['user']->phone,
             'address' => $lab['profile']->address,
-            'location' => 'khartoum',
+            'location' => 'SD-KH',
             'supports_home_collection' => true,
         ])->assertOk()
             ->assertJsonPath('data.profile.supports_home_collection', true);
@@ -213,8 +230,9 @@ class LaboratoryCollectionMethodTest extends TestCase
         $profile = $user->laboratoryProfile()->create([
             'name' => $name,
             'address' => 'Near Al Riyadh',
-            'location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+            'location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
             'verification_status' => DoctorVerificationStatus::Verified->value,
+            'supports_at_lab' => true,
             'supports_home_collection' => $home,
         ]);
 

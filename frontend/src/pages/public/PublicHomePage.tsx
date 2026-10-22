@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { ContactSection } from '../../components/public/ContactSection'
 import { FeaturedDoctorsSection } from '../../components/public/FeaturedDoctorsSection'
 import { InformationDialog } from '../../components/feedback/InformationDialog'
 import { PublicHeroCarousel } from '../../components/public/PublicHeroCarousel'
+import { PublicFaqSection } from '../../components/public/PublicFaqSection'
 import {
   AboutSection,
   AppPromoSection,
@@ -17,7 +19,16 @@ import { PublicLayout } from '../../layouts/PublicLayout'
  */
 export function PublicHomePage() {
   const { t } = useTranslation()
+  const location = useLocation()
   const [comingSoon, setComingSoon] = useState('')
+
+  useEffect(() => {
+    if (!location.hash) return
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [location.hash])
 
   return (
     <PublicLayout>
@@ -27,6 +38,7 @@ export function PublicHomePage() {
         <AboutSection />
         <FeaturedDoctorsSection />
         <AppPromoSection />
+        <PublicFaqSection />
         <ContactSection />
 
         <InformationDialog

@@ -29,10 +29,9 @@ export function AdminDashboardPage() {
   const section = sectionFromPath(location.pathname)
   const [dashboard, setDashboard] = useState<AdminDashboardPayload | null>(null)
   const [loadingOverview, setLoadingOverview] = useState(true)
-  const [requestTab, setRequestTab] = useState<'locations' | 'tests'>('locations')
+  const [requestTab, setRequestTab] = useState<'locations' | 'tests'>('tests')
   const [openVerificationId, setOpenVerificationId] = useState<number | null>(null)
   const [openInquiryId, setOpenInquiryId] = useState<number | null>(null)
-  const [openLocationId, setOpenLocationId] = useState<number | null>(null)
   const [openTestId, setOpenTestId] = useState<number | null>(null)
 
   const loadOverview = useCallback(async (signal?: AbortSignal) => {
@@ -63,8 +62,8 @@ export function AdminDashboardPage() {
   useEffect(() => {
     if (auth !== 'authenticated') return
     const controller = new AbortController()
-    void loadOverview(controller.signal)
-    return () => controller.abort()
+    const timer = window.setTimeout(() => { void loadOverview(controller.signal) }, 0)
+    return () => { controller.abort(); window.clearTimeout(timer) }
   }, [auth, loadOverview])
 
   useEffect(() => {
@@ -80,7 +79,6 @@ export function AdminDashboardPage() {
   function openAttention(item: AdminAttentionItem) {
     if (item.kind === 'verification') { setOpenVerificationId(item.id); navigate(ADMIN_SECTION_PATHS.verification) }
     if (item.kind === 'inquiry') { setOpenInquiryId(item.id); navigate(ADMIN_SECTION_PATHS.inquiries) }
-    if (item.kind === 'location') { setOpenLocationId(item.id); setRequestTab('locations'); navigate(ADMIN_SECTION_PATHS.requests) }
     if (item.kind === 'test') { setOpenTestId(item.id); setRequestTab('tests'); navigate(ADMIN_SECTION_PATHS.requests) }
   }
 
@@ -127,7 +125,7 @@ export function AdminDashboardPage() {
       {section === 'users' && <AdminUsersSection />}
       {section === 'verification' && <AdminVerificationSection openId={openVerificationId} />}
       {section === 'inquiries' && <AdminInquiriesSection openId={openInquiryId} />}
-      {section === 'requests' && <AdminRequestsSection onTabChange={setRequestTab} openLocationId={openLocationId} openTestId={openTestId} tab={requestTab} />}
+      {section === 'requests' && <AdminRequestsSection onTabChange={setRequestTab} openTestId={openTestId} tab={requestTab} />}
       {section === 'profile' && <AdminProfileSection onUpdated={setCurrent} user={current} />}
     </AdminLayout>
   )

@@ -50,6 +50,12 @@ class AdminOperationsTest extends TestCase
         ])->assertOk()->assertJsonPath('data.status', 'in_progress');
         Mail::assertSent(InquiryReplyMail::class);
         $this->assertDatabaseHas('customer_inquiry_messages', ['author_type' => 'admin', 'admin_user_id' => $admin->id]);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'admin_user_id' => $admin->id,
+            'action' => 'inquiry.replied',
+            'subject_type' => 'customer_inquiry',
+            'subject_id' => $id,
+        ]);
     }
 
     public function test_admin_can_create_patient_and_cannot_deactivate_last_super_admin(): void
@@ -100,6 +106,12 @@ class AdminOperationsTest extends TestCase
             'lab_test_id' => $cbc->id,
         ])->assertOk()->assertJsonPath('data.status', 'approved')->assertJsonPath('data.resolved_test.id', $cbc->id);
         $this->assertSame($count, LabTest::query()->count());
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'admin_user_id' => $admin->id,
+            'action' => 'catalog_request.mapped',
+            'subject_type' => 'laboratory_catalog_request',
+            'subject_id' => $request->id,
+        ]);
     }
 
     public function test_account_directory_excludes_admins_and_supports_provider_filters(): void
@@ -159,7 +171,7 @@ class AdminOperationsTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
         $doctor = User::factory()->create(['role' => UserRole::Doctor, 'is_active' => true, 'name' => 'Verified Doctor']);
         $specialization = \App\Models\Specialization::create(['code' => 'acct-verify', 'name_en' => 'Cardiology', 'name_ar' => 'قلب', 'is_active' => true]);
-        $location = \App\Models\Location::create(['code' => 'VRF', 'name_en' => 'Omdurman', 'name_ar' => 'أم درمان', 'normalized_name' => 'omdurman', 'is_active' => true]);
+        $location = \App\Models\Location::create(['code' => 'VRF', 'name_en' => 'Verification City', 'name_ar' => 'مدينة التحقق', 'normalized_name' => 'verification city', 'is_active' => true]);
         $doctor->doctorProfile()->create([
             'specialization_id' => $specialization->id,
             'location_id' => $location->id,

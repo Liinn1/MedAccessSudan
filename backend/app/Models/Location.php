@@ -24,8 +24,4 @@ class Location extends Model
         return $this->hasMany(LaboratoryProfile::class);
     }
 
-    public function resolvedCityProposals(): HasMany
-    {
-        return $this->hasMany(CityProposal::class, 'resolved_location_id');
-    }
 }

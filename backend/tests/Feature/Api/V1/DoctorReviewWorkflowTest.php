@@ -18,16 +18,41 @@ class DoctorReviewWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_assigned_doctor_can_complete_past_confirmed_appointment_only_once(): void
+    public function test_assigned_doctor_can_start_at_scheduled_time_and_complete_only_after_start(): void
     {
         [$doctor, $patient, $appointment] = $this->scenario('confirmed');
+        $appointment->update(['starts_at' => CarbonImmutable::now(), 'ends_at' => CarbonImmutable::now()->addMinutes(30)]);
         Sanctum::actingAs($doctor->user);
+        $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/complete")->assertConflict();
+        $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/start")->assertOk()
+            ->assertJsonPath('data.status', 'in_progress');
         $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/complete")->assertOk()->assertJsonPath('data.status', 'completed');
         $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/complete")->assertConflict();
         $this->assertDatabaseHas('appointments', ['id' => $appointment->id, 'status' => 'completed']);
+        $this->assertNotNull($appointment->fresh()->started_at);
+        $this->assertNotNull($appointment->fresh()->completed_at);
 
         Sanctum::actingAs($patient);
         $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/complete")->assertForbidden();
+        $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/start")->assertForbidden();
+    }
+
+    public function test_doctor_cannot_start_before_scheduled_time(): void
+    {
+        [$doctor, , $appointment] = $this->scenario('confirmed');
+        $appointment->update(['starts_at' => CarbonImmutable::now()->addMinute(), 'ends_at' => CarbonImmutable::now()->addMinutes(31)]);
+        Sanctum::actingAs($doctor->user);
+
+        $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/start")->assertConflict();
+        $this->assertDatabaseHas('appointments', ['id' => $appointment->id, 'status' => 'confirmed']);
+    }
+
+    public function test_cancelled_appointment_cannot_be_started(): void
+    {
+        [$doctor, , $appointment] = $this->scenario('cancelled');
+        Sanctum::actingAs($doctor->user);
+
+        $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/start")->assertConflict();
     }
 
     public function test_another_doctor_cannot_complete_the_appointment(): void
@@ -35,6 +60,7 @@ class DoctorReviewWorkflowTest extends TestCase
         [, , $appointment] = $this->scenario('confirmed');
         Sanctum::actingAs($this->doctor()->user);
         $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/complete")->assertNotFound();
+        $this->patchJson("/api/v1/doctor/appointments/{$appointment->id}/start")->assertNotFound();
     }
 
     public function test_only_owned_completed_appointment_can_be_reviewed_once(): void

@@ -7,6 +7,7 @@ import { getFeaturedDoctors, type FeaturedDoctor } from '../../services/doctorSe
 import { APPOINTMENT_SEARCH_ROUTE, buildLoginPath } from '../../utils/navigation'
 import { Reveal } from './Reveal'
 import { LoadingState } from '../feedback/LoadingState'
+import { localizedName } from '../../utils/localizedName'
 
 type LoadState = 'loading' | 'ready' | 'error'
 const maximumHomepageDoctors = 4
@@ -20,7 +21,6 @@ export function FeaturedDoctorsSection() {
   const [doctors, setDoctors] = useState<FeaturedDoctor[]>([])
   const [state, setState] = useState<LoadState>('loading')
   const [attempt, setAttempt] = useState(0)
-  const arabic = i18n.resolvedLanguage === 'ar'
   const visibleDoctors = doctors.slice(0, maximumHomepageDoctors)
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export function FeaturedDoctorsSection() {
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {visibleDoctors.map((doctor, index) => (
                 <Reveal delay={index * 90} key={doctor.id}>
-                  <DoctorCard arabic={arabic} doctor={doctor} />
+                  <DoctorCard doctor={doctor} language={i18n.resolvedLanguage} />
                 </Reveal>
               ))}
             </div>
@@ -108,11 +108,11 @@ export function FeaturedDoctorsSection() {
   )
 }
 
-function DoctorCard({ arabic, doctor }: { arabic: boolean; doctor: FeaturedDoctor }) {
+function DoctorCard({ doctor, language }: { doctor: FeaturedDoctor; language?: string }) {
   const { t } = useTranslation()
   // Specialization and city labels are the same records; only the language of the label changes.
-  const specialty = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
-  const location = arabic ? doctor.location.name_ar : doctor.location.name_en
+  const specialty = localizedName(doctor.specialization, language)
+  const location = localizedName(doctor.location, language)
 
   return (
     <article className="public-card overflow-hidden rounded-[1.6rem] border border-white bg-white shadow-[0_12px_32px_rgb(15_118_110/0.1)]">

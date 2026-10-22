@@ -5,6 +5,7 @@ namespace App\Http\Requests\Doctor;
 use App\Enums\AppointmentServiceType;
 use App\Enums\AppointmentStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateDoctorProfileRequest extends FormRequest
 {
@@ -17,6 +18,8 @@ class UpdateDoctorProfileRequest extends FormRequest
     {
         return [
             'clinic_name' => ['nullable', 'string', 'max:255'],
+            'address' => ['required', 'string', 'min:4', 'max:255'],
+            'location' => ['required', 'string', Rule::exists('locations', 'code')->where('is_active', true)],
             'biography' => ['nullable', 'string', 'max:2000'],
             'biography_language' => ['nullable', 'required_with:biography', 'in:en,ar'],
             'offers_clinic_visits' => ['sometimes', 'boolean'],
@@ -49,7 +52,7 @@ class UpdateDoctorProfileRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['clinic_name', 'biography'] as $field) {
+        foreach (['clinic_name', 'biography', 'address', 'location'] as $field) {
             if (is_string($this->input($field))) {
                 $this->merge([$field => trim($this->input($field)) ?: null]);
             }

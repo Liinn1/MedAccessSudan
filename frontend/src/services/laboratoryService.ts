@@ -64,6 +64,7 @@ export interface LaboratoryMatch {
   total: string
   currency: string
   supports_home_collection?: boolean
+  supports_at_lab?: boolean
   average_rating: number
   review_count: number
 }
@@ -133,6 +134,7 @@ export interface LaboratoryProfilePayload {
   location: NamedOption | null
   phone: string | null
   supports_home_collection?: boolean
+  supports_at_lab?: boolean
 }
 
 export interface LaboratoryActivityDay {
@@ -236,7 +238,7 @@ export async function getLaboratoryProfile(signal?: AbortSignal) {
   return (await apiClient.get<{ data: { user: AuthenticatedUser; profile: LaboratoryProfilePayload } }>('/api/v1/laboratory/profile', signal)).data
 }
 
-export async function updateLaboratoryProfile(input: { name: string; phone: string; address: string; location: string; supports_home_collection?: boolean }) {
+export async function updateLaboratoryProfile(input: { name: string; phone: string; address: string; location: string; supports_at_lab: boolean; supports_home_collection: boolean }) {
   return (await apiClient.put<{ data: { user: AuthenticatedUser; profile: LaboratoryProfilePayload } }>('/api/v1/laboratory/profile', input)).data
 }
 

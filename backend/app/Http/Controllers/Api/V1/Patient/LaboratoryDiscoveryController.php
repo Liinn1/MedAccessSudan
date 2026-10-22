@@ -32,7 +32,11 @@ class LaboratoryDiscoveryController extends Controller
             ->pluck('id');
         $verifiedLabIds = LaboratoryProfile::query()
             ->visibleToPatients()
-            ->when($homeCollection, fn ($query) => $query->where('supports_home_collection', true))
+            ->when($homeCollection, fn ($query) => $query
+                ->where('supports_home_collection', true)
+                ->whereNotNull('location_id')
+                ->whereHas('location', fn ($location) => $location->where('is_active', true)))
+            ->when(! $homeCollection, fn ($query) => $query->where('supports_at_lab', true))
             ->pluck('id');
 
         $categories = LabTestCategory::query()
@@ -114,7 +118,7 @@ class LaboratoryDiscoveryController extends Controller
 
         $offerings = LaboratoryOffering::query()
             ->with([
-                'laboratoryProfile:id,name,address,location_id,verification_status,supports_home_collection',
+                'laboratoryProfile:id,name,address,location_id,verification_status,supports_at_lab,supports_home_collection',
                 'laboratoryProfile.location:id,code,name_en,name_ar',
                 'labTest:id,name_en,name_ar,short_name',
             ])
@@ -165,6 +169,7 @@ class LaboratoryDiscoveryController extends Controller
                 'laboratory_name' => $profile?->name,
                 'address' => $profile?->address,
                 'location' => $profile?->location?->only(['id', 'code', 'name_en', 'name_ar']),
+                'supports_at_lab' => (bool) $profile?->supports_at_lab,
                 'supports_home_collection' => (bool) $profile?->supports_home_collection,
                 ...($ratings->get($profile?->id)?->ratingSummary() ?? ['average_rating' => 0.0, 'review_count' => 0]),
                 'offers_all' => $matchedIds->count() === $selectedCount,

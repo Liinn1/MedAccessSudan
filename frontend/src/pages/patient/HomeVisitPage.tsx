@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { useNavigate } from 'react-router-dom'
 import { BookingFlowFrame } from '../../components/booking/BookingFlowFrame'
 import { BookingPanel } from '../../components/booking/BookingPanel'
 import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
 import { BookingReviewList } from '../../components/booking/BookingReviewList'
 import { BookingSlotPicker } from '../../components/booking/BookingSlotPicker'
-import { createEmptyHomeAddress, PatientHomeAddressForm, type PatientHomeAddress } from '../../components/booking/PatientHomeAddressForm'
+import { PatientHomeAddressForm } from '../../components/booking/PatientHomeAddressForm'
+import { createEmptyHomeAddress, type PatientHomeAddress } from '../../utils/homeAddress'
 import { PaymentMethodSelector } from '../../components/booking/PaymentMethodSelector'
 import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { ErrorState } from '../../components/feedback/ErrorState'
@@ -69,7 +71,7 @@ export function HomeVisitPage() {
     return () => controller.abort()
   }, [navigate, t])
 
-  const optionLabel = (option: DoctorFilterOption) => arabic ? option.name_ar : option.name_en
+  const optionLabel = (option: DoctorFilterOption) => localizedName(option, i18n.resolvedLanguage)
   const selectedSpecialty = specializations.find((item) => item.code === specialization)
   const selectedCity = cities.find((item) => item.code === city)
   const formattedSlot = useMemo(() => slot ? {

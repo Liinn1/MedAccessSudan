@@ -1,30 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { LocationIcon } from '../icons/PatientHomeIcons'
 import { LocationMapPreview } from '../patient/LocationMapPreview'
-
-export type PatientHomeAddress = {
-  contact_phone: string
-  area: string
-  address_details: string
-  additional_directions: string
-}
-
-export type HomeCoordinates = {
-  latitude: number
-  longitude: number
-  accuracy: number
-}
-
-const emptyAddress: PatientHomeAddress = {
-  contact_phone: '',
-  area: '',
-  address_details: '',
-  additional_directions: '',
-}
-
-export function createEmptyHomeAddress(contactPhone = ''): PatientHomeAddress {
-  return { ...emptyAddress, contact_phone: contactPhone }
-}
+import type { HomeCoordinates, PatientHomeAddress } from '../../utils/homeAddress'
 
 export function PatientHomeAddressForm({
   address,

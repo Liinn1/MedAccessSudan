@@ -115,7 +115,7 @@ class EmailVerificationTest extends TestCase
         Notification::fake();
         config()->set('medaccess.demo_auto_verify_doctors', false);
         config()->set('medaccess.frontend_url', 'http://127.0.0.1:5173');
-        $location = Location::query()->where('code', 'khartoum')->firstOrFail();
+        $location = Location::query()->where('code', 'SD-KH')->firstOrFail();
 
         $this->postJson('/api/v1/auth/register/doctor', [
             'first_name' => 'Sara',
@@ -126,6 +126,7 @@ class EmailVerificationTest extends TestCase
             'password_confirmation' => 'Secure123',
             'specialization' => 'general_medicine',
             'location' => $location->code,
+            'address' => 'Khartoum, Al Riyadh, Street 15',
             'profile_photo' => UploadedFile::fake()->createWithContent(
                 'doctor.png',
                 base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=')

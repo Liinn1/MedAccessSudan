@@ -9,7 +9,6 @@ use App\Http\Requests\Auth\RegisterLaboratoryRequest;
 use App\Http\Resources\AuthenticatedUserResource;
 use App\Models\Location;
 use App\Models\User;
-use App\Services\CityNameNormalizer;
 use App\Services\ProfilePhotoService;
 use App\Services\ProviderVerificationService;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +17,7 @@ use Throwable;
 
 class RegisterLaboratoryController extends Controller
 {
-    public function __invoke(RegisterLaboratoryRequest $request, CityNameNormalizer $cityNames, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
+    public function __invoke(RegisterLaboratoryRequest $request, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
     {
         $validated = $request->validated();
         $photoPath = $request->hasFile('profile_photo')
@@ -26,7 +25,7 @@ class RegisterLaboratoryController extends Controller
             : null;
 
         try {
-            $user = DB::transaction(function () use ($validated, $cityNames, $photoPath, $verifications): User {
+            $user = DB::transaction(function () use ($validated, $photoPath, $verifications): User {
                 $name = $validated['laboratory_name'];
                 $locationId = isset($validated['location'])
                     ? Location::where('code', $validated['location'])->valueOrFail('id')
@@ -47,10 +46,9 @@ class RegisterLaboratoryController extends Controller
                     'name' => $name,
                     'location_id' => $locationId,
                     'address' => $validated['address'],
-                    'proposed_city' => isset($validated['proposed_city'])
-                        ? $cityNames->display($validated['proposed_city'])
-                        : null,
                     'profile_image_path' => $photoPath,
+                    'supports_at_lab' => $validated['supports_at_lab'],
+                    'supports_home_collection' => $validated['supports_home_collection'],
                     'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
                 ]);
                 $verifications->ensure($profile);

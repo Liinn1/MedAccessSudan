@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import customerCareImage from '../../assets/public-home/customer-care.jpg'
-import { SupportIcon } from '../icons/PatientHomeIcons'
 import { BotanicalDecoration } from './BotanicalDecoration'
 import { Reveal } from './Reveal'
 import { ApiError } from '../../services/apiClient'
@@ -22,7 +21,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const formStatusId = 'contact-form-status'
 
 export function ContactSection() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [errors, setErrors] = useState<ContactErrors>({
     name: false,
     email: false,
@@ -71,7 +70,7 @@ export function ContactSection() {
 
   return (
     <section className="relative bg-[#fffaf2] pb-18 pt-16" id="contact">
-      <div className="mx-auto grid max-w-7xl gap-7 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:px-10">
+      <div className="mx-auto grid max-w-7xl gap-7 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:px-10" dir="ltr">
         <Reveal className="public-contact-visual relative overflow-hidden rounded-[2rem] bg-white shadow-[0_16px_45px_rgb(15_118_110/0.1)]">
           <img
             alt={t('publicHome.contact.imageAlt')}
@@ -83,7 +82,7 @@ export function ContactSection() {
         </Reveal>
 
         <Reveal delay={100} direction="inline">
-          <div className="grid h-full gap-6 rounded-[2rem] border border-teal-100 bg-white p-6 shadow-[0_16px_45px_rgb(15_118_110/0.08)] sm:p-8">
+          <div className="grid h-full gap-6 rounded-[2rem] border border-teal-100 bg-white p-6 shadow-[0_16px_45px_rgb(15_118_110/0.08)] sm:p-8" dir={i18n.dir()}>
             <div>
               <p className="public-eyebrow">{t('publicHome.contact.eyebrow')}</p>
               <h2 className="mt-1 text-3xl font-black sm:text-4xl">{t('publicHome.contact.title')}</h2>
@@ -142,16 +141,6 @@ export function ContactSection() {
                 {messageKey ? t(`publicHome.contact.${messageKey}`) : ''}
               </p>
             </form>
-
-            <div className="border-t border-slate-100 pt-5">
-              <h3 className="flex items-center gap-2 font-extrabold">
-                <SupportIcon className="size-5 text-[var(--color-primary)]" />
-                {t('publicHome.contact.otherWays')}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
-                {t('publicHome.contact.otherWaysPending')}
-              </p>
-            </div>
           </div>
         </Reveal>
       </div>

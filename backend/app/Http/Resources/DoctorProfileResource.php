@@ -18,6 +18,7 @@ class DoctorProfileResource extends JsonResource
             'id' => $this->id,
             'name' => $this->user->name,
             'clinic_name' => $this->clinic_name,
+            'address' => $this->address,
             'biography' => $biography['text'],
             'biography_language' => $biography['target_language'],
             'biography_is_translated' => $biography['is_translated'],

@@ -47,6 +47,7 @@ class DoctorDashboardController extends Controller
                 'profile' => $profile ? [
                     'id' => $profile->id,
                     'clinic_name' => $profile->clinic_name,
+                    'address' => $profile->address,
                     'biography' => $profile->biography,
                     'biography_language' => $profile->biography_language,
                     'verification_status' => $profile->verification_status,

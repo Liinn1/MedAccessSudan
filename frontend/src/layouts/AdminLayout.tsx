@@ -57,7 +57,6 @@ export function AdminLayout({
         navigationLabel={t('admin.navigation.label')}
         onLogout={handleLogout}
         roleLabel={user ? t(`roles.${user.role}`) : t('roles.admin')}
-        supportComingSoon={t('patient.navigation.supportComingSoon')}
         user={user}
       />
       <main className="page-enter relative isolate min-h-[calc(100dvh-4rem)] lg:ms-64">

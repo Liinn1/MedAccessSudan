@@ -59,6 +59,20 @@ class ProfilePhotoService
 
     public static function publicUrl(?string $path): ?string
     {
-        return $path ? url(Storage::disk('public')->url($path)) : null;
+        if (! $path) {
+            return null;
+        }
+
+        $relativeUrl = '/storage/'.ltrim(str_replace('\\', '/', $path), '/');
+
+        if (app()->bound('request')) {
+            $request = request();
+
+            if ($request->getHost()) {
+                return rtrim($request->getSchemeAndHttpHost(), '/').$relativeUrl;
+            }
+        }
+
+        return url($relativeUrl);
     }
 }

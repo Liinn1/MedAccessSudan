@@ -25,6 +25,8 @@ class DoctorProfileManagementTest extends TestCase
             'clinic_name' => '  Nile Care Clinic  ',
             'biography' => '  Neurology specialist.  ',
             'biography_language' => 'en',
+            'location' => 'SD-KH',
+            'address' => 'Khartoum, Al Riyadh, Street 15',
         ])->assertOk()
             ->assertJsonPath('data.profile.clinic_name', 'Nile Care Clinic')
             ->assertJsonPath('data.profile.biography', 'Neurology specialist.')
@@ -46,6 +48,8 @@ class DoctorProfileManagementTest extends TestCase
 
         $this->putJson('/api/v1/doctor/profile', [
             'clinic_name' => 'Clinic',
+            'location' => 'SD-KH',
+            'address' => 'Khartoum, Al Riyadh, Street 15',
             'verification_status' => 'verified',
             'specialization_id' => Specialization::query()->latest('id')->firstOrFail()->id,
             'location_id' => Location::query()->latest('id')->firstOrFail()->id,
@@ -119,6 +123,7 @@ class DoctorProfileManagementTest extends TestCase
             'user_id' => User::factory()->create(['role' => UserRole::Doctor])->id,
             'specialization_id' => Specialization::query()->firstOrFail()->id,
             'location_id' => Location::query()->firstOrFail()->id,
+            'address' => 'Khartoum, Al Riyadh, Street 15',
             'verification_status' => 'pending_documents',
         ]);
     }

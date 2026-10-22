@@ -10,7 +10,6 @@ use App\Http\Resources\AuthenticatedUserResource;
 use App\Models\Location;
 use App\Models\Specialization;
 use App\Models\User;
-use App\Services\CityNameNormalizer;
 use App\Services\ProfilePhotoService;
 use App\Services\ProviderVerificationService;
 use Illuminate\Http\JsonResponse;
@@ -19,13 +18,13 @@ use Throwable;
 
 class RegisterDoctorController extends Controller
 {
-    public function __invoke(RegisterDoctorRequest $request, CityNameNormalizer $cityNames, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
+    public function __invoke(RegisterDoctorRequest $request, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
     {
         $validated = $request->validated();
         $photoPath = $photos->store($request->file('profile_photo'), 'doctors');
 
         try {
-            $user = DB::transaction(function () use ($validated, $cityNames, $photoPath, $verifications): User {
+            $user = DB::transaction(function () use ($validated, $photoPath, $verifications): User {
                 $user = User::create([
                     'name' => $validated['first_name'].' '.$validated['last_name'],
                     'first_name' => $validated['first_name'],
@@ -44,19 +43,12 @@ class RegisterDoctorController extends Controller
                     'location_id' => $locationId,
                     'home_visit_location_id' => ($validated['offers_home_visits'] ?? false) ? $locationId : null,
                     'clinic_name' => $validated['clinic_name'] ?? null,
+                    'address' => $validated['address'],
                     'offers_clinic_visits' => (bool) ($validated['offers_clinic_visits'] ?? true),
                     'offers_home_visits' => (bool) ($validated['offers_home_visits'] ?? false),
                     'profile_image_path' => $photoPath,
                     'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
                 ]);
-
-                if (! empty($validated['proposed_city'])) {
-                    $profile->cityProposal()->create([
-                        'proposed_name' => $cityNames->display($validated['proposed_city']),
-                        'normalized_name' => $cityNames->comparison($validated['proposed_city']),
-                        'status' => 'pending',
-                    ]);
-                }
 
                 $verifications->ensure($profile);
 

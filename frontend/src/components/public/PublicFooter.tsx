@@ -1,17 +1,18 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { APPOINTMENT_SEARCH_ROUTE, buildLoginPath } from '../../utils/navigation'
+import { APPOINTMENT_SEARCH_ROUTE, buildLoginPath, PUBLIC_SECTION_ROUTES } from '../../utils/navigation'
 import { BrandMark } from '../branding/BrandMark'
 
 const groups = [
   {
     key: 'quick',
     links: [
-      ['home', '/#home'],
-      ['about', '/#about'],
-      ['services', '/#services'],
-      ['doctors', '/register/doctor'],
-      ['contact', '/#contact'],
+      ['home', PUBLIC_SECTION_ROUTES.home],
+      ['about', PUBLIC_SECTION_ROUTES.about],
+      ['services', PUBLIC_SECTION_ROUTES.services],
+      ['doctors', PUBLIC_SECTION_ROUTES.doctors],
+      ['faq', PUBLIC_SECTION_ROUTES.faq],
+      ['contact', PUBLIC_SECTION_ROUTES.contact],
     ],
   },
   {
@@ -19,6 +20,7 @@ const groups = [
     links: [
       ['clinic', buildLoginPath(APPOINTMENT_SEARCH_ROUTE)],
       ['homeVisit', buildLoginPath('/patient/home-visits')],
+      ['laboratory', buildLoginPath('/patient/laboratory')],
     ],
   },
   {
@@ -27,6 +29,7 @@ const groups = [
       ['login', '/login'],
       ['patientRegistration', '/register/patient'],
       ['doctorRegistration', '/register/doctor'],
+      ['laboratoryRegistration', '/register/laboratory'],
     ],
   },
 ] as const

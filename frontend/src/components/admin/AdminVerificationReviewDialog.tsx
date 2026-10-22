@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
+import { localizedName } from '../../utils/localizedName'
 import { ActionButton } from '../buttons/ActionButton'
 import { ConfirmationDialog } from '../feedback/ConfirmationDialog'
 import { ContextualFeedback, type ContextualFeedbackState } from '../feedback/ContextualFeedback'
@@ -55,8 +56,12 @@ export function AdminVerificationReviewDialog({
 
   useEffect(() => {
     if (!open || !item) return
-    setError(''); setNote(''); setDetail(null); setFeedback(null); setReplaceDoc(null); setReplaceReason('')
-    getAdminVerification(item.id).then(setDetail).catch(() => setError(t('admin.errors.action')))
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      setError(''); setNote(''); setDetail(null); setFeedback(null); setReplaceDoc(null); setReplaceReason('')
+      getAdminVerification(item.id, controller.signal).then(setDetail).catch(() => { if (!controller.signal.aborted) setError(t('admin.errors.action')) })
+    }, 0)
+    return () => { controller.abort(); window.clearTimeout(timer) }
   }, [item, open, t])
 
   useEffect(() => {
@@ -109,8 +114,8 @@ export function AdminVerificationReviewDialog({
           <dl className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
             {detail.profile_summary.email && <div><dt className="text-sm font-bold text-slate-500">{t('admin.table.email')}</dt><dd>{detail.profile_summary.email}</dd></div>}
             {detail.profile_summary.phone && <div><dt className="text-sm font-bold text-slate-500">{t('admin.table.phone')}</dt><dd>{detail.profile_summary.phone}</dd></div>}
-            {detail.profile_summary.specialization && <div><dt className="text-sm font-bold text-slate-500">{t('admin.providers.specialty')}</dt><dd>{i18n.language.startsWith('ar') ? detail.profile_summary.specialization.name_ar : detail.profile_summary.specialization.name_en}</dd></div>}
-            {detail.profile_summary.location && <div><dt className="text-sm font-bold text-slate-500">{t('admin.providers.city')}</dt><dd>{i18n.language.startsWith('ar') ? detail.profile_summary.location.name_ar : detail.profile_summary.location.name_en}</dd></div>}
+            {detail.profile_summary.specialization && <div><dt className="text-sm font-bold text-slate-500">{t('admin.providers.specialty')}</dt><dd>{localizedName(detail.profile_summary.specialization, i18n.language)}</dd></div>}
+            {detail.profile_summary.location && <div><dt className="text-sm font-bold text-slate-500">{t('admin.providers.city')}</dt><dd>{localizedName(detail.profile_summary.location, i18n.language)}</dd></div>}
             {detail.profile_summary.clinic_name && <div><dt className="text-sm font-bold text-slate-500">{t('admin.users.clinicName')}</dt><dd>{detail.profile_summary.clinic_name}</dd></div>}
             {detail.profile_summary.address && <div><dt className="text-sm font-bold text-slate-500">{t('admin.labs.address')}</dt><dd>{detail.profile_summary.address}</dd></div>}
           </dl>

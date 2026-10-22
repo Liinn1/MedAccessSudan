@@ -22,6 +22,7 @@ import { getCurrentUser, logout } from '../../services/authService'
 import { CONSULTATION_TYPE, getDoctorDashboard, type ConsultationType, type DoctorDashboardData } from '../../services/doctorDashboardService'
 import { greetingPeriod, sudanDateKey, SUDAN_TIME_ZONE } from '../../utils/dateTime'
 import { buildLoginPath, DOCTOR_DASHBOARD_ROUTE, PATIENT_DEFAULT_ROUTE } from '../../utils/navigation'
+import { localizedName } from '../../utils/localizedName'
 
 export function DoctorDashboardPage() {
   const { i18n, t } = useTranslation()
@@ -61,7 +62,7 @@ export function DoctorDashboardPage() {
   const locale = i18n.language.startsWith('ar') ? 'ar-SD' : 'en'
   const firstName = user.first_name || user.name.split(' ')[0] || user.name
   const specialty = profile?.specialization ? (i18n.language.startsWith('ar') ? profile.specialization.name_ar : profile.specialization.name_en) : t('doctor.dashboard.notProvided')
-  const location = profile?.location ? (i18n.language.startsWith('ar') ? profile.location.name_ar : profile.location.name_en) : t('doctor.dashboard.notProvided')
+  const location = localizedName(profile?.location, i18n.resolvedLanguage) || t('doctor.dashboard.notProvided')
   const weekdayLabels = [t('doctor.availability.days.0'), t('doctor.availability.days.1'), t('doctor.availability.days.2'), t('doctor.availability.days.3'), t('doctor.availability.days.4'), t('doctor.availability.days.5'), t('doctor.availability.days.6')]
   const chartDays = (insights?.appointment_overview.days ?? []).map((day) => ({ label: weekdayLabels[day.weekday]?.slice(0, 3) ?? day.date, completed: day.completed, upcoming: day.upcoming, cancelled: day.cancelled }))
   const totals = insights?.appointment_overview.totals ?? { total: 0, completed: 0, upcoming: 0, cancelled: 0 }

@@ -29,8 +29,13 @@ class DoctorDashboardInsights
 
         $upcoming = $profile->appointments()
             ->with('patient:id,name')
-            ->where('status', AppointmentStatus::Confirmed->value)
-            ->where('starts_at', '>=', CarbonImmutable::now($timezone))
+            ->where(function ($query) use ($timezone): void {
+                $query->where('status', AppointmentStatus::InProgress->value)
+                    ->orWhere(function ($confirmed) use ($timezone): void {
+                        $confirmed->where('status', AppointmentStatus::Confirmed->value)
+                            ->where('starts_at', '>=', CarbonImmutable::now($timezone));
+                    });
+            })
             ->orderBy('starts_at')
             ->limit(5)
             ->get()
@@ -51,7 +56,7 @@ class DoctorDashboardInsights
             );
             $completed = $dayAppointments->where('status', AppointmentStatus::Completed)->count();
             $cancelled = $dayAppointments->where('status', AppointmentStatus::Cancelled)->count();
-            $upcomingCount = $dayAppointments->where('status', AppointmentStatus::Confirmed)->count();
+            $upcomingCount = $dayAppointments->whereIn('status', [AppointmentStatus::Confirmed, AppointmentStatus::InProgress])->count();
             $days[] = [
                 'date' => $date->toDateString(),
                 'weekday' => $date->dayOfWeek,
@@ -79,7 +84,7 @@ class DoctorDashboardInsights
                     return false;
                 }
 
-                return in_array($appointment->status, [AppointmentStatus::Confirmed, AppointmentStatus::Completed], true);
+                return in_array($appointment->status, [AppointmentStatus::Confirmed, AppointmentStatus::InProgress, AppointmentStatus::Completed], true);
             })->count();
             $available = $weekSlots->count();
             $utilization[$type->value] = [

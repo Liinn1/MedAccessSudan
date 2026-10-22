@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdminFilter, AdminFilters, AdminRecordCard, AdminRecordList } from '../../../components/admin/AdminManagementList'
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader'
@@ -29,17 +29,18 @@ export function AdminVerificationSection({ openId }: { openId?: number | null })
     } catch { if (!signal?.aborted) setError(t('admin.errors.load')) }
     finally { if (!signal?.aborted) setLoading(false) }
   }
+  const loadEffect = useEffectEvent(load)
 
   useEffect(() => {
     const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
+    const timer = window.setTimeout(() => { void loadEffect(controller.signal) }, 0)
+    return () => { controller.abort(); window.clearTimeout(timer) }
   }, [providerType, status])
 
   useEffect(() => {
     if (!openId || !items.length) return
     const match = items.find((item) => item.id === openId)
-    if (match) setReview(match)
+    if (match) window.setTimeout(() => setReview(match), 0)
   }, [openId, items])
 
   const locale = i18n.language.startsWith('ar') ? 'ar' : 'en'

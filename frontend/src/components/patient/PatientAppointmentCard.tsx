@@ -9,6 +9,7 @@ export function PatientAppointmentCard({
   meta,
   payment,
   paymentLabel,
+  details,
   actions,
 }: {
   typeBadge: ReactNode
@@ -19,6 +20,7 @@ export function PatientAppointmentCard({
   meta: { label: string; value: string; ltr?: boolean }[]
   payment?: string | null
   paymentLabel: string
+  details?: ReactNode
   actions: ReactNode
 }) {
   return (
@@ -41,6 +43,7 @@ export function PatientAppointmentCard({
           </div>
         )}
       </dl>
+      {details}
       <div className="mt-auto flex flex-col gap-2 pt-5">{actions}</div>
     </article>
   )

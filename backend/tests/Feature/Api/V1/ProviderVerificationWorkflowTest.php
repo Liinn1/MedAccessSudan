@@ -42,7 +42,8 @@ class ProviderVerificationWorkflowTest extends TestCase
             'password' => 'Secure123',
             'password_confirmation' => 'Secure123',
             'specialization' => 'general_medicine',
-            'location' => 'khartoum',
+            'location' => 'SD-KH',
+            'address' => 'Khartoum, Al Riyadh',
             'profile_photo' => UploadedFile::fake()->createWithContent(
                 'doctor.png',
                 base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=')
@@ -52,6 +53,74 @@ class ProviderVerificationWorkflowTest extends TestCase
         $doctor = User::query()->where('email', 'musa.doctor@example.com')->firstOrFail();
         $this->assertSame('pending_documents', $doctor->doctorProfile->verification_status);
         $this->assertFalse($doctor->doctorProfile->isProfessionallyVerified());
+    }
+
+    public function test_mobile_doctor_onboarding_reaches_admin_review_and_observes_approval(): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/v1/auth/register/doctor', [
+            'first_name' => 'Mobile',
+            'last_name' => 'Doctor',
+            'email' => 'mobile.doctor@example.com',
+            'phone' => '+249111222556',
+            'password' => 'Secure123',
+            'password_confirmation' => 'Secure123',
+            'specialization' => 'general_medicine',
+            'location' => 'SD-KH',
+            'address' => 'Khartoum, Al Riyadh',
+            'clinic_name' => 'Mobile Care Clinic',
+            'offers_clinic_visits' => '1',
+            'offers_home_visits' => '1',
+            'profile_photo' => UploadedFile::fake()->createWithContent(
+                'doctor.png',
+                base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=')
+            ),
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $doctor = User::query()->where('email', 'mobile.doctor@example.com')->firstOrFail();
+        $profile = $doctor->doctorProfile()->with(['providerVerification.documents', 'specialization', 'location'])->firstOrFail();
+        $this->assertSame('general_medicine', $profile->specialization->code);
+        $this->assertSame('SD-KH', $profile->location->code);
+        $this->assertTrue($profile->offers_clinic_visits);
+        $this->assertTrue($profile->offers_home_visits);
+        $this->assertSame(DoctorVerificationStatus::PendingDocuments->value, $profile->verification_status);
+        $this->assertNotNull($profile->providerVerification);
+
+        Sanctum::actingAs($doctor);
+        $this->uploadRequired($doctor, 'doctor');
+        $this->postJson('/api/v1/doctor/verification/submit')
+            ->assertOk()
+            ->assertJsonPath('data.status', DoctorVerificationStatus::UnderReview->value);
+
+        $verification = $profile->fresh()->providerVerification;
+        $this->assertCount(3, $verification->documents);
+        foreach ($verification->documents as $document) {
+            Storage::disk($document->disk)->assertExists($document->path);
+        }
+
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'is_active' => true]);
+        Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/admin/verifications?provider_type=doctor&status=under_review')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $verification->id,
+                'provider_name' => 'Mobile Doctor',
+                'status' => DoctorVerificationStatus::UnderReview->value,
+            ]);
+        $this->get('/api/v1/admin/verifications/'.$verification->id.'/documents/'.$verification->documents->first()->id)
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        $this->approveAllCurrentDocuments($verification->id);
+        $this->postJson('/api/v1/admin/verifications/'.$verification->id.'/approve')
+            ->assertOk()
+            ->assertJsonPath('data.status', DoctorVerificationStatus::Verified->value);
+
+        Sanctum::actingAs($doctor);
+        $this->getJson('/api/v1/doctor/verification')
+            ->assertOk()
+            ->assertJsonPath('data.status', DoctorVerificationStatus::Verified->value);
     }
 
     public function test_new_doctor_starts_unverified_can_login_and_cannot_self_verify(): void
@@ -385,6 +454,7 @@ class ProviderVerificationWorkflowTest extends TestCase
             'specialization_id' => Specialization::query()->firstOrFail()->id,
             'location_id' => Location::query()->firstOrFail()->id,
             'clinic_name' => 'Nile Clinic',
+            'address' => 'Khartoum, Al Riyadh',
             'profile_image_path' => 'profile-photos/doctors/test.jpg',
             'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
         ]);
@@ -398,8 +468,9 @@ class ProviderVerificationWorkflowTest extends TestCase
         $user = User::factory()->create(['role' => UserRole::Laboratory, 'email' => 'lab.verify@example.com']);
         $profile = $user->laboratoryProfile()->create([
             'name' => 'Nile Diagnostics',
-            'address' => 'Khartoum',
-            'location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+            'location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
+            'address' => 'Khartoum, Al Riyadh',
+            'profile_image_path' => 'profile-photos/laboratories/test.jpg',
             'verification_status' => DoctorVerificationStatus::PendingDocuments->value,
         ]);
         $profile->providerVerification()->create(['status' => DoctorVerificationStatus::PendingDocuments]);

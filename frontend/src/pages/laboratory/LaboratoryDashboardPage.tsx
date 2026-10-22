@@ -6,6 +6,7 @@ import { LaboratoryActivityChart } from '../../components/charts/LaboratoryActiv
 import { DashboardEmptyState } from '../../components/dashboard/DashboardEmptyState'
 import { DashboardFeatureCarousel } from '../../components/dashboard/DashboardFeatureCarousel'
 import { DashboardGreeting } from '../../components/dashboard/DashboardGreeting'
+import { DashboardHomeCard, DashboardHomeGrid } from '../../components/dashboard/DashboardHomeCard'
 import { DashboardInfoCard } from '../../components/dashboard/DashboardInfoCard'
 import { DashboardPage } from '../../components/dashboard/DashboardPage'
 import { DashboardProfileCard } from '../../components/dashboard/DashboardProfileCard'
@@ -24,6 +25,7 @@ import { ApiError } from '../../services/apiClient'
 import { getLaboratoryDashboard, type LaboratoryDashboardData, type LaboratoryOrder } from '../../services/laboratoryService'
 import { greetingPeriod, SUDAN_TIME_ZONE } from '../../utils/dateTime'
 import { buildLoginPath, LABORATORY_DASHBOARD_ROUTE } from '../../utils/navigation'
+import { localizedName } from '../../utils/localizedName'
 
 function testNames(order: LaboratoryOrder, arabic: boolean) {
   return (order.items ?? []).map((item) => (arabic ? item.name_ar : item.name_en)).join(', ')
@@ -69,13 +71,37 @@ export function LaboratoryDashboardPage() {
 
   const activityTotal = data.request_activity.reduce((sum, day) => sum + day.count, 0)
   const pendingOrders = data.recent_requests.filter((order) => order.status !== 'result_ready')
-  const locationName = data.profile.location ? (arabic ? data.profile.location.name_ar : data.profile.location.name_en) : '—'
+  const locationName = localizedName(data.profile.location, i18n.resolvedLanguage) || '—'
   const viewAll = <button className="shrink-0 text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/laboratory/requests')} type="button">{t('laboratory.dashboard.viewAll')}</button>
 
   return <LaboratoryLayout user={{ ...data.user, profile_image_url: data.profile.profile_image_url ?? data.user.profile_image_url }}>
     <DashboardPage>
       <DashboardGreeting description={t('laboratory.dashboard.greetingSupport')} greeting={t(`laboratory.dashboard.greetings.${greetingPeriod()}`, { name: data.profile.name })} />
       <DashboardVerificationNotice onOpen={() => navigate('/laboratory/profile#account-verification')} role="laboratory" status={data.profile.verification_status} />
+
+      <DashboardHomeGrid>
+        <DashboardProfileCard editLabel={t('patient.dashboard.editProfile')} imageUrl={data.profile.profile_image_url ?? data.user.profile_image_url} name={data.profile.name} onEdit={() => navigate('/laboratory/profile')} role={t('roles.laboratory')} />
+        <DashboardInfoCard
+          editLabel={t('patient.dashboard.edit')}
+          onEdit={() => navigate('/laboratory/profile')}
+          rows={[
+            { icon: <LocationIcon className="size-5" />, label: t('laboratory.profile.location'), value: locationName },
+            { icon: <PhoneIcon className="size-5" />, label: t('laboratory.profile.phone'), value: data.profile.phone || data.user.phone || '—' },
+            { icon: <MailIcon className="size-5" />, label: t('patient.dashboard.email'), value: data.user.email },
+          ]}
+          title={t('laboratory.dashboard.infoTitle')}
+        />
+        <DashboardHomeCard action={viewAll} icon={<CalendarIcon className="size-5 text-[var(--color-primary)]" />} title={t('laboratory.dashboard.recent')}>
+          {pendingOrders.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/laboratory/requests')} type="button">{t('laboratory.dashboard.viewRequests')}</button>} description={t('laboratory.dashboard.emptyRecentHelp')} title={t('laboratory.dashboard.emptyPendingTitle')} /> : <ul className="space-y-2.5">{pendingOrders.slice(0, 4).map((order) => (
+            <li key={order.id}><button className="flex w-full flex-col gap-1 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/laboratory/requests/${order.id}`)} type="button">
+              <span className="flex w-full flex-wrap items-start justify-between gap-2"><strong>{order.patient?.name}</strong><LaboratoryStatusBadge status={order.status} /></span>
+              <span className="max-w-full truncate text-sm text-[var(--color-text-secondary)]" dir="auto">{testNames(order, arabic)}</span>
+              <CollectionMethodBadge method={order.collection_method} />
+              <span className="direction-ltr text-start text-xs font-semibold text-[var(--color-text-secondary)]">{formatRequestWhen(order.collection_starts_at || order.requested_at, locale)}</span>
+            </button></li>
+          ))}</ul>}
+        </DashboardHomeCard>
+      </DashboardHomeGrid>
 
       <section className="mt-8">
         <h2 className="text-xl font-extrabold">{t('laboratory.dashboard.activity')}</h2>
@@ -88,16 +114,6 @@ export function LaboratoryDashboardPage() {
       </section>
 
       <DashboardSplit>
-        <DashboardSectionCard action={viewAll} title={t('laboratory.dashboard.recent')}>
-          {pendingOrders.length === 0 ? <DashboardEmptyState action={<button className="text-sm font-bold text-[var(--color-primary)] hover:underline" onClick={() => navigate('/laboratory/requests')} type="button">{t('laboratory.dashboard.viewRequests')}</button>} description={t('laboratory.dashboard.emptyRecentHelp')} title={t('laboratory.dashboard.emptyPendingTitle')} /> : <ul className="space-y-2.5">{pendingOrders.slice(0, 4).map((order) => (
-            <li key={order.id}><button className="flex w-full flex-col gap-1 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/laboratory/requests/${order.id}`)} type="button">
-              <span className="flex w-full flex-wrap items-start justify-between gap-2"><strong>{order.patient?.name}</strong><LaboratoryStatusBadge status={order.status} /></span>
-              <span className="max-w-full truncate text-sm text-[var(--color-text-secondary)]" dir="auto">{testNames(order, arabic)}</span>
-              <CollectionMethodBadge method={order.collection_method} />
-              <span className="direction-ltr text-start text-xs font-semibold text-[var(--color-text-secondary)]">{formatRequestWhen(order.collection_starts_at || order.requested_at, locale)}</span>
-            </button></li>
-          ))}</ul>}
-        </DashboardSectionCard>
         <DashboardFeatureCarousel
           carouselDescription={t('laboratory.dashboard.feature.carousel')}
           carouselLabel={t('laboratory.dashboard.feature.carouselLabel')}
@@ -115,30 +131,6 @@ export function LaboratoryDashboardPage() {
           }]}
           title={t('laboratory.dashboard.feature.title')}
         />
-      </DashboardSplit>
-
-      <DashboardSplit>
-        <DashboardProfileCard editLabel={t('patient.dashboard.editProfile')} imageUrl={data.profile.profile_image_url ?? data.user.profile_image_url} name={data.profile.name} onEdit={() => navigate('/laboratory/profile')} role={t('roles.laboratory')} />
-        <DashboardInfoCard
-          editLabel={t('patient.dashboard.edit')}
-          onEdit={() => navigate('/laboratory/profile')}
-          rows={[
-            { icon: <LocationIcon className="size-5" />, label: t('laboratory.profile.location'), value: locationName },
-            { icon: <PhoneIcon className="size-5" />, label: t('laboratory.profile.phone'), value: data.profile.phone || data.user.phone || '—' },
-            { icon: <MailIcon className="size-5" />, label: t('patient.dashboard.email'), value: data.user.email },
-          ]}
-          title={t('laboratory.dashboard.infoTitle')}
-        />
-      </DashboardSplit>
-
-      <DashboardServices title={t('laboratory.dashboard.servicesTitle')}>
-        <DashboardQuickActionCard accentClassName="bg-[var(--color-primary-surface)] text-[var(--color-primary)]" description={t('laboratory.dashboard.serviceDescriptions.catalog')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.catalog')} onSelect={() => navigate('/laboratory/tests')} />
-        <DashboardQuickActionCard accentClassName="bg-amber-100 text-amber-700" description={t('laboratory.dashboard.serviceDescriptions.requests')} icon={<CalendarIcon className="size-5" />} label={t('laboratory.navigation.requests')} onSelect={() => navigate('/laboratory/requests')} />
-        <DashboardQuickActionCard accentClassName="bg-sky-100 text-sky-700" description={t('laboratory.dashboard.serviceDescriptions.results')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.results')} onSelect={() => navigate('/laboratory/results')} />
-        <DashboardQuickActionCard accentClassName="bg-slate-100 text-slate-700" description={t('laboratory.dashboard.serviceDescriptions.profile')} icon={<ProfileIcon className="size-5" />} label={t('laboratory.navigation.profile')} onSelect={() => navigate('/laboratory/profile')} />
-      </DashboardServices>
-
-      <DashboardSplit>
         <DashboardSectionCard title={t('laboratory.dashboard.awaiting')}>
           {data.awaiting_results.length === 0 ? <DashboardEmptyState description={t('laboratory.dashboard.emptyAwaitingHelp')} icon={LaboratoryIcon} title={t('laboratory.dashboard.emptyAwaiting')} /> : <ul className="space-y-2.5">{data.awaiting_results.map((order) => (
             <li key={order.id}><button className="flex w-full flex-col gap-2 rounded-2xl border border-[var(--color-border)] p-3.5 text-start hover:border-teal-200" onClick={() => navigate(`/laboratory/requests/${order.id}`)} type="button">
@@ -149,6 +141,16 @@ export function LaboratoryDashboardPage() {
             </button></li>
           ))}</ul>}
         </DashboardSectionCard>
+      </DashboardSplit>
+
+      <DashboardServices title={t('laboratory.dashboard.servicesTitle')}>
+        <DashboardQuickActionCard accentClassName="bg-[var(--color-primary-surface)] text-[var(--color-primary)]" description={t('laboratory.dashboard.serviceDescriptions.catalog')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.catalog')} onSelect={() => navigate('/laboratory/tests')} />
+        <DashboardQuickActionCard accentClassName="bg-amber-100 text-amber-700" description={t('laboratory.dashboard.serviceDescriptions.requests')} icon={<CalendarIcon className="size-5" />} label={t('laboratory.navigation.requests')} onSelect={() => navigate('/laboratory/requests')} />
+        <DashboardQuickActionCard accentClassName="bg-sky-100 text-sky-700" description={t('laboratory.dashboard.serviceDescriptions.results')} icon={<LaboratoryIcon className="size-5" />} label={t('laboratory.navigation.results')} onSelect={() => navigate('/laboratory/results')} />
+        <DashboardQuickActionCard accentClassName="bg-slate-100 text-slate-700" description={t('laboratory.dashboard.serviceDescriptions.profile')} icon={<ProfileIcon className="size-5" />} label={t('laboratory.navigation.profile')} onSelect={() => navigate('/laboratory/profile')} />
+      </DashboardServices>
+
+      <div className="mt-8">
         <DashboardSectionCard description={t('laboratory.dashboard.activityPeriod')} title={t('laboratory.dashboard.catalog')}>
           {activityTotal === 0 ? null : <div className="mb-4"><LaboratoryActivityChart days={data.request_activity.map((day) => ({ ...day, label: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: SUDAN_TIME_ZONE }).format(new Date(`${day.date}T12:00:00`)) }))} label={t('laboratory.dashboard.activity')} /></div>}
           {data.summary.tests_offered === 0 && data.summary.tests_unavailable === 0 ? <DashboardEmptyState description={t('laboratory.dashboard.emptyCatalogHelp')} icon={LaboratoryIcon} title={t('laboratory.dashboard.emptyCatalog')} /> : <>
@@ -157,7 +159,7 @@ export function LaboratoryDashboardPage() {
             <button className="mt-4 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white" onClick={() => navigate('/laboratory/tests')} type="button">{t('laboratory.dashboard.manageTests')}</button>
           </>}
         </DashboardSectionCard>
-      </DashboardSplit>
+      </div>
     </DashboardPage>
   </LaboratoryLayout>
 }

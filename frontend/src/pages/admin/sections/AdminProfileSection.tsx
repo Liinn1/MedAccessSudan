@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useEffectEvent, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader'
 import { AdminStatusBadge } from '../../../components/admin/AdminStatusBadge'
@@ -116,11 +116,12 @@ function AdminUsersPanel({ canManage, currentId }: { canManage: boolean; current
     catch { if (!signal?.aborted) setError(t('admin.errors.load')) }
     finally { if (!signal?.aborted) setLoading(false) }
   }
+  const loadEffect = useEffectEvent(load)
 
   useEffect(() => {
     const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
+    const timer = window.setTimeout(() => { void loadEffect(controller.signal) }, 0)
+    return () => { controller.abort(); window.clearTimeout(timer) }
   }, [])
 
   async function create(event: FormEvent) {

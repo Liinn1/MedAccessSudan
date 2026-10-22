@@ -20,6 +20,7 @@ export interface DoctorDashboardProfile {
   offers_home_visits: boolean
   specialization: DoctorFilterOption | null
   location: DoctorFilterOption | null
+  address: string | null
   available_slots_count: number
   has_weekly_availability: boolean
   profile_image_url: string | null
@@ -80,9 +81,11 @@ export async function updateDoctorProfile(input: {
   clinic_name: string | null
   biography: string | null
   biography_language: 'en' | 'ar' | null
+  location: string
+  address: string
   offers_clinic_visits?: boolean
   offers_home_visits?: boolean
-}): Promise<Pick<DoctorDashboardProfile, 'id' | 'clinic_name' | 'biography' | 'biography_language' | 'offers_clinic_visits' | 'offers_home_visits'>> {
+}): Promise<DoctorDashboardProfile> {
   const response = await apiClient.put<{ data: { profile: Pick<DoctorDashboardProfile, 'id' | 'clinic_name' | 'biography' | 'biography_language' | 'offers_clinic_visits' | 'offers_home_visits'> } }>('/api/v1/doctor/profile', input)
-  return response.data.profile
+  return response.data.profile as DoctorDashboardProfile
 }

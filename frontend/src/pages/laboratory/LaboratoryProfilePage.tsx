@@ -16,6 +16,8 @@ import { SecuritySection } from '../../components/profile/SecuritySection'
 import { ProviderVerificationCard } from '../../components/verification/ProviderVerificationCard'
 import type { AuthenticatedUser } from '../../services/authService'
 import { laboratoryProfileCompletion, type CompletionItemKey } from '../../utils/profileCompletion'
+import { localizedName } from '../../utils/localizedName'
+import { SearchableSelectField } from '../../components/forms/SearchableSelectField'
 
 type Tab = 'information' | 'laboratory' | 'verification' | 'security'
 const tabs: Tab[] = ['information', 'laboratory', 'verification', 'security']
@@ -28,14 +30,13 @@ export function LaboratoryProfilePage() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [profile, setProfile] = useState<LaboratoryProfilePayload | null>(null)
   const [locations, setLocations] = useState<RegistrationOption[]>([])
-  const [form, setForm] = useState({ name: '', phone: '', address: '', location: '', supports_home_collection: false })
+  const [form, setForm] = useState({ name: '', phone: '', address: '', location: '', supports_at_lab: true, supports_home_collection: false })
   const [verification, setVerification] = useState<ProviderVerificationPayload | null>(null)
   const [testsOffered, setTestsOffered] = useState(0)
   const [file, setFile] = useState<File | null>(null)
   const [state, setState] = useState<'loading' | 'success' | 'error'>('loading')
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState('')
-  const arabic = i18n.language.startsWith('ar')
 
   useEffect(() => {
     if (tab !== 'verification') return
@@ -53,7 +54,7 @@ export function LaboratoryProfilePage() {
         setVerification(nextVerification)
         setTestsOffered(dashboard.summary.tests_offered)
         setLocations(options.locations)
-        setForm({ name: payload.profile.name, phone: payload.profile.phone ?? payload.user.phone ?? '', address: payload.profile.address, location: payload.profile.location?.code ?? '', supports_home_collection: Boolean(payload.profile.supports_home_collection) })
+        setForm({ name: payload.profile.name, phone: payload.profile.phone ?? payload.user.phone ?? '', address: payload.profile.address, location: payload.profile.location?.code ?? '', supports_at_lab: Boolean(payload.profile.supports_at_lab), supports_home_collection: Boolean(payload.profile.supports_home_collection) })
         setState('success')
       })
       .catch((error: unknown) => {
@@ -131,12 +132,12 @@ export function LaboratoryProfilePage() {
                 <div className="mt-6 grid gap-4">
                   <label className="font-semibold">{t('laboratory.profile.name')}<input className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] px-4 py-3" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} /></label>
                   <label className="font-semibold">{t('laboratory.profile.phone')}<input className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] px-4 py-3" onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} value={form.phone} /></label>
-                  <label className="font-semibold">{t('laboratory.profile.location')}<select className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3" onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} value={form.location}>{locations.map((item) => <option key={item.code} value={item.code}>{arabic ? item.name_ar : item.name_en}</option>)}</select></label>
+                  <SearchableSelectField id="laboratory-state" label={t('laboratory.profile.location')} onChange={(value) => setForm((current) => ({ ...current, location: value }))} options={locations.map((item) => ({ value: item.code, label: localizedName(item, i18n.resolvedLanguage) }))} placeholder={t('auth.laboratoryRegistration.chooseLocation')} searchLabel={t('auth.laboratoryRegistration.searchState')} value={form.location} />
                   <label className="font-semibold">{t('laboratory.profile.address')}<input className="mt-2 block w-full rounded-2xl border border-[var(--color-border)] px-4 py-3" onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} value={form.address} /></label>
                   <ServiceAvailabilitySelector
                     legend={t('laboratory.profile.collectionServices')}
                     options={[
-                      { key: 'laboratory', label: t('laboratory.profile.visitLab'), checked: true, disabled: true },
+                      { key: 'laboratory', label: t('laboratory.profile.visitLab'), checked: form.supports_at_lab, onChange: (checked) => setForm((current) => ({ ...current, supports_at_lab: checked })) },
                       { key: 'home', label: t('laboratory.profile.homeCollection'), description: t('laboratory.profile.homeCollectionHint'), checked: form.supports_home_collection, onChange: (checked) => setForm((current) => ({ ...current, supports_home_collection: checked })) },
                     ]}
                   />

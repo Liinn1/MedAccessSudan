@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageBackgroundDecorations } from '../components/layout/PageBackgroundDecorations'
+import { PatientRatingPrompt } from '../components/patient/PatientRatingPrompt'
 import { PatientNavigationShell } from '../components/navigation/PatientNavigationShell'
 import { PublicFooter } from '../components/public/PublicFooter'
-import { getCurrentUser, logout, type AuthenticatedUser } from '../services/authService'
+import { logout, restoreSession, type AuthenticatedUser } from '../services/authService'
 
 interface PatientLayoutProps {
   activeSection?: 'dashboard' | 'book' | 'homeVisit' | 'appointments' | 'laboratory' | 'profile'
@@ -17,8 +18,6 @@ interface PatientLayoutProps {
   user?: AuthenticatedUser | null
 }
 
-let cachedPatientUser: AuthenticatedUser | null = null
-
 export function PatientLayout({
   activeSection = 'dashboard',
   children,
@@ -31,33 +30,25 @@ export function PatientLayout({
   user,
 }: PatientLayoutProps) {
   const navigate = useNavigate()
-  const [loadedUser, setLoadedUser] = useState<AuthenticatedUser | null>(cachedPatientUser)
+  const [restoredUser, setRestoredUser] = useState<AuthenticatedUser | null>(null)
   const [internalLoggingOut, setInternalLoggingOut] = useState(false)
-  const shellUser = user ?? loadedUser
+  const shellUser = user ?? restoredUser
 
   useEffect(() => {
-    if (user) {
-      cachedPatientUser = user
-      return
-    }
-    if (cachedPatientUser) return
-
-    const controller = new AbortController()
-    getCurrentUser(controller.signal)
+    if (user) return
+    let active = true
+    restoreSession()
       .then((currentUser) => {
-        if (currentUser.role !== 'patient') return
-        cachedPatientUser = currentUser
-        setLoadedUser(currentUser)
+        if (active && currentUser?.role === 'patient') setRestoredUser(currentUser)
       })
       .catch(() => undefined)
-    return () => controller.abort()
+    return () => { active = false }
   }, [user])
 
   async function defaultLogout() {
     setInternalLoggingOut(true)
     try {
       await logout()
-      cachedPatientUser = null
       navigate('/login', { replace: true })
     } catch {
       setInternalLoggingOut(false)
@@ -80,6 +71,7 @@ export function PatientLayout({
         <div className="relative z-10">{children}</div>
       </main>
       {showFooter && <div className="lg:ms-64"><PublicFooter /></div>}
+      <PatientRatingPrompt enabled={shellUser?.role === 'patient'} />
     </div>
   )
 }

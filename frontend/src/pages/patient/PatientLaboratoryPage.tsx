@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { useNavigate } from 'react-router-dom'
 import { BookingFlowFrame } from '../../components/booking/BookingFlowFrame'
 import { BookingPanel } from '../../components/booking/BookingPanel'
@@ -7,7 +8,8 @@ import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSu
 import { BookingReviewList } from '../../components/booking/BookingReviewList'
 import { BookingSlotPicker } from '../../components/booking/BookingSlotPicker'
 import { CollectionMethodSelector } from '../../components/booking/CollectionMethodSelector'
-import { createEmptyHomeAddress, PatientHomeAddressForm, type PatientHomeAddress } from '../../components/booking/PatientHomeAddressForm'
+import { PatientHomeAddressForm } from '../../components/booking/PatientHomeAddressForm'
+import { createEmptyHomeAddress, type PatientHomeAddress } from '../../utils/homeAddress'
 import { PaymentMethodSelector } from '../../components/booking/PaymentMethodSelector'
 import { useBookingStepFocus } from '../../hooks/useBookingStepFocus'
 import { useHomeGeolocation } from '../../hooks/useHomeGeolocation'
@@ -48,6 +50,7 @@ export function PatientLaboratoryPage() {
   const [homeAddress, setHomeAddress] = useState<PatientHomeAddress>(createEmptyHomeAddress())
   const [collectionSlot, setCollectionSlot] = useState<CollectionSlot | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const selectedIdsKey = selectedIds.join(',')
   const [chosenLab, setChosenLab] = useState<LaboratoryMatch | null>(null)
   const [showPartial, setShowPartial] = useState(false)
   const [discovery, setDiscovery] = useState<PatientLaboratoryDiscovery | null>(null)
@@ -73,7 +76,7 @@ export function PatientLaboratoryPage() {
       query: debouncedQuery,
       categoryId: categoryId ?? undefined,
       locationId: home ? undefined : (filterLocationId ?? undefined),
-      labTestIds: selectedIds,
+      labTestIds: selectedIdsKey ? selectedIdsKey.split(',').map(Number) : [],
       collectionMethod,
     }, controller.signal).then((catalog) => {
       setDiscovery(catalog)
@@ -84,7 +87,7 @@ export function PatientLaboratoryPage() {
       else setState('error')
     })
     return () => controller.abort()
-  }, [categoryId, collectionMethod, debouncedQuery, filterLocationId, home, navigate, selectedIds.join(',')])
+  }, [categoryId, collectionMethod, debouncedQuery, filterLocationId, home, navigate, selectedIdsKey])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -244,7 +247,7 @@ export function PatientLaboratoryPage() {
       {!home && <label className="mt-4 block font-bold">{t('patient.laboratory.locationFilter')}
         <select className="mt-2 block min-h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4" onChange={(event) => setFilterLocationId(event.target.value ? Number(event.target.value) : null)} value={filterLocationId ?? ''}>
           <option value="">{t('patient.laboratory.allLocations')}</option>
-          {(discovery?.locations ?? []).map((location) => <option key={location.id ?? location.code} value={location.id}>{arabic ? location.name_ar : location.name_en}</option>)}
+          {(discovery?.locations ?? []).map((location) => <option key={location.id ?? location.code} value={location.id}>{localizedName(location, i18n.resolvedLanguage)}</option>)}
         </select>
       </label>}
       {complete.length === 0 && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -257,7 +260,7 @@ export function PatientLaboratoryPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="font-extrabold">{lab.laboratory_name}</h3>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{[arabic ? lab.location?.name_ar : lab.location?.name_en, lab.address].filter(Boolean).join(' — ')}</p>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{[localizedName(lab.location, i18n.resolvedLanguage), lab.address].filter(Boolean).join(' — ')}</p>
               <ProviderRatingSummary className="mt-1" rating={lab} />
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${lab.offers_all ? 'bg-[var(--color-success-surface)] text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{lab.offers_all ? t('patient.laboratory.offersAll') : t('patient.laboratory.offersSome', { count: lab.matched_count, total: lab.selected_count })}</span>
@@ -273,7 +276,7 @@ export function PatientLaboratoryPage() {
       <button className="w-fit font-bold text-[var(--color-primary)]" onClick={() => setStep('laboratory')} type="button">← {t('patient.laboratory.backToLabs')}</button>
       <section>
         <h2 className="text-xl font-extrabold" ref={headingRef} tabIndex={-1}>{chosenLab.laboratory_name}</h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">{[arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ')}</p>
+        <p className="text-sm text-[var(--color-text-secondary)]">{[localizedName(chosenLab.location, i18n.resolvedLanguage), chosenLab.address].filter(Boolean).join(' — ')}</p>
         <ProviderRatingSummary className="mt-1" rating={chosenLab} />
         <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">{t(`patient.laboratory.collectionMethods.${collectionMethod}`)}</p>
       </section>
@@ -288,7 +291,7 @@ export function PatientLaboratoryPage() {
       {home && (
         <PatientHomeAddressForm
           address={homeAddress}
-          cityName={selectedCity ? (arabic ? selectedCity.name_ar : selectedCity.name_en) : ''}
+          cityName={localizedName(selectedCity, i18n.resolvedLanguage)}
           coordinates={coordinates}
           locating={locating}
           locationError={locationError}
@@ -308,7 +311,7 @@ export function PatientLaboratoryPage() {
         { label: t('patient.laboratory.tests'), value: selectedNames.map((test) => test.short_name || (arabic ? test.name_ar : test.name_en)).join(' · ') },
         { label: t('patient.laboratory.laboratory'), value: chosenLab.laboratory_name },
         { label: t('patient.laboratory.collection'), value: t(`patient.laboratory.collectionMethods.${collectionMethod}`) },
-        ...(home ? [] : [{ label: t('patient.laboratory.location'), value: [arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ') }]),
+        ...(home ? [] : [{ label: t('patient.laboratory.location'), value: [localizedName(chosenLab.location, i18n.resolvedLanguage), chosenLab.address].filter(Boolean).join(' — ') }]),
         ...(formattedSlot ? [
           { label: t('patient.laboratory.collectionDate'), value: formattedSlot.date },
           { label: t('patient.laboratory.collectionTime'), value: formattedSlot.time, ltr: true },
@@ -320,7 +323,7 @@ export function PatientLaboratoryPage() {
           <h3 className="mt-5 text-lg font-extrabold">{t('patient.laboratory.collectionWhere')}</h3>
           {coordinates && <LocationMapPreview className="mt-3" latitude={coordinates.latitude} longitude={coordinates.longitude} />}
           <BookingReviewList rows={[
-            { label: t('patient.homeVisit.city'), value: selectedCity ? (arabic ? selectedCity.name_ar : selectedCity.name_en) : '' },
+            { label: t('patient.homeVisit.city'), value: localizedName(selectedCity, i18n.resolvedLanguage) },
             { label: t('patient.homeVisit.fields.area'), value: homeAddress.area },
             { label: t('patient.homeVisit.fields.address_details'), value: homeAddress.address_details },
             ...(homeAddress.additional_directions.trim() ? [{ label: t('patient.homeVisit.fields.additional_directions'), value: homeAddress.additional_directions.trim() }] : []),
@@ -346,8 +349,8 @@ export function PatientLaboratoryPage() {
             { label: t('patient.laboratory.collectionTime'), value: formattedSlot.time, ltr: true },
           ] : []),
           ...(createdMethod === 'home_collection'
-            ? [{ label: t('patient.laboratory.collectionAddress'), value: [selectedCity ? (arabic ? selectedCity.name_ar : selectedCity.name_en) : '', homeAddress.area, homeAddress.address_details].filter(Boolean).join(' — ') }]
-            : chosenLab ? [{ label: t('patient.laboratory.location'), value: [arabic ? chosenLab.location?.name_ar : chosenLab.location?.name_en, chosenLab.address].filter(Boolean).join(' — ') }] : []),
+            ? [{ label: t('patient.laboratory.collectionAddress'), value: [localizedName(selectedCity, i18n.resolvedLanguage), homeAddress.area, homeAddress.address_details].filter(Boolean).join(' — ') }]
+            : chosenLab ? [{ label: t('patient.laboratory.location'), value: [localizedName(chosenLab.location, i18n.resolvedLanguage), chosenLab.address].filter(Boolean).join(' — ') }] : []),
         ]} />
       </div>
       <BookingPaymentSummary payment={createdPayment} />

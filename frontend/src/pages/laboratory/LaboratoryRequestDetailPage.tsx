@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
 import { ErrorState } from '../../components/feedback/ErrorState'
@@ -71,7 +72,7 @@ export function LaboratoryRequestDetailPage() {
         <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collection')}</dt><dd className="mt-1"><CollectionMethodBadge method={order.collection_method} /></dd></div>
         {isHomeCollection(order) ? <>
           <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionWhen')}</dt><dd className="mt-1 font-semibold">{order.collection_starts_at ? new Intl.DateTimeFormat(arabic ? 'ar-SD' : 'en', { dateStyle: 'medium', timeStyle: 'short', timeZone: SUDAN_TIME_ZONE }).format(new Date(order.collection_starts_at)) : '—'}</dd></div>
-          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionCity')}</dt><dd className="mt-1 font-semibold">{order.collection?.location ? (arabic ? order.collection.location.name_ar : order.collection.location.name_en) : '—'}</dd></div>
+          <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionCity')}</dt><dd className="mt-1 font-semibold">{localizedName(order.collection?.location, i18n.resolvedLanguage) || '—'}</dd></div>
           <div><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionArea')}</dt><dd className="mt-1 font-semibold">{order.collection?.area || '—'}</dd></div>
           <div className="sm:col-span-2"><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionAddress')}</dt><dd className="mt-1 font-semibold">{order.collection?.address || laboratoryCollectionAddress(order, arabic) || '—'}</dd></div>
           {order.collection?.notes && <div className="sm:col-span-2"><dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('laboratory.detail.collectionNotes')}</dt><dd className="mt-1 font-semibold">{order.collection.notes}</dd></div>}

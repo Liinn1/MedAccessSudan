@@ -71,11 +71,34 @@ class SchedulingWorkflowTest extends TestCase
         $this->assertSame($doctor->id, $profile->user_id);
     }
 
+    public function test_1120_sudan_slot_is_preserved_through_availability_booking_database_and_api(): void
+    {
+        [, $profile, $slotStart] = $this->createBookableDoctor(11, 20);
+        $patient = User::factory()->create(['role' => UserRole::Patient]);
+        Sanctum::actingAs($patient);
+
+        $availabilityUrl = "/api/v1/patient/doctors/{$profile->id}/availability?from={$slotStart->toDateString()}&to={$slotStart->toDateString()}";
+        $this->getJson($availabilityUrl)
+            ->assertOk()
+            ->assertJsonFragment(['starts_at' => $slotStart->toIso8601String()]);
+
+        $response = $this->postJson('/api/v1/patient/appointments', [
+            'doctor_profile_id' => $profile->id,
+            'starts_at' => $slotStart->toIso8601String(),
+            'payment_method' => 'pay_later',
+        ])->assertCreated()
+            ->assertJsonPath('data.starts_at', $slotStart->toIso8601String());
+
+        $appointment = Appointment::query()->findOrFail($response->json('data.id'));
+        $this->assertSame($slotStart->format('Y-m-d H:i:s'), $appointment->getRawOriginal('starts_at'));
+        $this->assertSame('11:20', $appointment->starts_at->setTimezone(config('app.timezone'))->format('H:i'));
+    }
+
     public function test_home_visit_booking_enforces_and_snapshots_the_selected_city(): void
     {
         [, $profile, $slotStart] = $this->createBookableDoctor();
-        $khartoum = Location::query()->where('code', 'khartoum')->firstOrFail();
-        $omdurman = Location::query()->where('code', 'omdurman')->firstOrFail();
+        $khartoum = Location::query()->where('code', 'SD-KH')->firstOrFail();
+        $omdurman = Location::query()->where('code', 'SD-GZ')->firstOrFail();
         $profile->update(['offers_home_visits' => true, 'home_visit_location_id' => $khartoum->id]);
         DoctorAvailabilitySchedule::create([
             'doctor_profile_id' => $profile->id,
@@ -99,7 +122,7 @@ class SchedulingWorkflowTest extends TestCase
             ->assertUnprocessable();
         $this->postJson('/api/v1/patient/appointments', [...$payload, 'home_visit' => [...$payload['home_visit'], 'city' => $khartoum->code]])
             ->assertCreated()
-            ->assertJsonPath('data.home_visit.city.code', 'khartoum')
+            ->assertJsonPath('data.home_visit.city.code', 'SD-KH')
             ->assertJsonMissingPath('data.home_visit.latitude')
             ->assertJsonMissingPath('data.home_visit.longitude');
         $this->assertDatabaseHas('home_visit_details', ['location_id' => $khartoum->id, 'area' => 'Al Riyadh']);
@@ -203,7 +226,7 @@ class SchedulingWorkflowTest extends TestCase
     }
 
     /** @return array{User, DoctorProfile, CarbonImmutable} */
-    private function createBookableDoctor(): array
+    private function createBookableDoctor(int $hour = 9, int $minute = 0): array
     {
         $doctor = User::factory()->create(['role' => UserRole::Doctor]);
         $specialization = Specialization::query()->firstOrFail();
@@ -219,12 +242,12 @@ class SchedulingWorkflowTest extends TestCase
         $slotStart = CarbonImmutable::now(config('app.timezone'))
             ->addDays(2)
             ->startOfDay()
-            ->setTime(9, 0);
+            ->setTime($hour, $minute);
         DoctorAvailabilitySchedule::create([
             'doctor_profile_id' => $profile->id,
             'day_of_week' => $slotStart->dayOfWeek,
-            'start_time' => '09:00',
-            'end_time' => '11:00',
+            'start_time' => $slotStart->format('H:i'),
+            'end_time' => $slotStart->addHours(2)->format('H:i'),
             'slot_duration_minutes' => 30,
             'is_active' => true,
         ]);

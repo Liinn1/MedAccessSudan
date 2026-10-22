@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { AdminFilter, AdminFilters, AdminSearch } from '../../../components/admin/AdminManagementList'
@@ -63,10 +63,11 @@ export function AdminUsersSection() {
       if (!signal?.aborted && !options?.silent) setLoading(false)
     }
   }
+  const loadEffect = useEffectEvent(load)
 
   useEffect(() => {
     const controller = new AbortController()
-    const timer = window.setTimeout(() => { void load(controller.signal) }, 200)
+    const timer = window.setTimeout(() => { void loadEffect(controller.signal) }, 200)
     return () => { controller.abort(); window.clearTimeout(timer) }
   }, [role, status, verification, sort, query, page, showVerificationFilter])
 
@@ -392,6 +393,7 @@ function AccountDetail({ user, onClose, onToggle }: { user: MonitoredUser; onClo
             {user.doctor_profile.clinic_name ? <div><dt className="font-bold">{t('admin.users.clinicName')}</dt><dd>{user.doctor_profile.clinic_name}</dd></div> : null}
             <div><dt className="font-bold">{t('admin.providers.specialty')}</dt><dd>{localized(user.doctor_profile.specialization) || t('admin.accounts.dash')}</dd></div>
             <div><dt className="font-bold">{t('admin.providers.city')}</dt><dd>{localized(user.doctor_profile.location) || t('admin.accounts.dash')}</dd></div>
+            <div><dt className="font-bold">{t('admin.labs.address')}</dt><dd>{user.doctor_profile.address || t('admin.accounts.dash')}</dd></div>
           </>}
           {user.laboratory_profile && <>
             <div><dt className="font-bold">{t('admin.users.laboratoryName')}</dt><dd>{user.laboratory_profile.name}</dd></div>

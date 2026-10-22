@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\AppointmentStatus;
-use App\Enums\CityProposalStatus;
 use App\Enums\CustomerInquiryStatus;
 use App\Enums\DoctorVerificationStatus;
 use App\Enums\LaboratoryCatalogRequestStatus;
@@ -11,7 +10,6 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\AdminAuditLog;
 use App\Models\Appointment;
-use App\Models\CityProposal;
 use App\Models\CustomerInquiry;
 use App\Models\DoctorProfile;
 use App\Models\ProviderReview;
@@ -27,21 +25,18 @@ class DashboardController extends Controller
     {
         $awaitingReview = ProviderVerification::query()->where('status', DoctorVerificationStatus::UnderReview->value)->count();
         $inquiriesNew = CustomerInquiry::query()->where('status', CustomerInquiryStatus::New->value)->count();
-        $locationPending = CityProposal::query()->where('status', CityProposalStatus::Pending->value)->count();
         $testPending = LaboratoryCatalogRequest::query()->where('status', LaboratoryCatalogRequestStatus::Pending->value)->count();
 
         return response()->json(['data' => [
             'metrics' => [
                 'verifications_awaiting_review' => $awaitingReview,
                 'inquiries_new' => $inquiriesNew,
-                'location_requests_pending' => $locationPending,
                 'test_requests_pending' => $testPending,
                 'users_total' => User::query()->count(),
                 'pending_doctors' => DoctorProfile::whereIn('verification_status', DoctorVerificationStatus::incompleteValues())->count(),
                 'verified_doctors' => DoctorProfile::where('verification_status', DoctorVerificationStatus::Verified->value)->count(),
                 'verified_laboratories' => LaboratoryProfile::where('verification_status', DoctorVerificationStatus::Verified->value)->count(),
                 'suspended_doctors' => DoctorProfile::where('verification_status', DoctorVerificationStatus::Suspended->value)->count(),
-                'pending_city_proposals' => $locationPending,
                 'registered_patients' => User::where('role', UserRole::Patient->value)->count(),
                 'registered_doctors' => User::where('role', UserRole::Doctor->value)->count(),
                 'upcoming_appointments' => Appointment::where('starts_at', '>=', now())->where('status', AppointmentStatus::Confirmed->value)->count(),
@@ -100,18 +95,6 @@ class DashboardController extends Controller
             ];
         }
 
-        foreach (CityProposal::query()->with('doctorProfile.user:id,name')->where('status', CityProposalStatus::Pending->value)->latest()->limit(4)->get() as $proposal) {
-            $items[] = [
-                'key' => 'location-'.$proposal->id,
-                'kind' => 'location',
-                'section' => 'requests',
-                'id' => $proposal->id,
-                'title' => 'New location requested',
-                'subtitle' => $proposal->proposed_name,
-                'at' => $proposal->created_at?->toIso8601String(),
-            ];
-        }
-
         foreach (LaboratoryCatalogRequest::query()->where('status', LaboratoryCatalogRequestStatus::Pending->value)->latest()->limit(4)->get() as $request) {
             $items[] = [
                 'key' => 'test-'.$request->id,
@@ -159,17 +142,6 @@ class DashboardController extends Controller
                 'status' => $inquiry->status->value,
             ])->all();
 
-        $locations = CityProposal::query()->where('status', CityProposalStatus::Pending->value)->latest()->limit(5)->get()
-            ->map(fn (CityProposal $proposal) => [
-                'key' => 'location-'.$proposal->id,
-                'kind' => 'location',
-                'section' => 'requests',
-                'id' => $proposal->id,
-                'subtitle' => $proposal->proposed_name,
-                'at' => $proposal->created_at?->toIso8601String(),
-                'status' => $proposal->status->value,
-            ])->all();
-
         $tests = LaboratoryCatalogRequest::query()->where('status', LaboratoryCatalogRequestStatus::Pending->value)->latest()->limit(5)->get()
             ->map(fn (LaboratoryCatalogRequest $request) => [
                 'key' => 'test-'.$request->id,
@@ -184,7 +156,6 @@ class DashboardController extends Controller
         return [
             'verifications' => $verifications,
             'inquiries' => $inquiries,
-            'locations' => $locations,
             'tests' => $tests,
         ];
     }

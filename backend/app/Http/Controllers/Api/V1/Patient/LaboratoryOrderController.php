@@ -69,6 +69,13 @@ class LaboratoryOrderController extends Controller
 
         $collectionMethod = LaboratoryCollectionMethod::from($data['collection_method']);
 
+        if ($collectionMethod === LaboratoryCollectionMethod::AtLab && ! $laboratory->supports_at_lab) {
+            return response()->json([
+                'message' => 'This laboratory does not accept at-laboratory sample collection.',
+                'code' => 'LABORATORY_AT_LAB_UNAVAILABLE',
+            ], 422);
+        }
+
         if ($collectionMethod === LaboratoryCollectionMethod::HomeCollection) {
             if (! $laboratory->supports_home_collection) {
                 return response()->json([
@@ -77,7 +84,14 @@ class LaboratoryOrderController extends Controller
                 ], 422);
             }
 
-            if ($laboratory->location_id && (int) $data['collection_location_id'] !== (int) $laboratory->location_id) {
+            if (! $laboratory->location_id || ! $laboratory->location?->is_active) {
+                return response()->json([
+                    'message' => 'This laboratory does not have a valid home collection service city.',
+                    'code' => 'CITY_REQUIRED',
+                ], 422);
+            }
+
+            if ((int) $data['collection_location_id'] !== (int) $laboratory->location_id) {
                 return response()->json([
                     'message' => 'This laboratory does not collect samples in the selected city.',
                     'code' => 'LABORATORY_SERVICE_AREA',

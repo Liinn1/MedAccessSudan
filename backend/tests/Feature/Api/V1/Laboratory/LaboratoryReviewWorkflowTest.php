@@ -175,7 +175,7 @@ class LaboratoryReviewWorkflowTest extends TestCase
         $profile = $user->laboratoryProfile()->create([
             'name' => $name,
             'address' => 'Near Al Riyadh',
-            'location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+            'location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
             'verification_status' => DoctorVerificationStatus::Verified->value,
             'supports_home_collection' => $home,
         ]);
@@ -206,7 +206,7 @@ class LaboratoryReviewWorkflowTest extends TestCase
             'payment_method' => 'pay_later',
             ...($home ? [
                 'collection_method' => LaboratoryCollectionMethod::HomeCollection->value,
-                'collection_location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+                'collection_location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
                 'collection_area' => 'Al Riyadh',
                 'collection_address' => 'Building 12',
                 'collection_starts_at' => now()->addDay()->toIso8601String(),

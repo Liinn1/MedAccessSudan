@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useEffectEvent, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdminFilter, AdminFilters, AdminRecordCard, AdminRecordList, AdminSearch } from '../../../components/admin/AdminManagementList'
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader'
@@ -30,10 +30,11 @@ export function AdminInquiriesSection({ openId }: { openId?: number | null }) {
     } catch { if (!signal?.aborted) setError(t('admin.errors.load')) }
     finally { if (!signal?.aborted) setLoading(false) }
   }
+  const loadEffect = useEffectEvent(load)
 
   useEffect(() => {
     const controller = new AbortController()
-    const timer = window.setTimeout(() => { void load(controller.signal) }, 200)
+    const timer = window.setTimeout(() => { void loadEffect(controller.signal) }, 200)
     return () => { controller.abort(); window.clearTimeout(timer) }
   }, [status, query])
 

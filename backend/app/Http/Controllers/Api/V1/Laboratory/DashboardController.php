@@ -51,6 +51,7 @@ class DashboardController extends Controller
                     'profile_image_url' => ProfilePhotoService::publicUrl($profile->profile_image_path ?? $request->user()->profile_image_path),
                     'location' => $profile->location?->only(['code', 'name_en', 'name_ar']),
                     'phone' => $request->user()->phone,
+                    'supports_at_lab' => (bool) $profile->supports_at_lab,
                     'supports_home_collection' => (bool) $profile->supports_home_collection,
                 ],
                 'summary' => [

@@ -67,4 +67,33 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticatedAs($patient);
     }
+
+    public function test_patient_registration_rejects_duplicate_email_and_cannot_assign_admin_role(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'existing@example.com']);
+
+        $payload = [
+            'first_name' => 'Amina',
+            'last_name' => 'Hassan',
+            'email' => 'existing@example.com',
+            'phone' => '+249111222445',
+            'password' => 'Secure123',
+            'password_confirmation' => 'Secure123',
+            'role' => 'admin',
+        ];
+
+        $this->postJson('/api/v1/auth/register', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+
+        $payload['email'] = 'patient.only@example.com';
+        $payload['phone'] = '+249111222446';
+
+        $this->postJson('/api/v1/auth/register', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.user.role', 'patient');
+
+        $this->assertSame(UserRole::Patient, User::where('email', $payload['email'])->firstOrFail()->role);
+    }
 }

@@ -1,23 +1,22 @@
 <?php
 
-use App\Http\Controllers\Api\V1\Admin\CatalogRequestReviewController;
-use App\Http\Controllers\Api\V1\Admin\CustomerInquiryController;
-use App\Http\Controllers\Api\V1\Admin\AdminUserController;
-use App\Http\Controllers\Api\V1\Admin\DoctorVerificationController;
-use App\Http\Controllers\Api\V1\Admin\ProviderVerificationReviewController;
-use App\Http\Controllers\Api\V1\Admin\CityProposalController;
-use App\Http\Controllers\Api\V1\Admin\LocationController;
 use App\Http\Controllers\Api\V1\Admin\AdminAccountController;
 use App\Http\Controllers\Api\V1\Admin\AdminLoginController;
+use App\Http\Controllers\Api\V1\Admin\AdminUserController;
+use App\Http\Controllers\Api\V1\Admin\CatalogRequestReviewController;
+use App\Http\Controllers\Api\V1\Admin\CustomerInquiryController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\V1\Admin\DoctorVerificationController;
+use App\Http\Controllers\Api\V1\Admin\LocationController;
 use App\Http\Controllers\Api\V1\Admin\MonitoringController;
+use App\Http\Controllers\Api\V1\Admin\ProviderVerificationReviewController;
 use App\Http\Controllers\Api\V1\Auth\CompletePasswordSetupController;
 use App\Http\Controllers\Api\V1\Auth\CurrentUserController;
-use App\Http\Controllers\Api\V1\Auth\PasswordChangeController;
-use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\DoctorRegistrationOptionsController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
+use App\Http\Controllers\Api\V1\Auth\PasswordChangeController;
+use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RegisterDoctorController;
 use App\Http\Controllers\Api\V1\Auth\RegisterLaboratoryController;
 use App\Http\Controllers\Api\V1\Auth\RegisterPatientController;
@@ -31,7 +30,6 @@ use App\Http\Controllers\Api\V1\Doctor\ResolvedAvailabilityController;
 use App\Http\Controllers\Api\V1\Doctor\ScheduleController;
 use App\Http\Controllers\Api\V1\FeaturedDoctorController;
 use App\Http\Controllers\Api\V1\HealthController;
-use App\Http\Controllers\Api\V1\PublicContactController;
 use App\Http\Controllers\Api\V1\Laboratory\CatalogController as LaboratoryCatalogController;
 use App\Http\Controllers\Api\V1\Laboratory\CatalogRequestController as LaboratoryCatalogRequestController;
 use App\Http\Controllers\Api\V1\Laboratory\DashboardController as LaboratoryDashboardController;
@@ -44,14 +42,17 @@ use App\Http\Controllers\Api\V1\Patient\AppointmentController as PatientAppointm
 use App\Http\Controllers\Api\V1\Patient\DoctorAvailabilityController;
 use App\Http\Controllers\Api\V1\Patient\DoctorFilterController;
 use App\Http\Controllers\Api\V1\Patient\DoctorProfileController;
-use App\Http\Controllers\Api\V1\Patient\ProviderReviewController;
 use App\Http\Controllers\Api\V1\Patient\DoctorSearchController;
+use App\Http\Controllers\Api\V1\Patient\GlobalSearchController;
 use App\Http\Controllers\Api\V1\Patient\LaboratoryDiscoveryController;
 use App\Http\Controllers\Api\V1\Patient\LaboratoryOrderController as PatientLaboratoryOrderController;
-use App\Http\Controllers\Api\V1\ProviderVerificationController;
 use App\Http\Controllers\Api\V1\Patient\PatientHomeController;
 use App\Http\Controllers\Api\V1\Patient\ProfileController as PatientProfileController;
 use App\Http\Controllers\Api\V1\Patient\ProfilePhotoController as PatientProfilePhotoController;
+use App\Http\Controllers\Api\V1\Patient\ProviderReviewController;
+use App\Http\Controllers\Api\V1\Patient\UpcomingBookingController;
+use App\Http\Controllers\Api\V1\ProviderVerificationController;
+use App\Http\Controllers\Api\V1\PublicContactController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/v1/health', HealthController::class);
@@ -85,11 +86,13 @@ Route::middleware(['auth:sanctum', 'role:patient'])
     ->prefix('v1/patient')
     ->group(function (): void {
         Route::get('/home', PatientHomeController::class);
+        Route::get('/search', GlobalSearchController::class)->middleware('throttle:60,1');
         Route::get('/doctor-filters', DoctorFilterController::class);
         Route::get('/doctors', DoctorSearchController::class);
         Route::get('/doctors/{doctor}', DoctorProfileController::class)->whereNumber('doctor');
         Route::get('/doctors/{doctor}/availability', DoctorAvailabilityController::class)->whereNumber('doctor');
         Route::get('/appointments', [PatientAppointmentController::class, 'index']);
+        Route::get('/upcoming-bookings', UpcomingBookingController::class);
         Route::post('/appointments', [PatientAppointmentController::class, 'store']);
         Route::get('/appointments/{appointment}', [PatientAppointmentController::class, 'show'])->whereNumber('appointment');
         Route::patch('/appointments/{appointment}/cancel', [PatientAppointmentController::class, 'cancel'])->whereNumber('appointment');
@@ -116,6 +119,7 @@ Route::middleware(['auth:sanctum', 'role:doctor'])
         Route::put('/schedule/exceptions/{exception}', [AvailabilityExceptionController::class, 'update'])->whereNumber('exception');
         Route::delete('/schedule/exceptions/{exception}', [AvailabilityExceptionController::class, 'destroy'])->whereNumber('exception');
         Route::get('/appointments', [DoctorAppointmentController::class, 'index']);
+        Route::patch('/appointments/{appointment}/start', [DoctorAppointmentController::class, 'start'])->whereNumber('appointment');
         Route::patch('/appointments/{appointment}/complete', [DoctorAppointmentController::class, 'complete'])->whereNumber('appointment');
         Route::put('/profile', [DoctorProfessionalProfileController::class, 'update']);
         Route::post('/profile-photo', [DoctorProfilePhotoController::class, 'store']);
@@ -168,8 +172,6 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])
         Route::post('/verifications/{verification}/request-changes', [ProviderVerificationReviewController::class, 'requestChanges'])->whereNumber('verification');
         Route::get('/verifications/{verification}/documents/{document}', [ProviderVerificationReviewController::class, 'download'])->whereNumber('verification')->whereNumber('document');
         Route::patch('/verifications/{verification}/documents/{document}', [ProviderVerificationReviewController::class, 'reviewDocument'])->whereNumber('verification')->whereNumber('document');
-        Route::get('/city-proposals', [CityProposalController::class, 'index']);
-        Route::patch('/city-proposals/{proposal}', [CityProposalController::class, 'update'])->whereNumber('proposal');
         Route::get('/inquiries', [CustomerInquiryController::class, 'index']);
         Route::get('/inquiries/{inquiry}', [CustomerInquiryController::class, 'show'])->whereNumber('inquiry');
         Route::patch('/inquiries/{inquiry}', [CustomerInquiryController::class, 'update'])->whereNumber('inquiry');

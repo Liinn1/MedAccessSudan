@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { useNavigate } from 'react-router-dom'
 import { BookingPanel } from '../../components/booking/BookingPanel'
 import { ClinicVisitFrame } from '../../components/booking/ClinicVisitFrame'
@@ -47,7 +48,7 @@ export function FindDoctorPage() {
     return () => { active = false; controller.abort() }
   }, [navigate, t])
 
-  const optionLabel = (option: DoctorFilterOption) => i18n.resolvedLanguage === 'ar' ? option.name_ar : option.name_en
+  const optionLabel = (option: DoctorFilterOption) => localizedName(option, i18n.resolvedLanguage)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

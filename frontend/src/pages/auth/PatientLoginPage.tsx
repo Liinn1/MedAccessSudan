@@ -147,7 +147,7 @@ export function PatientLoginPage() {
     <PublicLayout>
       <AuthShell title={forgot ? t('auth.forgot.title') : t('auth.login.welcomeBack')} subtitle={forgot ? t('auth.forgot.subtitle') : t('auth.login.patientTagline')}>
         {forgot ? (
-          <ForgotPasswordFlow loginPath="/login" onCancel={() => setForgot(false)} />
+          <ForgotPasswordFlow loginPath={`${location.pathname}${location.search}`} onCancel={() => setForgot(false)} />
         ) : isResolvingSession ? (
           <LoadingState section message={t(isSubmitting ? 'auth.login.submitting' : 'auth.login.checkingSession')} />
         ) : (

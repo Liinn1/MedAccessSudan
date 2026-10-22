@@ -11,6 +11,7 @@ use App\Models\Location;
 use App\Models\Payment;
 use App\Models\Specialization;
 use App\Models\User;
+use Database\Seeders\LabTestCatalogSeeder;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -85,11 +86,12 @@ class ServicePaymentTest extends TestCase
 
     public function test_laboratory_order_snapshots_server_side_amount_for_payment(): void
     {
+        $this->seed(LabTestCatalogSeeder::class);
         $labUser = User::factory()->create(['role' => UserRole::Laboratory, 'email' => 'pay.lab@example.com']);
         $profile = $labUser->laboratoryProfile()->create([
             'name' => 'Pay Lab',
             'address' => 'Khartoum',
-            'location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+            'location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
             'verification_status' => DoctorVerificationStatus::Verified->value,
         ]);
         $cbc = LabTest::query()->where('slug', 'cbc')->firstOrFail();

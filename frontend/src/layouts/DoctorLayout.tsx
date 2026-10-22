@@ -5,8 +5,7 @@ import { PageBackgroundDecorations } from '../components/layout/PageBackgroundDe
 import { DashboardNavigationShell } from '../components/navigation/DashboardNavigationShell'
 import { CalendarIcon, GlobeIcon, HomeIcon, ProfileIcon, StethoscopeIcon } from '../components/icons/PatientHomeIcons'
 import { PublicFooter } from '../components/public/PublicFooter'
-import { logout, type AuthenticatedUser } from '../services/authService'
-import { getDoctorDashboard } from '../services/doctorDashboardService'
+import { logout, restoreSession, type AuthenticatedUser } from '../services/authService'
 
 interface DoctorLayoutProps {
   activeSection?: 'dashboard' | 'appointments' | 'availability' | 'profile'
@@ -21,8 +20,6 @@ interface DoctorLayoutProps {
   showFooter?: boolean
   user?: AuthenticatedUser | null
 }
-
-let cachedDoctorUser: AuthenticatedUser | null = null
 
 export function DoctorLayout({
   activeSection = 'dashboard',
@@ -39,32 +36,23 @@ export function DoctorLayout({
 }: DoctorLayoutProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loadedUser, setLoadedUser] = useState<AuthenticatedUser | null>(cachedDoctorUser)
+  const [restoredUser, setRestoredUser] = useState<AuthenticatedUser | null>(null)
   const [internalLoggingOut, setInternalLoggingOut] = useState(false)
-  const shellUser = user ?? loadedUser
+  const shellUser = user ?? restoredUser
 
   useEffect(() => {
-    if (user) {
-      cachedDoctorUser = user
-      return
-    }
-    if (cachedDoctorUser) return
-    const controller = new AbortController()
-    getDoctorDashboard(controller.signal)
-      .then(({ profile, user: currentUser }) => {
-        const doctorUser = { ...currentUser, profile_image_url: profile?.profile_image_url ?? currentUser.profile_image_url }
-        cachedDoctorUser = doctorUser
-        setLoadedUser(doctorUser)
-      })
+    if (user) return
+    let active = true
+    restoreSession()
+      .then((currentUser) => { if (active && currentUser?.role === 'doctor') setRestoredUser(currentUser) })
       .catch(() => undefined)
-    return () => controller.abort()
+    return () => { active = false }
   }, [user])
 
   async function defaultLogout() {
     setInternalLoggingOut(true)
     try {
       await logout()
-      cachedDoctorUser = null
       navigate('/login', { replace: true })
     } catch {
       setInternalLoggingOut(false)
@@ -93,7 +81,6 @@ export function DoctorLayout({
         navigationLabel={t('doctor.navigation.label')}
         onLogout={onLogout ?? defaultLogout}
         roleLabel={roleLabel ?? t('roles.doctor')}
-        supportComingSoon={t('patient.navigation.supportComingSoon')}
         user={shellUser}
       />
       <main className="page-enter relative isolate min-h-[calc(100dvh-4rem)] lg:ms-64">

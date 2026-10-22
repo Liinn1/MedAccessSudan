@@ -5,18 +5,19 @@ import { BrandMark } from '../branding/BrandMark'
 import { LanguageToggle } from '../LanguageToggle'
 import { ApiError } from '../../services/apiClient'
 import { getCurrentUser, logout, type AuthenticatedUser } from '../../services/authService'
-import { APPOINTMENT_SEARCH_ROUTE, buildLoginPath, DOCTOR_DASHBOARD_ROUTE } from '../../utils/navigation'
+import { APPOINTMENT_SEARCH_ROUTE, buildLoginPath, DOCTOR_DASHBOARD_ROUTE, PUBLIC_SECTION_ROUTES } from '../../utils/navigation'
 
 interface PublicHeaderProps {
   onSignUp: () => void
 }
 
 const publicLinks = [
-  ['/#home', 'home'],
-  ['/#about', 'about'],
-  ['/#services', 'services'],
-  ['/#featured-doctors', 'findDoctor'],
-  ['/#contact', 'contact'],
+  [PUBLIC_SECTION_ROUTES.home, 'home'],
+  [PUBLIC_SECTION_ROUTES.about, 'about'],
+  [PUBLIC_SECTION_ROUTES.services, 'services'],
+  [PUBLIC_SECTION_ROUTES.doctors, 'findDoctor'],
+  [PUBLIC_SECTION_ROUTES.faq, 'faq'],
+  [PUBLIC_SECTION_ROUTES.contact, 'contact'],
 ] as const
 
 const mobileNavigationId = 'public-mobile-navigation'

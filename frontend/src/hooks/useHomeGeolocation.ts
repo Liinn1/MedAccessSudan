@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { HomeCoordinates } from '../components/booking/PatientHomeAddressForm'
+import type { HomeCoordinates } from '../utils/homeAddress'
 
 export function useHomeGeolocation() {
   const { t } = useTranslation()

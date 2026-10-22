@@ -125,7 +125,7 @@ export async function registerPatient(input: PatientRegistrationInput): Promise<
 export interface DoctorRegistrationInput extends PatientRegistrationInput {
   specialization: string
   location?: string
-  proposed_city?: string
+  address: string
   clinic_name: string
   offers_clinic_visits: boolean
   offers_home_visits: boolean
@@ -157,8 +157,9 @@ export interface LaboratoryRegistrationInput {
   password: string
   password_confirmation: string
   location?: string
-  proposed_city?: string
   address: string
+  supports_at_lab: boolean
+  supports_home_collection: boolean
   profile_photo?: File | null
 }
 

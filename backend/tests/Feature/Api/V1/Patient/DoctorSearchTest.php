@@ -48,7 +48,7 @@ class DoctorSearchTest extends TestCase
     public function test_demo_approved_neurologist_is_returned_by_canonical_specialty_without_optional_filters(): void
     {
         CarbonImmutable::setTestNow('2026-08-24 19:00:00 Africa/Khartoum');
-        $doctor = $this->createDoctor('neurology', 'khartoum', 'verified');
+        $doctor = $this->createDoctor('neurology', 'SD-KH', 'verified');
         $this->addSchedule($doctor, 2);
         $this->authenticatePatient();
 
@@ -56,26 +56,26 @@ class DoctorSearchTest extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.doctors.0.specialization.code', 'neurology')
-            ->assertJsonPath('data.doctors.0.location.code', 'khartoum');
+            ->assertJsonPath('data.doctors.0.location.code', 'SD-KH');
 
         $this->getJson('/api/v1/patient/doctors?specialization=Neurologist')->assertUnprocessable();
     }
 
     public function test_location_is_an_optional_canonical_filter(): void
     {
-        $this->createDoctor('neurology', 'khartoum');
+        $this->createDoctor('neurology', 'SD-KH');
         $this->authenticatePatient();
 
-        $this->getJson('/api/v1/patient/doctors?specialization=neurology&location=khartoum')
+        $this->getJson('/api/v1/patient/doctors?specialization=neurology&location=SD-KH')
             ->assertOk()->assertJsonPath('meta.total', 1);
-        $this->getJson('/api/v1/patient/doctors?specialization=neurology&location=bahri')
+        $this->getJson('/api/v1/patient/doctors?specialization=neurology&location=SD-GZ')
             ->assertOk()->assertJsonPath('meta.total', 0);
     }
 
     public function test_availability_filter_uses_carbon_sunday_zero_mapping_and_is_optional(): void
     {
         CarbonImmutable::setTestNow('2026-08-30 08:00:00 Africa/Khartoum');
-        $doctor = $this->createDoctor('neurology', 'khartoum');
+        $doctor = $this->createDoctor('neurology', 'SD-KH');
         $this->addSchedule($doctor, 0);
         $this->authenticatePatient();
 
@@ -88,7 +88,7 @@ class DoctorSearchTest extends TestCase
     public function test_unavailable_date_does_not_remove_doctor_from_specialty_only_search(): void
     {
         CarbonImmutable::setTestNow('2026-08-24 08:00:00 Africa/Khartoum');
-        $doctor = $this->createDoctor('neurology', 'khartoum');
+        $doctor = $this->createDoctor('neurology', 'SD-KH');
         $this->addSchedule($doctor, 2);
         $this->authenticatePatient();
 
@@ -100,9 +100,9 @@ class DoctorSearchTest extends TestCase
 
     public function test_production_pending_and_suspended_doctors_are_excluded(): void
     {
-        $this->createDoctor('neurology', 'khartoum', 'pending_documents');
-        $this->createDoctor('neurology', 'khartoum', 'suspended');
-        $this->createDoctor('neurology', 'khartoum', 'verified');
+        $this->createDoctor('neurology', 'SD-KH', 'pending_documents');
+        $this->createDoctor('neurology', 'SD-KH', 'suspended');
+        $this->createDoctor('neurology', 'SD-KH', 'verified');
         $this->authenticatePatient();
 
         $this->getJson('/api/v1/patient/doctors?specialization=neurology')
@@ -111,21 +111,21 @@ class DoctorSearchTest extends TestCase
 
     public function test_inactive_reference_data_and_different_specialties_are_excluded(): void
     {
-        $neurologist = $this->createDoctor('neurology', 'khartoum');
-        $this->createDoctor('cardiology', 'khartoum');
+        $neurologist = $this->createDoctor('neurology', 'SD-KH');
+        $this->createDoctor('cardiology', 'SD-KH');
         $this->authenticatePatient();
 
         $this->getJson('/api/v1/patient/doctors?specialization=cardiology')
             ->assertOk()->assertJsonPath('meta.total', 1);
 
         $neurologist->specialization->update(['is_active' => false]);
-        $this->getJson('/api/v1/patient/doctors?location=khartoum')
+        $this->getJson('/api/v1/patient/doctors?location=SD-KH')
             ->assertOk()->assertJsonPath('meta.total', 1);
     }
 
     public function test_empty_optional_filters_do_not_become_constraints(): void
     {
-        $this->createDoctor('neurology', 'khartoum');
+        $this->createDoctor('neurology', 'SD-KH');
         $this->authenticatePatient();
 
         $this->getJson('/api/v1/patient/doctors?specialization=&location=&availability=')
@@ -135,10 +135,10 @@ class DoctorSearchTest extends TestCase
     public function test_home_visit_search_requires_and_enforces_the_service_city(): void
     {
         $this->authenticatePatient();
-        $khartoum = Location::query()->where('code', 'khartoum')->firstOrFail();
-        $omdurman = Location::query()->where('code', 'omdurman')->firstOrFail();
-        $khartoumDoctor = $this->createDoctor('neurology', 'omdurman');
-        $omdurmanDoctor = $this->createDoctor('neurology', 'khartoum');
+        $khartoum = Location::query()->where('code', 'SD-KH')->firstOrFail();
+        $omdurman = Location::query()->where('code', 'SD-GZ')->firstOrFail();
+        $khartoumDoctor = $this->createDoctor('neurology', 'SD-GZ');
+        $omdurmanDoctor = $this->createDoctor('neurology', 'SD-KH');
         $khartoumDoctor->update(['offers_home_visits' => true, 'home_visit_location_id' => $khartoum->id]);
         $omdurmanDoctor->update(['offers_home_visits' => true, 'home_visit_location_id' => $omdurman->id]);
         $day = now(config('app.timezone'))->addDay()->dayOfWeek;
@@ -147,7 +147,7 @@ class DoctorSearchTest extends TestCase
 
         $this->getJson('/api/v1/patient/doctors?specialization=neurology&service_type=home_visit')
             ->assertUnprocessable()->assertJsonValidationErrors('location');
-        $this->getJson('/api/v1/patient/doctors?specialization=neurology&service_type=home_visit&location=khartoum&availability=week')
+        $this->getJson('/api/v1/patient/doctors?specialization=neurology&service_type=home_visit&location=SD-KH&availability=week')
             ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.doctors.0.id', $khartoumDoctor->id);
     }
 

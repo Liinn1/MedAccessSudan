@@ -16,6 +16,14 @@ export const ADMIN_SECTION_PATHS = {
 } as const
 /** Reserved for future institutional/service-provider accounts. Not doctor login. */
 export const PROVIDER_LOGIN_ROUTE = '/login/provider'
+export const PUBLIC_SECTION_ROUTES = {
+  home: '/#home',
+  about: '/#about',
+  services: '/#services',
+  doctors: '/#featured-doctors',
+  faq: '/#faq',
+  contact: '/#contact',
+} as const
 
 export function getDashboardRoute(role: UserRole): string {
   if (role === 'doctor') return DOCTOR_DASHBOARD_ROUTE

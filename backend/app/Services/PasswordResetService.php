@@ -42,6 +42,7 @@ class PasswordResetService
             try {
                 Mail::to($user->email)->send(new PasswordResetCodeMail($user, $code, $this->maskEmail($user->email)));
             } catch (Throwable $error) {
+                report($error);
                 Cache::forget($this->challengeKey($normalized, $challengeId));
                 Cache::forget($this->currentKey($normalized));
                 throw new RuntimeException('mail_failed', 0, $error);
@@ -74,6 +75,7 @@ class PasswordResetService
             try {
                 Mail::to($user->email)->send(new PasswordResetCodeMail($user, $code, $this->maskEmail($user->email)));
             } catch (Throwable $error) {
+                report($error);
                 throw new RuntimeException('mail_failed', 0, $error);
             }
         }

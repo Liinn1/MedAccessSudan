@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { ProfileAvatar } from '../../components/branding/ProfileAvatar'
 import { PrimaryButton } from '../../components/buttons/PrimaryButton'
 import { InputField } from '../../components/forms/InputField'
 import { ProfilePhotoField } from '../../components/forms/ProfilePhotoField'
-import { SelectField } from '../../components/forms/SelectField'
+import { ProviderServiceModeSelector, type ProviderServiceMode } from '../../components/profile/ProviderServiceModeSelector'
+import { SearchableSelectField } from '../../components/forms/SearchableSelectField'
 import { EyeIcon, LockIcon, MailIcon, PhoneIcon, UserIcon } from '../../components/icons/AuthIcons'
 import { LocationIcon } from '../../components/icons/PatientHomeIcons'
 import { PublicLayout } from '../../layouts/PublicLayout'
@@ -14,7 +16,6 @@ import { ApiError } from '../../services/apiClient'
 import { getDoctorRegistrationOptions, registerLaboratory, type RegistrationOption } from '../../services/authService'
 import { isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
 
-const OTHER_CITY = '__other__'
 const TOTAL_STEPS = 3
 const emptyForm = {
   laboratoryName: '',
@@ -23,13 +24,13 @@ const emptyForm = {
   password: '',
   passwordConfirmation: '',
   location: '',
-  proposedCity: '',
   address: '',
+  serviceMode: '' as ProviderServiceMode,
 }
 
 type LabForm = typeof emptyForm
 type LabStep = 1 | 2 | 3
-type LabField = 'laboratoryName' | 'email' | 'phone' | 'password' | 'passwordConfirmation' | 'location' | 'proposedCity' | 'address'
+type LabField = 'laboratoryName' | 'email' | 'phone' | 'password' | 'passwordConfirmation' | 'location' | 'address' | 'serviceMode'
 type FieldErrors = Partial<Record<LabField, string>>
 
 const stepLabels = ['account', 'details', 'review'] as const
@@ -41,8 +42,8 @@ const fieldIds: Record<LabField, string> = {
   password: 'lab-password',
   passwordConfirmation: 'lab-password-confirmation',
   location: 'lab-location',
-  proposedCity: 'lab-proposed-city',
   address: 'lab-address',
+  serviceMode: 'lab-service-mode',
 }
 
 export function LaboratoryRegistrationPage() {
@@ -114,8 +115,8 @@ export function LaboratoryRegistrationPage() {
   function validateDetails(): FieldErrors {
     const next: FieldErrors = {}
     if (!form.location) next.location = 'required'
-    if (form.location === OTHER_CITY && !form.proposedCity.trim()) next.proposedCity = 'required'
     if (!form.address.trim() || form.address.trim().length < 4) next.address = 'required'
+    if (!form.serviceMode) next.serviceMode = 'required'
     const photoIssue = profilePhotoIssue(profilePhoto, false)
     if (photoIssue) setProfilePhotoError(t(`profilePhoto.${photoIssue}`))
     else setProfilePhotoError('')
@@ -132,10 +133,8 @@ export function LaboratoryRegistrationPage() {
     return code ? t(`auth.registration.errors.${field}.${code}`) : undefined
   }
 
-  const localized = (option: RegistrationOption) => (i18n.language.startsWith('ar') ? option.name_ar : option.name_en)
-  const locationLabel = form.location === OTHER_CITY
-    ? form.proposedCity
-    : (locations.find((option) => option.code === form.location) ? localized(locations.find((option) => option.code === form.location) as RegistrationOption) : form.location)
+  const localized = (option: RegistrationOption) => localizedName(option, i18n.resolvedLanguage)
+  const locationLabel = locations.find((option) => option.code === form.location) ? localized(locations.find((option) => option.code === form.location) as RegistrationOption) : form.location
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -189,8 +188,10 @@ export function LaboratoryRegistrationPage() {
         phone: form.phone.trim(),
         password: form.password,
         password_confirmation: form.passwordConfirmation,
-        ...(form.location === OTHER_CITY ? { proposed_city: form.proposedCity.trim() } : { location: form.location }),
+        location: form.location,
         address: form.address.trim(),
+        supports_at_lab: form.serviceMode === 'onsite' || form.serviceMode === 'both',
+        supports_home_collection: form.serviceMode === 'home' || form.serviceMode === 'both',
         profile_photo: profilePhoto,
       })
       navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'laboratory' } })
@@ -204,8 +205,8 @@ export function LaboratoryRegistrationPage() {
           password: server.password ? 'server' : undefined,
           passwordConfirmation: server.password_confirmation ? 'server' : undefined,
           location: server.location ? 'required' : undefined,
-          proposedCity: server.proposed_city ? 'required' : undefined,
           address: server.address ? 'required' : undefined,
+          serviceMode: server.supports_at_lab || server.supports_home_collection ? 'required' : undefined,
         })
         setProfilePhotoError(server.profile_photo ? t('profilePhoto.invalid') : '')
         setStatus('auth.laboratoryRegistration.invalid')
@@ -251,13 +252,23 @@ export function LaboratoryRegistrationPage() {
 
             {step === 2 && (
               <div className="grid gap-2.5">
-                <SelectField error={fieldErrors.location ? t('auth.laboratoryRegistration.required') : undefined} icon={<LocationIcon className="size-6" />} id="lab-location" label={t('auth.laboratoryRegistration.location')} onChange={(event) => update('location', event.target.value)} options={[{ value: '', label: t('auth.laboratoryRegistration.chooseLocation') }, ...locations.map((option) => ({ value: option.code, label: localized(option) })), { value: OTHER_CITY, label: t('auth.laboratoryRegistration.otherCity') }]} value={form.location} variant="auth" />
-                {form.location === OTHER_CITY && (
-                  <InputField error={fieldErrors.proposedCity ? t('auth.laboratoryRegistration.required') : undefined} icon={<LocationIcon className="size-6" />} id="lab-proposed-city" label={t('auth.laboratoryRegistration.proposedCity')} onChange={(event) => update('proposedCity', event.target.value)} placeholder={t('auth.laboratoryRegistration.proposedCityPlaceholder')} value={form.proposedCity} />
-                )}
+                <SearchableSelectField error={fieldErrors.location ? t('auth.laboratoryRegistration.required') : undefined} id="lab-location" label={t('auth.laboratoryRegistration.location')} onChange={(value) => update('location', value)} options={locations.map((option) => ({ value: option.code, label: localized(option) }))} placeholder={t('auth.laboratoryRegistration.chooseLocation')} searchLabel={t('auth.laboratoryRegistration.searchState')} value={form.location} />
                 <InputField error={fieldErrors.address ? t('auth.laboratoryRegistration.required') : undefined} icon={<LocationIcon className="size-6" />} id="lab-address" label={t('auth.laboratoryRegistration.address')} onChange={(event) => update('address', event.target.value)} placeholder={t('auth.laboratoryRegistration.addressPlaceholder')} value={form.address} />
+                <div id="lab-service-mode">
+                  <ProviderServiceModeSelector
+                    error={fieldErrors.serviceMode ? t('auth.laboratoryRegistration.serviceModeRequired') : undefined}
+                    legend={t('auth.laboratoryRegistration.serviceAvailability')}
+                    name="laboratory-service-mode"
+                    onChange={(serviceMode) => update('serviceMode', serviceMode)}
+                    options={[
+                      { value: 'onsite', label: t('auth.laboratoryRegistration.atLaboratory'), description: t('auth.laboratoryRegistration.atLaboratoryDescription') },
+                      { value: 'home', label: t('auth.laboratoryRegistration.homeCollection'), description: t('auth.laboratoryRegistration.homeCollectionDescription') },
+                      { value: 'both', label: t('auth.laboratoryRegistration.both'), description: t('auth.laboratoryRegistration.bothDescription') },
+                    ]}
+                    value={form.serviceMode}
+                  />
+                </div>
                 <ProfilePhotoField compact error={profilePhotoError} file={profilePhoto} onChange={(file) => { const issue = profilePhotoIssue(file, false); setProfilePhoto(issue === 'invalid' ? null : file); setProfilePhotoError(issue ? t(`profilePhoto.${issue}`) : '') }} />
-                <p className="text-xs text-[var(--color-text-secondary)]">{t('auth.laboratoryRegistration.cityReviewNote')}</p>
               </div>
             )}
 
@@ -349,6 +360,7 @@ function LabRegistrationReview({ form, locationLabel, onEdit, photo }: { form: L
       <ReviewSection onEdit={() => onEdit(2)} title={t('auth.laboratoryRegistration.review.location')}>
         <ReviewRow label={t('auth.laboratoryRegistration.location')} value={locationLabel} />
         <ReviewRow label={t('auth.laboratoryRegistration.address')} value={form.address} />
+        <ReviewRow label={t('auth.laboratoryRegistration.serviceAvailability')} value={t(`auth.laboratoryRegistration.serviceModes.${form.serviceMode}`)} />
       </ReviewSection>
       <ReviewSection onEdit={() => onEdit(2)} title={t('auth.laboratoryRegistration.review.profile')}>
         {photo ? <LabPhotoPreview file={photo} name={form.laboratoryName} /> : <p className="text-sm text-[var(--color-text-secondary)]">{t('profilePhoto.optionalLabel')}</p>}

@@ -27,13 +27,14 @@ import { SetupPasswordPage } from './pages/auth/SetupPasswordPage'
 import { PatientProfilePage } from './pages/patient/PatientProfilePage'
 import { DoctorProfileManagementPage } from './pages/doctor/DoctorProfileManagementPage'
 import { DoctorAvailabilityPage } from './pages/doctor/DoctorAvailabilityPage'
-import { DoctorAppointmentsPage } from './pages/doctor/DoctorAppointmentsPage'
+import { DoctorAppointmentsRestyledPage } from './pages/doctor/DoctorAppointmentsRestyledPage'
 import { PatientAppointmentsPage } from './pages/patient/PatientAppointmentsPage'
 import { PatientAppointmentDetailsPage } from './pages/patient/PatientAppointmentDetailsPage'
 import { AppointmentConfirmationPage } from './pages/patient/AppointmentConfirmationPage'
 import { PatientReviewPage } from './pages/patient/PatientReviewPage'
 import { HomeVisitPage } from './pages/patient/HomeVisitPage'
 import { PROVIDER_LOGIN_ROUTE } from './utils/navigation'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 
 function LegacyAppointmentSelectionRedirect() {
   const { doctorId } = useParams()
@@ -51,6 +52,7 @@ function App() {
       <Route path="/register/patient" element={<PatientRegistrationPage />} />
       <Route path="/register/doctor" element={<DoctorRegistrationPage />} />
       <Route path="/register/laboratory" element={<LaboratoryRegistrationPage />} />
+      <Route element={<ProtectedRoute roles={['laboratory']} />}>
       <Route path="/laboratory/application" element={<Navigate replace to="/laboratory/dashboard" />} />
       <Route path="/laboratory/dashboard" element={<LaboratoryDashboardPage />} />
       <Route path="/laboratory/tests" element={<LaboratoryCatalogPage />} />
@@ -58,6 +60,8 @@ function App() {
       <Route path="/laboratory/requests/:orderId" element={<LaboratoryRequestDetailPage />} />
       <Route path="/laboratory/results" element={<LaboratoryResultsPage />} />
       <Route path="/laboratory/profile" element={<LaboratoryProfilePage />} />
+      </Route>
+      <Route element={<ProtectedRoute roles={['patient']} />}>
       <Route path="/patient/home" element={<PatientHomePage />} />
       <Route path="/patient/laboratory" element={<PatientLaboratoryPage />} />
       <Route path="/patient/laboratory/orders/:orderId" element={<PatientLaboratoryOrderPage />} />
@@ -73,12 +77,16 @@ function App() {
       <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />
       <Route path="/patient/appointments/:appointmentId" element={<PatientAppointmentDetailsPage />} />
       <Route path="/patient/appointments/:appointmentId/review" element={<PatientReviewPage />} />
+      <Route path="/patient/profile" element={<PatientProfilePage />} />
+      </Route>
+      <Route element={<ProtectedRoute roles={['doctor']} />}>
       <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />
       <Route path="/doctor/profile" element={<DoctorProfileManagementPage />} />
       <Route path="/doctor/availability" element={<DoctorAvailabilityPage />} />
-      <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
-      <Route path="/patient/profile" element={<PatientProfilePage />} />
+      <Route path="/doctor/appointments" element={<DoctorAppointmentsRestyledPage />} />
+      </Route>
       <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route element={<ProtectedRoute roles={['admin', 'super_admin']} />}>
       <Route path="/admin" element={<AdminDashboardPage />}>
         <Route index element={<Navigate replace to="dashboard" />} />
         <Route path="dashboard" element={<></>} />
@@ -87,6 +95,7 @@ function App() {
         <Route path="customer-queries" element={<></>} />
         <Route path="requests" element={<></>} />
         <Route path="profile" element={<></>} />
+      </Route>
       </Route>
       <Route path="/setup-password" element={<SetupPasswordPage />} />
       <Route path="*" element={<Navigate replace to="/" />} />

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { BookingHero } from '../../components/booking/BookingHero'
 import { BookingPanel } from '../../components/booking/BookingPanel'
-import { paymentMethodLabel } from '../../components/booking/BookingPaymentSummary'
+import { paymentMethodLabel } from '../../utils/paymentLabels'
 import { DashboardEmptyState } from '../../components/dashboard/DashboardEmptyState'
 import { ErrorState } from '../../components/feedback/ErrorState'
 import { LoadingState } from '../../components/feedback/LoadingState'
@@ -17,6 +17,7 @@ import { getPatientLaboratoryOrders, isHomeCollection, laboratoryCollectionAddre
 import { getPatientAppointments, type PatientAppointment } from '../../services/patientAppointmentService'
 import { SUDAN_TIME_ZONE } from '../../utils/dateTime'
 import { buildLoginPath } from '../../utils/navigation'
+import { localizedName } from '../../utils/localizedName'
 
 type LoadState = 'loading' | 'success' | 'error'
 type ServiceFilter = 'all' | 'clinic' | 'home_visit' | 'laboratory'
@@ -35,7 +36,7 @@ export function PatientAppointmentsPage() {
   const [state, setState] = useState<LoadState>('loading')
   const [attempt, setAttempt] = useState(0)
   const [loggingOut, setLoggingOut] = useState(false)
-  const arabic = i18n.resolvedLanguage === 'ar'
+  const arabic = i18n.language.startsWith('ar')
   const locale = arabic ? 'ar-SD' : 'en'
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function PatientAppointmentsPage() {
     }))
     const laboratoryItems: UnifiedItem[] = labOrders.map((order) => ({
       kind: 'laboratory',
-      sortAt: new Date(order.requested_at).getTime(),
+      sortAt: new Date(order.collection_starts_at || order.requested_at).getTime(),
       order,
     }))
     return [...doctorItems, ...laboratoryItems]
@@ -113,12 +114,12 @@ function VisitCard({ appointment, locale }: { appointment: PatientAppointment; l
   const start = new Date(appointment.starts_at)
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: SUDAN_TIME_ZONE }).format(start)
   const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: SUDAN_TIME_ZONE }).format(start)
-  const specialty = i18n.resolvedLanguage === 'ar' ? appointment.doctor.specialization.name_ar : appointment.doctor.specialization.name_en
+  const specialty = localizedName(appointment.doctor.specialization, i18n.language)
   const reviewAction = appointment.status === 'completed'
   const kind = appointment.service_type === 'home_visit' ? 'home_visit' : 'clinic'
   const place = kind === 'home_visit'
     ? [appointment.home_visit?.area, appointment.home_visit?.address_details].filter(Boolean).join(' — ')
-    : [appointment.doctor.clinic_name, i18n.resolvedLanguage === 'ar' ? appointment.doctor.location?.name_ar : appointment.doctor.location?.name_en].filter(Boolean).join(' — ')
+    : [appointment.doctor.clinic_name, localizedName(appointment.doctor.location, i18n.language)].filter(Boolean).join(' — ')
   return <PatientAppointmentCard
     actions={<button className="w-full rounded-full border border-[var(--color-primary)] px-4 py-2.5 font-bold text-[var(--color-primary)]" onClick={() => navigate(reviewAction ? `/patient/appointments/${appointment.id}/review` : `/patient/appointments/${appointment.id}`)} type="button">{t(reviewAction ? appointment.review ? 'patient.appointments.viewReview' : 'patient.appointments.rateDoctor' : 'patient.appointments.viewDetails')}</button>}
     location={place}
@@ -138,14 +139,14 @@ function VisitCard({ appointment, locale }: { appointment: PatientAppointment; l
 function LabCard({ locale, order }: { locale: string; order: LaboratoryOrder }) {
   const { i18n, t } = useTranslation()
   const navigate = useNavigate()
-  const arabic = i18n.resolvedLanguage === 'ar'
+  const arabic = i18n.language.startsWith('ar')
   const items = order.items ?? []
   const first = items[0] ? (items[0].short_name || (arabic ? items[0].name_ar : items[0].name_en)) : ''
   const tests = items.length > 2 ? t('patient.appointments.moreTests', { name: first, count: items.length - 1 }) : items.map((item) => item.short_name || (arabic ? item.name_ar : item.name_en)).join(' + ')
   const home = isHomeCollection(order)
   const scheduled = Boolean(order.collection_starts_at)
   const when = scheduled && order.collection_starts_at ? new Date(order.collection_starts_at) : new Date(order.requested_at)
-  const location = home ? laboratoryCollectionAddress(order, arabic) : [order.location ? (arabic ? order.location.name_ar : order.location.name_en) : '', order.address].filter(Boolean).join(' — ')
+  const location = home ? laboratoryCollectionAddress(order, arabic) : [localizedName(order.location, i18n.language), order.address].filter(Boolean).join(' — ')
   const ready = order.status === 'result_ready' && order.result
   return <PatientAppointmentCard
     actions={<>

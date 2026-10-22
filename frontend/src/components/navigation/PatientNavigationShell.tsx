@@ -43,7 +43,6 @@ export function PatientNavigationShell({ isLoggingOut, onAppointments, onDashboa
       navigationLabel={t('patient.navigation.label')}
       onLogout={onLogout}
       roleLabel={t('roles.patient')}
-      supportComingSoon={t('patient.navigation.supportComingSoon')}
       user={user}
     />
   )

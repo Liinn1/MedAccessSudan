@@ -16,7 +16,7 @@ class DoctorVerificationController extends Controller
     public function index(): JsonResponse
     {
         $profiles = DoctorProfile::query()
-            ->with(['user:id,name,email,phone', 'specialization:id,code,name_en,name_ar,is_active', 'location:id,code,name_en,name_ar,is_active', 'cityProposal'])
+            ->with(['user:id,name,email,phone', 'specialization:id,code,name_en,name_ar,is_active', 'location:id,code,name_en,name_ar,is_active'])
             ->latest()
             ->get();
 
@@ -35,6 +35,6 @@ class DoctorVerificationController extends Controller
 
         $this->verifications->syncLegacyStatus($doctor, $status, $request->user());
 
-        return response()->json(['data' => ['provider' => $doctor->fresh(['user', 'specialization', 'location', 'cityProposal'])], 'message' => 'Provider verification status updated.']);
+        return response()->json(['data' => ['provider' => $doctor->fresh(['user', 'specialization', 'location'])], 'message' => 'Provider verification status updated.']);
     }
 }

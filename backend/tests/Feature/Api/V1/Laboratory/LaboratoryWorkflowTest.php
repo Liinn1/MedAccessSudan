@@ -305,7 +305,7 @@ class LaboratoryWorkflowTest extends TestCase
         $profile = $user->laboratoryProfile()->create([
             'name' => $name,
             'address' => 'Near Al Riyadh',
-            'location_id' => Location::query()->where('code', 'khartoum')->valueOrFail('id'),
+            'location_id' => Location::query()->where('code', 'SD-KH')->valueOrFail('id'),
             'verification_status' => DoctorVerificationStatus::Verified->value,
         ]);
 

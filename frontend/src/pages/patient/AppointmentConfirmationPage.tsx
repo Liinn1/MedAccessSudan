@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { localizedName } from '../../utils/localizedName'
 import { useNavigate } from 'react-router-dom'
 import { BookingPanel } from '../../components/booking/BookingPanel'
 import { BookingPaymentSummary } from '../../components/booking/BookingPaymentSummary'
@@ -115,7 +116,7 @@ function ClinicReview({ doctor, locale, notes, onConfirm, onNotes, payment, slot
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: SUDAN_TIME_ZONE }).format(start)
   const timeFormatter = new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: SUDAN_TIME_ZONE })
   const specialty = arabic ? doctor.specialization.name_ar : doctor.specialization.name_en
-  const location = doctor.location ? (arabic ? doctor.location.name_ar : doctor.location.name_en) : ''
+  const location = localizedName(doctor.location, i18n.resolvedLanguage)
   const time = `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`
 
   return (

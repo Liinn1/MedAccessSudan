@@ -52,8 +52,10 @@ class LoginController extends Controller
         // /login is for patient, doctor, and laboratory accounts. Administrators use /admin/login.
         if ($user?->role?->isAdministrative()) {
             Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
             RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
             return response()->json([
@@ -64,8 +66,10 @@ class LoginController extends Controller
 
         if ($user?->is_active === false) {
             Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
 
             return response()->json([
                 'message' => 'Your account has been suspended. Please contact MedAccess support for assistance.',
@@ -75,8 +79,10 @@ class LoginController extends Controller
 
         if ($user && ! $user->hasVerifiedEmail()) {
             Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
 
             return response()->json([
                 'message' => 'Verify your email before signing in.',
@@ -85,11 +91,24 @@ class LoginController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        $data = [
+            'user' => new AuthenticatedUserResource($user),
+        ];
+
+        $deviceName = trim($request->string('device_name')->toString());
+        if ($deviceName !== '') {
+            $tokenName = 'mobile:'.$deviceName;
+            $user->tokens()->where('name', $tokenName)->delete();
+            $data['token'] = $user->createToken($tokenName)->plainTextToken;
+        }
 
         return response()->json([
             'data' => [
-                'user' => new AuthenticatedUserResource($user),
+                ...$data,
             ],
             'message' => 'Login successful.',
         ]);

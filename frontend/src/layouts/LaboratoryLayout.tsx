@@ -5,8 +5,7 @@ import { PageBackgroundDecorations } from '../components/layout/PageBackgroundDe
 import { DashboardNavigationShell } from '../components/navigation/DashboardNavigationShell'
 import { CalendarIcon, GlobeIcon, HomeIcon, LaboratoryIcon, ProfileIcon } from '../components/icons/PatientHomeIcons'
 import { PublicFooter } from '../components/public/PublicFooter'
-import { logout, type AuthenticatedUser } from '../services/authService'
-import { getLaboratoryDashboard } from '../services/laboratoryService'
+import { logout, restoreSession, type AuthenticatedUser } from '../services/authService'
 
 interface LaboratoryLayoutProps {
   activeSection?: 'dashboard' | 'catalog' | 'requests' | 'results' | 'profile'
@@ -16,8 +15,6 @@ interface LaboratoryLayoutProps {
   showFooter?: boolean
   user?: AuthenticatedUser | null
 }
-
-let cachedLaboratoryUser: AuthenticatedUser | null = null
 
 export function LaboratoryLayout({
   activeSection = 'dashboard',
@@ -29,32 +26,23 @@ export function LaboratoryLayout({
 }: LaboratoryLayoutProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [loadedUser, setLoadedUser] = useState<AuthenticatedUser | null>(cachedLaboratoryUser)
+  const [restoredUser, setRestoredUser] = useState<AuthenticatedUser | null>(null)
   const [internalLoggingOut, setInternalLoggingOut] = useState(false)
-  const shellUser = user ?? loadedUser
+  const shellUser = user ?? restoredUser
 
   useEffect(() => {
-    if (user) {
-      cachedLaboratoryUser = user
-      return
-    }
-    if (cachedLaboratoryUser) return
-    const controller = new AbortController()
-    getLaboratoryDashboard(controller.signal)
-      .then(({ profile, user: currentUser }) => {
-        const next = { ...currentUser, profile_image_url: profile.profile_image_url ?? currentUser.profile_image_url }
-        cachedLaboratoryUser = next
-        setLoadedUser(next)
-      })
+    if (user) return
+    let active = true
+    restoreSession()
+      .then((currentUser) => { if (active && currentUser?.role === 'laboratory') setRestoredUser(currentUser) })
       .catch(() => undefined)
-    return () => controller.abort()
+    return () => { active = false }
   }, [user])
 
   async function defaultLogout() {
     setInternalLoggingOut(true)
     try {
       await logout()
-      cachedLaboratoryUser = null
       navigate('/login', { replace: true })
     } catch {
       setInternalLoggingOut(false)
@@ -84,7 +72,6 @@ export function LaboratoryLayout({
         navigationLabel={t('laboratory.navigation.label')}
         onLogout={onLogout ?? defaultLogout}
         roleLabel={t('roles.laboratory')}
-        supportComingSoon={t('patient.navigation.supportComingSoon')}
         user={shellUser}
       />
       <main className="page-enter relative isolate min-h-[calc(100dvh-4rem)] lg:ms-64">

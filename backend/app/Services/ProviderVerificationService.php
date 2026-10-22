@@ -319,6 +319,8 @@ class ProviderVerificationService
         $profile = $verification->verifiable;
         if ($profile instanceof DoctorProfile) {
             $this->assertDoctorCanBeVerified($profile);
+        } elseif ($profile instanceof LaboratoryProfile) {
+            $this->assertLaboratoryCanBeVerified($profile);
         }
 
         $current = $this->currentDocuments($verification);
@@ -401,10 +403,10 @@ class ProviderVerificationService
 
     private function assertDoctorCanBeVerified(DoctorProfile $doctor): void
     {
-        $doctor->load(['location', 'specialization', 'cityProposal']);
+        $doctor->load(['location', 'specialization']);
 
         if (! $doctor->location_id || ! $doctor->location?->is_active) {
-            throw ValidationException::withMessages(['status' => 'Resolve the provider city before verification.']);
+            throw ValidationException::withMessages(['status' => 'Select an active provider state before verification.']);
         }
         if (! $doctor->specialization?->is_active) {
             throw ValidationException::withMessages(['status' => 'The provider specialization must be active before verification.']);
@@ -412,8 +414,23 @@ class ProviderVerificationService
         if (! $doctor->profile_image_path) {
             throw ValidationException::withMessages(['status' => 'A provider profile picture is required before verification.']);
         }
-        if ($doctor->cityProposal?->status?->value === 'pending') {
-            throw ValidationException::withMessages(['status' => 'Resolve the pending city proposal before verification.']);
+        if (! trim((string) $doctor->address)) {
+            throw ValidationException::withMessages(['status' => 'Complete the provider detailed address before verification.']);
+        }
+    }
+
+    private function assertLaboratoryCanBeVerified(LaboratoryProfile $laboratory): void
+    {
+        $laboratory->load('location');
+
+        if (! $laboratory->location_id || ! $laboratory->location?->is_active) {
+            throw ValidationException::withMessages(['status' => 'Select an active laboratory state before verification.']);
+        }
+        if (! trim((string) $laboratory->name) || ! trim((string) $laboratory->address)) {
+            throw ValidationException::withMessages(['status' => 'Complete the laboratory profile before verification.']);
+        }
+        if (! $laboratory->profile_image_path) {
+            throw ValidationException::withMessages(['status' => 'A laboratory profile picture is required before verification.']);
         }
     }
 

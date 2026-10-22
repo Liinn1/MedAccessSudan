@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class DoctorProfile extends Model
 {
@@ -82,11 +81,6 @@ class DoctorProfile extends Model
             ->where('status', AppointmentStatus::Completed->value)
             ->whereColumn('appointments.patient_id', 'provider_reviews.patient_id')
             ->whereColumn('appointments.doctor_profile_id', 'provider_reviews.doctor_profile_id'));
-    }
-
-    public function cityProposal(): HasOne
-    {
-        return $this->hasOne(CityProposal::class);
     }
 
     public function scopeVisibleToPatients(Builder $query): Builder
