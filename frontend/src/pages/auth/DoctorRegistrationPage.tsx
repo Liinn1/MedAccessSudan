@@ -13,7 +13,7 @@ import { EyeIcon, LockIcon, MailIcon, PhoneIcon, UserIcon } from '../../componen
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorRegistrationOptions, registerDoctor, type RegistrationOption } from '../../services/authService'
-import { isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
+import { hasLaravelValidationCode, isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
 
 const TOTAL_STEPS = 3
 const emptyForm = {
@@ -195,7 +195,7 @@ export function DoctorRegistrationPage() {
 
     setSubmitting(true)
     try {
-      await registerDoctor({
+      const result = await registerDoctor({
         first_name: form.firstName,
         last_name: form.lastName,
         email: form.email,
@@ -210,14 +210,14 @@ export function DoctorRegistrationPage() {
         offers_home_visits: form.offersHome,
         profile_photo: profilePhoto as File,
       })
-      navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'doctor' } })
+      navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'doctor', verificationEmailSent: result.verificationEmailSent } })
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) {
         const server = laravelFieldErrors(error.details)
         setFieldErrors({
           firstName: server.first_name ? 'server' : undefined,
           lastName: server.last_name ? 'server' : undefined,
-          email: server.email ? 'server' : undefined,
+          email: server.email ? (hasLaravelValidationCode(error.details, 'email', 'unique') ? 'duplicate' : 'invalid') : undefined,
           phone: server.phone ? 'server' : undefined,
           password: server.password ? 'server' : undefined,
           passwordConfirmation: server.password_confirmation ? 'server' : undefined,

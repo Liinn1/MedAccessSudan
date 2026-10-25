@@ -2,6 +2,8 @@ import { apiRequest, setApiBearerToken } from '@/api/client'
 import type { AuthenticatedUser } from '@/types/auth'
 
 type AuthenticationResponse = { data: { user: AuthenticatedUser; token?: string } }
+type RegistrationResponse = AuthenticationResponse & { account_created: true; verification_email_sent: boolean; code?: 'ACCOUNT_CREATED_BUT_VERIFICATION_EMAIL_FAILED' }
+export type RegistrationResult = { user: AuthenticatedUser; verificationEmailSent: boolean }
 
 export interface PatientRegistrationInput {
   first_name: string
@@ -59,14 +61,14 @@ export async function logoutPatient() {
   }
 }
 
-export async function registerPatient(input: PatientRegistrationInput): Promise<AuthenticatedUser> {
-  const response = await apiRequest<AuthenticationResponse>('/api/v1/auth/register', {
+export async function registerPatient(input: PatientRegistrationInput): Promise<RegistrationResult> {
+  const response = await apiRequest<RegistrationResponse>('/api/v1/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
     timeoutMs: 30000,
   })
-  return response.data.user
+  return { user: response.data.user, verificationEmailSent: response.verification_email_sent }
 }
 
 export async function resendEmailVerification(email: string) {
@@ -92,8 +94,8 @@ function registrationFormData(input: DoctorRegistrationInput | LaboratoryRegistr
 }
 
 async function registerProvider(path: string, input: DoctorRegistrationInput | LaboratoryRegistrationInput) {
-  const response = await apiRequest<AuthenticationResponse>(path, { method: 'POST', body: registrationFormData(input), timeoutMs: 30000 })
-  return response.data.user
+  const response = await apiRequest<RegistrationResponse>(path, { method: 'POST', body: registrationFormData(input), timeoutMs: 30000 })
+  return { user: response.data.user, verificationEmailSent: response.verification_email_sent }
 }
 
 export const registerDoctor = (input: DoctorRegistrationInput) => registerProvider('/api/v1/auth/register/doctor', input)

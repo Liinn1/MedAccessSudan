@@ -20,6 +20,17 @@ interface AuthenticationResponse {
   message?: string
 }
 
+interface RegistrationResponse extends AuthenticationResponse {
+  account_created: true
+  verification_email_sent: boolean
+  code?: 'ACCOUNT_CREATED_BUT_VERIFICATION_EMAIL_FAILED'
+}
+
+export interface RegistrationResult {
+  user: AuthenticatedUser
+  verificationEmailSent: boolean
+}
+
 /**
  * Starts a CSRF-protected Laravel Sanctum session using an email or phone
  * identifier. The session cookie is HTTP-only and is never stored in React.
@@ -115,11 +126,11 @@ export interface PatientRegistrationInput {
 }
 
 /** Creates a patient identity; the backend assigns the role and hashes the password. */
-export async function registerPatient(input: PatientRegistrationInput): Promise<AuthenticatedUser> {
+export async function registerPatient(input: PatientRegistrationInput): Promise<RegistrationResult> {
   await apiClient.initializeCsrfProtection()
   const form = registrationFormData(input)
-  const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register', form)
-  return response.data.user
+  const response = await apiClient.postForm<RegistrationResponse>('/api/v1/auth/register', form)
+  return { user: response.data.user, verificationEmailSent: response.verification_email_sent }
 }
 
 export interface DoctorRegistrationInput extends PatientRegistrationInput {
@@ -144,10 +155,10 @@ export async function resendEmailVerification(email: string): Promise<void> {
   await apiClient.post('/api/v1/auth/email/verification-notification', { email })
 }
 
-export async function registerDoctor(input: DoctorRegistrationInput): Promise<AuthenticatedUser> {
+export async function registerDoctor(input: DoctorRegistrationInput): Promise<RegistrationResult> {
   await apiClient.initializeCsrfProtection()
-  const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register/doctor', registrationFormData(input))
-  return response.data.user
+  const response = await apiClient.postForm<RegistrationResponse>('/api/v1/auth/register/doctor', registrationFormData(input))
+  return { user: response.data.user, verificationEmailSent: response.verification_email_sent }
 }
 
 export interface LaboratoryRegistrationInput {
@@ -163,10 +174,10 @@ export interface LaboratoryRegistrationInput {
   profile_photo?: File | null
 }
 
-export async function registerLaboratory(input: LaboratoryRegistrationInput): Promise<AuthenticatedUser> {
+export async function registerLaboratory(input: LaboratoryRegistrationInput): Promise<RegistrationResult> {
   await apiClient.initializeCsrfProtection()
-  const response = await apiClient.postForm<AuthenticationResponse>('/api/v1/auth/register/laboratory', registrationFormData(input))
-  return response.data.user
+  const response = await apiClient.postForm<RegistrationResponse>('/api/v1/auth/register/laboratory', registrationFormData(input))
+  return { user: response.data.user, verificationEmailSent: response.verification_email_sent }
 }
 
 function registrationFormData(input: PatientRegistrationInput | DoctorRegistrationInput | LaboratoryRegistrationInput): FormData {

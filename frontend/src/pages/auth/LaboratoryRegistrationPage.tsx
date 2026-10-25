@@ -14,7 +14,7 @@ import { LocationIcon } from '../../components/icons/PatientHomeIcons'
 import { PublicLayout } from '../../layouts/PublicLayout'
 import { ApiError } from '../../services/apiClient'
 import { getDoctorRegistrationOptions, registerLaboratory, type RegistrationOption } from '../../services/authService'
-import { isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
+import { hasLaravelValidationCode, isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
 
 const TOTAL_STEPS = 3
 const emptyForm = {
@@ -182,7 +182,7 @@ export function LaboratoryRegistrationPage() {
 
     setSubmitting(true)
     try {
-      await registerLaboratory({
+      const result = await registerLaboratory({
         laboratory_name: form.laboratoryName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -194,13 +194,13 @@ export function LaboratoryRegistrationPage() {
         supports_home_collection: form.serviceMode === 'home' || form.serviceMode === 'both',
         profile_photo: profilePhoto,
       })
-      navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'laboratory' } })
+      navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'laboratory', verificationEmailSent: result.verificationEmailSent } })
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) {
         const server = laravelFieldErrors(error.details)
         setFieldErrors({
           laboratoryName: server.laboratory_name ? 'server' : undefined,
-          email: server.email ? 'server' : undefined,
+          email: server.email ? (hasLaravelValidationCode(error.details, 'email', 'unique') ? 'duplicate' : 'invalid') : undefined,
           phone: server.phone ? 'server' : undefined,
           password: server.password ? 'server' : undefined,
           passwordConfirmation: server.password_confirmation ? 'server' : undefined,

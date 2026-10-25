@@ -1,6 +1,6 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { ApiError, setApiBearerToken, setApiUnauthorizedHandler } from '@/api/client'
-import { loginAccount, logoutPatient, registerPatient, restoreAuthenticatedUser, type PatientRegistrationInput } from '@/services/auth-service'
+import { loginAccount, logoutPatient, registerPatient, restoreAuthenticatedUser, type PatientRegistrationInput, type RegistrationResult } from '@/services/auth-service'
 import { secureSession } from '@/services/secure-session'
 import type { AuthenticatedUser, AuthenticationStatus } from '@/types/auth'
 
@@ -8,7 +8,7 @@ type AuthContextValue = {
   status: AuthenticationStatus
   user: AuthenticatedUser | null
   login: (identifier: string, password: string, remember?: boolean) => Promise<void>
-  register: (input: PatientRegistrationInput) => Promise<AuthenticatedUser>
+  register: (input: PatientRegistrationInput) => Promise<RegistrationResult>
   logout: () => Promise<void>
   updateCurrentUser: (user: AuthenticatedUser) => void
 }

@@ -13,6 +13,7 @@ import { isValidEmail } from '../../utils/authValidation'
 interface VerifyRouteState {
   email?: string
   role?: 'patient' | 'doctor' | 'laboratory'
+  verificationEmailSent?: boolean
 }
 
 export function VerifyEmailPage() {
@@ -26,6 +27,7 @@ export function VerifyEmailPage() {
   const [feedback, setFeedback] = useState('')
   const [isResending, setIsResending] = useState(false)
   const isProvider = state?.role === 'doctor' || state?.role === 'laboratory'
+  const deliveryFailed = state?.verificationEmailSent === false
   const isResolved = status === 'success' || status === 'already'
   const isInvalid = status === 'invalid'
 
@@ -39,7 +41,7 @@ export function VerifyEmailPage() {
     ? t(status === 'already' ? 'auth.verify.alreadyBody' : 'auth.verify.successBody')
     : isInvalid
       ? t('auth.verify.invalidBody')
-      : t('auth.verify.subtitle')
+      : t(deliveryFailed ? 'auth.verify.deliveryFailed' : 'auth.verify.subtitle')
 
   async function handleResend(event: FormEvent) {
     event.preventDefault()
@@ -80,7 +82,7 @@ export function VerifyEmailPage() {
             {email
               ? <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t('auth.verify.sentTo', { email })}</p>
               : <p className="text-sm text-[var(--color-text-secondary)]">{t('auth.verify.sentGeneric')}</p>}
-            {!isInvalid && <p className="text-sm text-[var(--color-text-secondary)]">{t('auth.verify.checkInbox')}</p>}
+            {!isInvalid && !deliveryFailed && <p className="text-sm text-[var(--color-text-secondary)]">{t('auth.verify.checkInbox')}</p>}
             {isProvider && (
               <p className="rounded-2xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                 {t('auth.verify.doctorNote')}

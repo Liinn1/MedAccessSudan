@@ -187,6 +187,7 @@ export const enTranslation = {
     verify: {
       title: 'Verify your email',
       subtitle: 'Confirm your address to continue with MedAccess.',
+      deliveryFailed: "Your account was created successfully, but we couldn't send the verification email. Please try resending it.",
       sentTo: 'We sent a verification link to {{email}}.',
       sentGeneric: 'We sent a verification link to your email address.',
       checkInbox: 'Please check your inbox and follow the link to verify your account.',
@@ -242,8 +243,8 @@ export const enTranslation = {
         },
         email: {
           required: 'Enter your email address.',
-          invalid: 'Enter a valid email address.',
-          server: 'This email is already registered or invalid.',
+          invalid: 'Please enter a valid email address.',
+          duplicate: 'This email is already registered.',
         },
         phone: {
           required: 'Enter your phone number.',

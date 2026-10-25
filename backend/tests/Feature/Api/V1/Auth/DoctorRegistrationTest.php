@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\ProviderVerificationService;
+use App\Services\RegistrationVerificationEmailService;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -48,7 +49,9 @@ class DoctorRegistrationTest extends TestCase
 
         $this->postJson('/api/v1/auth/register/doctor', $payload)
             ->assertCreated()
-            ->assertJsonPath('data.user.role', 'doctor');
+            ->assertJsonPath('data.user.role', 'doctor')
+            ->assertJsonPath('account_created', true)
+            ->assertJsonPath('verification_email_sent', true);
 
         $this->assertGuest();
         $doctor = User::query()->where('email', $payload['email'])->firstOrFail();
@@ -82,7 +85,40 @@ class DoctorRegistrationTest extends TestCase
 
         $this->postJson('/api/v1/auth/register/doctor', $payload)
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['email']);
+            ->assertJsonValidationErrors(['email'])
+            ->assertJsonPath('validation_codes.email.0', 'unique');
+    }
+
+    public function test_doctor_registration_reports_invalid_email_separately_from_duplicate_email(): void
+    {
+        $this->postJson('/api/v1/auth/register/doctor', $this->payload(['email' => 'not-an-email']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email'])
+            ->assertJsonPath('validation_codes.email.0', 'email');
+    }
+
+    public function test_doctor_and_profile_remain_consistent_when_verification_email_delivery_fails(): void
+    {
+        Storage::fake('public');
+        $this->mock(RegistrationVerificationEmailService::class)
+            ->shouldReceive('send')
+            ->once()
+            ->andReturnFalse();
+
+        $payload = $this->payload([
+            'email' => 'mail.failure.doctor@example.com',
+            'phone' => '+249111222556',
+        ]);
+
+        $this->postJson('/api/v1/auth/register/doctor', $payload)
+            ->assertCreated()
+            ->assertJsonPath('account_created', true)
+            ->assertJsonPath('verification_email_sent', false)
+            ->assertJsonPath('code', 'ACCOUNT_CREATED_BUT_VERIFICATION_EMAIL_FAILED');
+
+        $doctor = User::query()->where('email', $payload['email'])->firstOrFail();
+        $this->assertNull($doctor->email_verified_at);
+        $this->assertSame('pending_documents', $doctor->doctorProfile->verification_status);
     }
 
     public function test_doctor_registration_rejects_an_invalid_city(): void

@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1\Auth;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\RegistrationVerificationEmailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -31,7 +32,11 @@ class LaboratoryRegistrationTest extends TestCase
     public function test_laboratory_registration_persists_city_address_and_service_modes(): void
     {
         $payload = $this->payload();
-        $this->postJson('/api/v1/auth/register/laboratory', $payload)->assertCreated()->assertJsonPath('data.user.role', 'laboratory');
+        $this->postJson('/api/v1/auth/register/laboratory', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.user.role', 'laboratory')
+            ->assertJsonPath('account_created', true)
+            ->assertJsonPath('verification_email_sent', true);
         $lab = User::query()->where('email', $payload['email'])->firstOrFail();
         $this->assertSame(UserRole::Laboratory, $lab->role);
         $this->assertTrue(Hash::check($payload['password'], $lab->password));
@@ -51,9 +56,43 @@ class LaboratoryRegistrationTest extends TestCase
 
         $this->postJson('/api/v1/auth/register/laboratory', $this->payload())
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['email', 'phone']);
+            ->assertJsonValidationErrors(['email', 'phone'])
+            ->assertJsonPath('validation_codes.email.0', 'unique');
 
         $this->assertSame(1, User::query()->where('email', 'nile.lab@example.com')->count());
+    }
+
+    public function test_laboratory_registration_reports_invalid_email_separately_from_duplicate_email(): void
+    {
+        $this->postJson('/api/v1/auth/register/laboratory', $this->payload([
+            'email' => 'not-an-email',
+            'phone' => '+249111333445',
+        ]))->assertUnprocessable()
+            ->assertJsonValidationErrors(['email'])
+            ->assertJsonPath('validation_codes.email.0', 'email');
+    }
+
+    public function test_laboratory_and_profile_remain_consistent_when_verification_email_delivery_fails(): void
+    {
+        $this->mock(RegistrationVerificationEmailService::class)
+            ->shouldReceive('send')
+            ->once()
+            ->andReturnFalse();
+
+        $payload = $this->payload([
+            'email' => 'mail.failure.lab@example.com',
+            'phone' => '+249111333446',
+        ]);
+
+        $this->postJson('/api/v1/auth/register/laboratory', $payload)
+            ->assertCreated()
+            ->assertJsonPath('account_created', true)
+            ->assertJsonPath('verification_email_sent', false)
+            ->assertJsonPath('code', 'ACCOUNT_CREATED_BUT_VERIFICATION_EMAIL_FAILED');
+
+        $laboratory = User::query()->where('email', $payload['email'])->firstOrFail();
+        $this->assertNull($laboratory->email_verified_at);
+        $this->assertSame('pending_documents', $laboratory->laboratoryProfile->verification_status);
     }
 
     public function test_laboratory_requires_at_least_one_service_mode(): void

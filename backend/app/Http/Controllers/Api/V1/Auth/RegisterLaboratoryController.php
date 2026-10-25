@@ -11,13 +11,14 @@ use App\Models\Location;
 use App\Models\User;
 use App\Services\ProfilePhotoService;
 use App\Services\ProviderVerificationService;
+use App\Services\RegistrationVerificationEmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class RegisterLaboratoryController extends Controller
 {
-    public function __invoke(RegisterLaboratoryRequest $request, ProfilePhotoService $photos, ProviderVerificationService $verifications): JsonResponse
+    public function __invoke(RegisterLaboratoryRequest $request, ProfilePhotoService $photos, ProviderVerificationService $verifications, RegistrationVerificationEmailService $verificationEmail): JsonResponse
     {
         $validated = $request->validated();
         $photoPath = $request->hasFile('profile_photo')
@@ -60,11 +61,16 @@ class RegisterLaboratoryController extends Controller
             throw $error;
         }
 
-        $user->sendEmailVerificationNotification();
+        $verificationEmailSent = $verificationEmail->send($user);
 
         return response()->json([
             'data' => ['user' => new AuthenticatedUserResource($user)],
-            'message' => 'Laboratory application submitted successfully. Verify your email to sign in.',
+            'account_created' => true,
+            'verification_email_sent' => $verificationEmailSent,
+            ...($verificationEmailSent ? [] : ['code' => 'ACCOUNT_CREATED_BUT_VERIFICATION_EMAIL_FAILED']),
+            'message' => $verificationEmailSent
+                ? 'Laboratory application submitted successfully. Verify your email to sign in.'
+                : 'Laboratory application submitted successfully, but the verification email could not be sent.',
         ], 201);
     }
 }

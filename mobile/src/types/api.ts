@@ -5,5 +5,6 @@ export interface ApiErrorDetails {
   status?: number
   backendCode?: string
   validationErrors?: Record<string, string[]>
+  validationCodes?: Record<string, string[]>
 }
 export interface HealthResponse { status: 'ok'; service: string; database: string }

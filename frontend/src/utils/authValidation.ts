@@ -43,3 +43,11 @@ export function laravelFieldErrors(details: unknown): Record<string, string> {
   }
   return mapped
 }
+
+export function hasLaravelValidationCode(details: unknown, field: string, rule: string): boolean {
+  if (typeof details !== 'object' || details === null || !('validation_codes' in details)) return false
+  const raw = (details as { validation_codes: unknown }).validation_codes
+  if (typeof raw !== 'object' || raw === null || !(field in raw)) return false
+  const codes = (raw as Record<string, unknown>)[field]
+  return Array.isArray(codes) && codes.some((code) => code === rule)
+}

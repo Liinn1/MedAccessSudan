@@ -34,6 +34,7 @@ export function PatientRegistrationScreen() {
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmationVisible, setConfirmationVisible] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
+  const [verificationEmailSent, setVerificationEmailSent] = useState(true)
   const [verificationMessage, setVerificationMessage] = useState('')
   const direction = isRTL ? styles.rtl : styles.ltr
 
@@ -60,18 +61,19 @@ export function PatientRegistrationScreen() {
     if (Object.keys(clientErrors).length) { setErrors(clientErrors); return }
     setBusy(true); setFormError('')
     try {
-      await register({
+      const result = await register({
         first_name: form.first_name.trim(), last_name: form.last_name.trim(), email: form.email.trim(),
         phone: form.phone.trim(), password: form.password, password_confirmation: form.password_confirmation,
       })
       setRegisteredEmail(form.email.trim())
+      setVerificationEmailSent(result.verificationEmailSent)
       setForm(initialForm)
     } catch (error) {
       if (error instanceof ApiError && error.status === 422 && error.validationErrors) {
         const serverErrors: FieldErrors = {}
         for (const field of Object.keys(initialForm) as Field[]) {
           if (!error.validationErrors[field]?.[0]) continue
-          if (field === 'email') serverErrors[field] = t('auth.register.errors.emailExists')
+          if (field === 'email') serverErrors[field] = t(error.validationCodes?.email?.includes('unique') ? 'auth.register.errors.emailExists' : 'auth.register.errors.email')
           else if (field === 'phone') serverErrors[field] = t('auth.register.errors.phoneExists')
           else if (field === 'password' || field === 'password_confirmation') serverErrors[field] = t('auth.register.errors.passwordRejected')
           else serverErrors[field] = t('auth.register.errors.invalid')
@@ -89,7 +91,7 @@ export function PatientRegistrationScreen() {
       <View pointerEvents="none" style={styles.celebration}><View style={[styles.dot, styles.dotOne]} /><View style={[styles.dot, styles.dotTwo]} /><View style={[styles.dot, styles.dotThree]} /></View>
       <View style={styles.successIcon}><MaterialIcon color={colors.white} name="check" size={54} /></View>
       <Text style={[styles.successTitle, direction, isRTL && arabicFonts.extraBold]}>{t('auth.register.successTitle')}</Text>
-      <Text style={[styles.description, direction, isRTL && arabicFonts.regular]}>{t('auth.register.successDescription', { email: registeredEmail })}</Text>
+      <Text style={[styles.description, direction, isRTL && arabicFonts.regular]}>{t(verificationEmailSent ? 'auth.register.successDescription' : 'auth.register.deliveryFailed', { email: registeredEmail })}</Text>
       {!!verificationMessage && <Text accessibilityLiveRegion="polite" style={[styles.verificationMessage, direction, isRTL && arabicFonts.regular]}>{verificationMessage}</Text>}
       <Pressable accessibilityRole="button" disabled={busy} onPress={async () => {
         if (busy) return

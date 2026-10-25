@@ -9,7 +9,7 @@ import { EyeIcon, LockIcon, MailIcon, PhoneIcon, UserIcon } from '../../componen
 import { ApiError } from '../../services/apiClient'
 import { registerPatient } from '../../services/authService'
 import { PublicLayout } from '../../layouts/PublicLayout'
-import { isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
+import { hasLaravelValidationCode, isValidEmail, isValidPhone, isValidRegistrationPassword, laravelFieldErrors, profilePhotoIssue } from '../../utils/authValidation'
 
 interface RegistrationForm {
   firstName: string
@@ -135,7 +135,7 @@ export function PatientRegistrationPage() {
     setIsSubmitting(true)
 
     try {
-      await registerPatient({
+      const result = await registerPatient({
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
         email: form.email.trim(),
@@ -144,14 +144,14 @@ export function PatientRegistrationPage() {
         password_confirmation: form.passwordConfirmation,
         profile_photo: profilePhoto,
       })
-      navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'patient' } })
+      navigate('/verify-email', { replace: true, state: { email: form.email.trim(), role: 'patient', verificationEmailSent: result.verificationEmailSent } })
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 422) {
         const server = laravelFieldErrors(error.details)
         setErrors({
           firstName: server.first_name ? 'server' : undefined,
           lastName: server.last_name ? 'server' : undefined,
-          email: server.email ? 'server' : undefined,
+          email: server.email ? (hasLaravelValidationCode(error.details, 'email', 'unique') ? 'duplicate' : 'invalid') : undefined,
           phone: server.phone ? 'server' : undefined,
           password: server.password ? 'server' : undefined,
           passwordConfirmation: server.password_confirmation ? 'server' : undefined,

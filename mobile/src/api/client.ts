@@ -19,6 +19,7 @@ export class ApiError extends Error {
   readonly status?: number
   readonly backendCode?: string
   readonly validationErrors?: Record<string, string[]>
+  readonly validationCodes?: Record<string, string[]>
   constructor(details: ApiErrorDetails) {
     super(details.message)
     this.name = 'ApiError'
@@ -26,6 +27,7 @@ export class ApiError extends Error {
     this.status = details.status
     this.backendCode = details.backendCode
     this.validationErrors = details.validationErrors
+    this.validationCodes = details.validationCodes
   }
 }
 
@@ -54,6 +56,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       const payload = await response.json().catch(() => null) as {
         code?: string
         errors?: Record<string, string[]>
+        validation_codes?: Record<string, string[]>
         message?: string
       } | null
       if (response.status === 401 && bearerToken && unauthorizedHandler) {
@@ -70,6 +73,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
         status: response.status,
         backendCode: payload?.code,
         validationErrors: payload?.errors,
+        validationCodes: payload?.validation_codes,
       })
     }
     try { return (await response.json()) as T }
