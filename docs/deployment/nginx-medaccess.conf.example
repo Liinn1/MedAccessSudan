@@ -1,0 +1,67 @@
+# MedAccess-only Nginx example. Do not replace nginx.conf or another app's file.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name medaccesssudan.tech www.medaccesssudan.tech;
+    return 301 https://medaccesssudan.tech$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name medaccesssudan.tech;
+
+    ssl_certificate /etc/letsencrypt/live/medaccesssudan.tech/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/medaccesssudan.tech/privkey.pem;
+
+    root /var/www/medaccess/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.medaccesssudan.tech;
+    return 301 https://api.medaccesssudan.tech$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name api.medaccesssudan.tech;
+
+    ssl_certificate /etc/letsencrypt/live/api.medaccesssudan.tech/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.medaccesssudan.tech/privkey.pem;
+
+    root /var/www/medaccess/backend/public;
+    index index.php;
+    client_max_body_size 12m;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
